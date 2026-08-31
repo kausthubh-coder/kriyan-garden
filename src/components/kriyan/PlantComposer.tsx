@@ -1,9 +1,9 @@
 "use client";
 
 import { ArrowRight, Plus, X } from "@phosphor-icons/react";
+import DOMPurify from "dompurify";
 import { useRef, useState } from "react";
 import type { CSSProperties, FormEvent } from "react";
-import { getHorizonFromDueDate } from "@/lib/horizon";
 import type { Region, TaskDraft } from "@/lib/types";
 import styles from "./kriyan.module.css";
 
@@ -116,12 +116,11 @@ export function PlantComposer({ regions, initialDate, initialRegionId, onCancel,
       await onPlant({
         title: title.trim(),
         regionId: regionId || null,
-        horizon: getHorizonFromDueDate(dueDate),
         dueDate: dueDate || null,
         durationMinutes: duration ? Number(duration) : null,
         repeatRule: repeatUnit ? rule : null,
         reminders: reminderValues,
-        content: editorRef.current?.innerHTML || "<p></p>",
+        content: DOMPurify.sanitize(editorRef.current?.innerHTML || "<p></p>"),
       });
     } finally {
       setSaving(false);

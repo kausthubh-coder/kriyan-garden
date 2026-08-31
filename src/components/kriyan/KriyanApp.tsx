@@ -1,8 +1,10 @@
 "use client";
 
+import { useMutation, useQuery } from "convex/react";
 import { useState, useTransition } from "react";
-import { completeOnboarding, completeTask, createRegion, createTask, exploreDemoWorkspace, removeRegion, renameRegion, restartOnboarding, updateTask } from "@/app/actions";
-import type { GardenData, Task, TaskDraft, TaskPatch } from "@/lib/types";
+import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
+import type { Task, TaskDraft, TaskPatch } from "@/lib/types";
 import { CalendarView } from "./CalendarView";
 import { DistanceView } from "./DistanceView";
 import { GardenHeader } from "./GardenHeader";
@@ -16,10 +18,17 @@ import styles from "./kriyan.module.css";
 
 export type ViewName = "garden" | "distance" | "calendar";
 
-export function KriyanApp({ initialData }: { initialData: GardenData }) {
-  const [onboardingComplete, setOnboardingComplete] = useState(initialData.onboardingComplete);
-  const [regions, setRegions] = useState(initialData.regions);
-  const [tasks, setTasks] = useState(initialData.tasks);
+export function KriyanApp() {
+  const data = useQuery(api.garden.get);
+  const completeOnboarding = useMutation(api.garden.completeOnboarding);
+  const exploreDemo = useMutation(api.garden.exploreDemo);
+  const restartOnboarding = useMutation(api.garden.restartOnboarding);
+  const createRegion = useMutation(api.garden.createRegion);
+  const renameRegion = useMutation(api.garden.renameRegion);
+  const removeRegion = useMutation(api.garden.removeRegion);
+  const createTask = useMutation(api.garden.createTask);
+  const updateTask = useMutation(api.garden.updateTask);
+  const completeTask = useMutation(api.garden.completeTask);
   const [view, setView] = useState<ViewName>("garden");
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [newTaskSeed, setNewTaskSeed] = useState<{ date?: string | null; regionId?: string | null } | null>(null);
@@ -27,143 +36,77 @@ export function KriyanApp({ initialData }: { initialData: GardenData }) {
   const [spacesOpen, setSpacesOpen] = useState(false);
   const [notice, setNotice] = useState("");
   const [isPending, startTransition] = useTransition();
+
+  if (data === undefined) return <main className="route-state">opening your garden</main>;
+
+  const { regions, tasks } = data;
   const activeTask = activeTaskId ? tasks.find((task) => task.id === activeTaskId) ?? null : null;
   const taskCounts = new Map<string, number>();
   for (const task of tasks) {
     if (task.regionId) taskCounts.set(task.regionId, (taskCounts.get(task.regionId) ?? 0) + 1);
   }
 
-  function applyGardenData(data: GardenData) {
-    setRegions(data.regions);
-    setTasks(data.tasks);
-    setOnboardingComplete(data.onboardingComplete);
-  }
-
-  function replaceTask(next: Task) {
-    setTasks((current) => current.map((task) => task.id === next.id ? next : task));
+  function flash(message: string) {
+    setNotice(message);
+    window.setTimeout(() => setNotice(""), 1100);
   }
 
   async function handleUpdate(id: string, patch: TaskPatch) {
-    setTasks((current) => current.map((task) => task.id === id ? { ...task, ...patch } as Task : task));
-    return new Promise<void>((resolve) => {
-      startTransition(async () => {
-        try {
-          replaceTask(await updateTask(id, patch));
-          setNotice("saved");
-          window.setTimeout(() => setNotice(""), 900);
-        } catch {
-          setNotice("could not save");
-        } finally {
-          resolve();
-        }
-      });
+    await updateTask({
+      id: id as Id<"tasks">,
+      patch: {
+        ...patch,
+        regionId: patch.regionId === undefined ? undefined : patch.regionId as Id<"regions"> | null,
+      },
     });
+    flash("saved");
   }
 
   async function handleComplete(id: string, completed: boolean) {
-    setTasks((current) => current.map((task) => task.id === id ? { ...task, status: completed ? "completed" : "active" } : task));
-    startTransition(async () => {
-      try {
-        replaceTask(await completeTask(id, completed));
-        if (completed) {
-          setNotice("lifted from the bed");
-          window.setTimeout(() => { setActiveTaskId(null); setNotice(""); }, 700);
-        }
-      } catch {
-        setNotice("could not save");
-      }
-    });
+    await completeTask({ id: id as Id<"tasks">, completed });
+    if (completed) {
+      flash("lifted from the bed");
+      window.setTimeout(() => setActiveTaskId(null), 650);
+    }
   }
 
   async function handlePlant(draft: TaskDraft) {
-    return new Promise<void>((resolve) => {
+    const created = await createTask({
+      title: draft.title,
+      regionId: draft.regionId as Id<"regions"> | null,
+      dueDate: draft.dueDate ?? null,
+      time: draft.time ?? null,
+      durationMinutes: draft.durationMinutes ?? null,
+      repeatRule: draft.repeatRule ?? null,
+      reminders: draft.reminders ?? [],
+      content: draft.content ?? "",
+    });
+    setNewTaskSeed(null);
+    setActiveTaskId(created.id);
+  }
+
+  function run(work: () => Promise<unknown>, success?: string) {
+    return new Promise<void>((resolve, reject) => {
       startTransition(async () => {
         try {
-          const created = await createTask(draft);
-          setTasks((current) => [...current, created]);
-          setNewTaskSeed(null);
-          setActiveTaskId(created.id);
-        } catch {
-          setNotice("could not plant");
-        } finally {
+          await work();
+          if (success) flash(success);
           resolve();
+        } catch (error) {
+          flash(error instanceof Error ? error.message : "could not save");
+          reject(error);
         }
       });
     });
   }
 
-  async function handleOnboarding(names: string[]) {
-    const data = await completeOnboarding(names);
-    applyGardenData(data);
-    return data;
-  }
-
-  async function handleDemo() {
-    const data = await exploreDemoWorkspace();
-    applyGardenData(data);
-    return data;
-  }
-
-  async function handleCreateSpace(name: string) {
-    return new Promise<void>((resolve) => {
-      startTransition(async () => {
-        try {
-          const created = await createRegion(name);
-          setRegions((current) => [...current, created]);
-          setNotice(`${created.name} added`);
-          window.setTimeout(() => setNotice(""), 900);
-        } catch {
-          setNotice("could not add space");
-        } finally {
-          resolve();
-        }
-      });
-    });
-  }
-
-  async function handleRenameSpace(id: string, name: string) {
-    return new Promise<void>((resolve) => {
-      startTransition(async () => {
-        try {
-          const updated = await renameRegion(id, name);
-          setRegions((current) => current.map((region) => region.id === id ? updated : region));
-          setNotice("space renamed");
-          window.setTimeout(() => setNotice(""), 900);
-        } catch {
-          setNotice("could not rename space");
-        } finally {
-          resolve();
-        }
-      });
-    });
-  }
-
-  async function handleDeleteSpace(id: string) {
-    return new Promise<void>((resolve) => {
-      startTransition(async () => {
-        try {
-          await removeRegion(id);
-          setRegions((current) => current.filter((region) => region.id !== id));
-          setTasks((current) => current.map((task) => task.regionId === id ? { ...task, regionId: null } : task));
-          setNotice("space removed");
-          window.setTimeout(() => setNotice(""), 900);
-        } catch {
-          setNotice("could not remove space");
-        } finally {
-          resolve();
-        }
-      });
-    });
-  }
-
-  async function handleRestartOnboarding() {
-    const data = await restartOnboarding();
-    setSpacesOpen(false);
-    applyGardenData(data);
-  }
-
-  if (!onboardingComplete) {
-    return <Onboarding onComplete={handleOnboarding} onDemo={handleDemo} />;
+  if (!data.onboardingComplete) {
+    return (
+      <Onboarding
+        onComplete={(names) => run(() => completeOnboarding({ names }))}
+        onDemo={() => run(() => exploreDemo({}))}
+      />
+    );
   }
 
   if (newTaskSeed) {
@@ -171,7 +114,7 @@ export function KriyanApp({ initialData }: { initialData: GardenData }) {
   }
 
   if (activeTask) {
-    return <TaskEditor task={activeTask} regions={regions} onBack={() => setActiveTaskId(null)} onUpdate={handleUpdate} onComplete={handleComplete} />;
+    return <TaskEditor task={activeTask as Task} regions={regions} onBack={() => setActiveTaskId(null)} onUpdate={handleUpdate} onComplete={handleComplete} />;
   }
 
   return (
@@ -181,7 +124,17 @@ export function KriyanApp({ initialData }: { initialData: GardenData }) {
       {view === "distance" ? <DistanceView regions={regions} tasks={tasks} onOpen={setActiveTaskId} /> : null}
       {view === "calendar" ? <CalendarView regions={regions} tasks={tasks} onOpen={setActiveTaskId} onPlant={(date) => setNewTaskSeed({ date })} /> : null}
       {remindersOpen ? <ReminderPanel tasks={tasks} regions={regions} onClose={() => setRemindersOpen(false)} onOpen={(id) => { setRemindersOpen(false); setActiveTaskId(id); }} /> : null}
-      {spacesOpen ? <SpacesPanel regions={regions} taskCounts={taskCounts} onClose={() => setSpacesOpen(false)} onCreate={handleCreateSpace} onRename={handleRenameSpace} onDelete={handleDeleteSpace} onReset={handleRestartOnboarding} /> : null}
+      {spacesOpen ? (
+        <SpacesPanel
+          regions={regions}
+          taskCounts={taskCounts}
+          onClose={() => setSpacesOpen(false)}
+          onCreate={(name) => run(() => createRegion({ name }), `${name} added`)}
+          onRename={(id, name) => run(() => renameRegion({ id: id as Id<"regions">, name }), "space renamed")}
+          onDelete={(id) => run(() => removeRegion({ id: id as Id<"regions"> }), "space removed")}
+          onReset={async () => { setSpacesOpen(false); await run(() => restartOnboarding({})); }}
+        />
+      ) : null}
       {notice ? <div className={styles.notice} role="status">{notice}</div> : null}
     </div>
   );

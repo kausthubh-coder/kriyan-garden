@@ -2,12 +2,11 @@
 
 import { ArrowRight, Plus, X } from "@phosphor-icons/react";
 import { FormEvent, useState } from "react";
-import type { GardenData } from "@/lib/types";
 import styles from "./kriyan.module.css";
 
 const suggestions = ["School", "Coding", "Personal", "Health", "Home"];
 
-export function Onboarding({ onComplete, onDemo }: { onComplete: (names: string[]) => Promise<GardenData>; onDemo: () => Promise<GardenData> }) {
+export function Onboarding({ onComplete, onDemo }: { onComplete: (names: string[]) => Promise<void>; onDemo: () => Promise<void> }) {
   const [spaces, setSpaces] = useState<string[]>([]);
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);

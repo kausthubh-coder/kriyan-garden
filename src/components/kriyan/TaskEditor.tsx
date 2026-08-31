@@ -1,8 +1,8 @@
 "use client";
 
 import { ArrowLeft, Check, X } from "@phosphor-icons/react";
+import DOMPurify from "dompurify";
 import { useRef, useState } from "react";
-import { getHorizonFromDueDate } from "@/lib/horizon";
 import type { Region, Task, TaskPatch } from "@/lib/types";
 import styles from "./kriyan.module.css";
 
@@ -72,10 +72,10 @@ export function TaskEditor({ task, regions, onBack, onUpdate, onComplete }: { ta
           className={styles.writingSurface}
           contentEditable
           suppressContentEditableWarning
-          dangerouslySetInnerHTML={{ __html: task.content }}
+          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(task.content) }}
           data-placeholder="Write into the quiet..."
           onBlur={(event) => {
-            const content = event.currentTarget.innerHTML;
+            const content = DOMPurify.sanitize(event.currentTarget.innerHTML);
             if (content !== task.content) void onUpdate(task.id, { content });
           }}
         />
@@ -89,7 +89,7 @@ export function TaskEditor({ task, regions, onBack, onUpdate, onComplete }: { ta
         <aside className={styles.detailsPanel} aria-label="Task details">
           <div className={styles.panelTop}><span>task details</span><button type="button" aria-label="Close details" onClick={() => setDetailsOpen(false)}><X size={17} weight="thin" /></button></div>
           <label><span>place</span><select value={task.regionId ?? ""} onChange={(event) => void onUpdate(task.id, { regionId: event.target.value || null })}>{regions.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
-          <label><span>due date</span><input type="date" value={task.dueDate ?? ""} onInput={(event) => { const value = event.currentTarget.value; void onUpdate(task.id, { dueDate: value || null, horizon: getHorizonFromDueDate(value) }); }} /></label>
+          <label><span>due date</span><input type="date" value={task.dueDate ?? ""} onInput={(event) => { const value = event.currentTarget.value; void onUpdate(task.id, { dueDate: value || null }); }} /></label>
           <label><span>time</span><input type="time" value={task.time ?? ""} onChange={(event) => void onUpdate(task.id, { time: event.target.value || null })} /></label>
           <label><span>duration</span><input type="number" min="1" placeholder="minutes" value={task.durationMinutes ?? ""} onChange={(event) => void onUpdate(task.id, { durationMinutes: event.target.value ? Number(event.target.value) : null })} /></label>
           <label><span>repeat</span><select value={task.repeatRule ?? ""} onChange={(event) => void onUpdate(task.id, { repeatRule: event.target.value || null })}><option value="">does not repeat</option><option value="every day">every day</option><option value="every weekday">every weekday</option><option value="every week">every week</option><option value="every Monday, Wednesday, Friday">Monday, Wednesday, Friday</option><option value="every month">every month</option><option value="every year">every year</option>{task.repeatRule && !["every day", "every weekday", "every week", "every Monday, Wednesday, Friday", "every month", "every year"].includes(task.repeatRule) ? <option value={task.repeatRule}>{task.repeatRule}</option> : null}</select></label>

@@ -40,7 +40,6 @@ export interface RegionDraft {
 export interface TaskDraft {
   title: string;
   regionId: string | null;
-  horizon: Horizon;
   dueDate?: string | null;
   time?: string | null;
   durationMinutes?: number | null;

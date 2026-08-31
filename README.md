@@ -1,33 +1,60 @@
-# Kriyan prototype
+# Kriyan
 
-An interactive Next.js prototype for a self-hosted personal productivity garden. It includes Garden, Distance, and Calendar views over the same task data, a writing surface on every task, advanced scheduling details, reminders, task creation, and completion.
+Kriyan is an open-source personal task garden. It keeps one task model across a spatial Garden, a date-derived Distance view, and a Calendar. Tasks support user-created color-coded spaces, due dates, durations, advanced recurrence, multiple reminders, and a Notion-like writing surface with slash commands.
 
-## Run it
+The hosted app uses Clerk for identity, Convex for isolated realtime data, Next.js for the web product, and a Clerk OAuth-protected MCP endpoint for AI clients.
 
-```bash
-bun install
-bun run dev
-```
+## Stack
+
+- Next.js 16 and React 19
+- Clerk development-mode authentication with Google OAuth
+- Convex schema, queries, mutations, search, and user isolation
+- Streamable HTTP MCP at `/mcp`
+- Bun for installation and development
+
+## Local development
+
+1. Install dependencies with `bun install`.
+2. Copy `.env.example` to `.env.local` and add Clerk development keys.
+3. Run `bunx convex dev` to link and push the backend.
+4. In another PowerShell terminal, run:
+
+   ```powershell
+   $env:MCP_SERVICE_SECRET = (bunx convex env get MCP_SERVICE_SECRET)
+   bun run dev
+   ```
 
 Open [http://localhost:3000](http://localhost:3000).
 
-## Local data
+## Required configuration
 
-The prototype uses SQLite through `better-sqlite3`. On first run it creates `.data/kriyan.db` and opens onboarding. The database is local and ignored by git. The optional sample garden is loaded only when the user chooses it.
+Clerk needs a JWT template named `convex` with `aud` set to `convex`. Convex needs `CLERK_JWT_ISSUER_DOMAIN` and a random `MCP_SERVICE_SECRET`. The same MCP secret must be present only in the Next.js server environment and Convex; never expose it with a `NEXT_PUBLIC_` prefix.
 
-## Main flows
+```bash
+bunx convex env set CLERK_JWT_ISSUER_DOMAIN https://your-clerk-issuer.example
+bunx convex env set MCP_SERVICE_SECRET your-random-secret
+```
 
-- Create personal spaces such as School, Coding, or Health during onboarding.
-- Add, rename, or remove spaces later from the spaces panel.
-- Switch between Garden, Distance, and Calendar without changing the underlying tasks.
-- Add a todo from the persistent header action, inside a space, or from a day in Calendar.
-- Open any stone to edit its title, place, distance, date, time, duration, repeat rule, reminders, and writing page.
-- Use the writing tools for headings, lists, and a child-page link.
-- Complete a task with "lift from the bed".
+## MCP
 
-## Structure
+Connect an OAuth-capable MCP client to `https://your-kriyan-host.example/mcp`.
 
-- `src/lib/db.ts` owns the SQLite schema, optional sample data, and queries.
-- `src/app/actions.ts` validates writes and exposes Next.js server actions.
-- `src/components/kriyan/` contains the interactive product UI.
-- `design-references/` contains the source screenshots used for the visual direction.
+The server advertises OAuth metadata under `/.well-known/`, authenticates through Clerk, and exposes these user-scoped tools:
+
+- `list_tasks`, `get_task`, `create_task`, `update_task`, `complete_task`
+- `list_spaces`, `create_space`
+- `search_notes`
+
+MCP is the primary automation surface because agents get typed, discoverable tools plus per-user OAuth. A separate CLI can later be a thin MCP client rather than a second backend API.
+
+## Verification
+
+```bash
+bunx tsc --noEmit
+bun run lint
+bun run build
+```
+
+## License
+
+MIT
