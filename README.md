@@ -37,9 +37,9 @@ bunx convex env set MCP_SERVICE_SECRET your-random-secret
 
 ## MCP
 
-Connect an OAuth-capable MCP client to `https://www.kriyan.app/mcp`.
+Connect an OAuth-capable MCP client to `https://kriyan.vercel.app/mcp`.
 
-`https://kriyan.app/mcp` also works and redirects to the canonical `www` host.
+`kriyan.app` is the public landing page. Product and automation routes redirect to the app host at `kriyan.vercel.app`.
 
 The server advertises OAuth metadata under `/.well-known/`, authenticates through Clerk, and exposes these user-scoped tools:
 

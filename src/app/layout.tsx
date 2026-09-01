@@ -1,7 +1,5 @@
-import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
 import { Atkinson_Hyperlegible, Spectral } from "next/font/google";
-import { ConvexClientProvider } from "@/components/ConvexClientProvider";
 import "./globals.css";
 
 const spectral = Spectral({ variable: "--font-spectral", subsets: ["latin"], weight: ["300", "400", "500", "600"], style: ["normal", "italic"] });
@@ -15,11 +13,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${spectral.variable} ${atkinson.variable}`}>
-      <body>
-        <ClerkProvider>
-          <ConvexClientProvider>{children}</ConvexClientProvider>
-        </ClerkProvider>
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

@@ -1,9 +1,22 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
-
-const isProtectedRoute = createRouteMatcher(["/garden(.*)"]);
+import { clerkMiddleware } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
+import { KRIYAN_APP_ORIGIN, KRIYAN_MARKETING_HOSTS } from "@/lib/origins";
 
 export default clerkMiddleware(async (auth, request) => {
-  if (isProtectedRoute(request)) await auth.protect();
+  const hostname = request.headers.get("host")?.split(":")[0].toLowerCase();
+  const { pathname } = request.nextUrl;
+
+  if (hostname && KRIYAN_MARKETING_HOSTS.has(hostname) && pathname !== "/") {
+    return NextResponse.redirect(new URL(`${pathname}${request.nextUrl.search}`, KRIYAN_APP_ORIGIN), 307);
+  }
+
+  if (hostname?.endsWith(".vercel.app") && pathname === "/") {
+    return NextResponse.redirect(new URL("/garden", request.url), 307);
+  }
+
+  if (pathname === "/garden" || pathname.startsWith("/garden/")) {
+    await auth.protect();
+  }
 });
 
 export const config = {
