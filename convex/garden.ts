@@ -1,20 +1,17 @@
 import { v } from "convex/values";
-import type { Doc } from "./_generated/dataModel";
-import { mutation, query } from "./_generated/server";
+import { makeFunctionReference } from "convex/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";
 import {
-  assertRegionOwner,
-  cleanContent,
-  cleanNullableText,
-  cleanReminders,
   cleanText,
-  getOwnedTask,
   regionColors,
   regionDto,
   requireOwnerId,
   searchText,
   taskDto,
+  taskSummaryDto,
 } from "./helpers";
+import { completeTaskFor, createRegionFor, createTaskFor, updateTaskFor } from "./operations";
 import {
   gardenDataValidator,
   regionDtoValidator,
@@ -56,14 +53,39 @@ async function getProfile(ctx: Parameters<typeof requireOwnerId>[0], ownerId: st
     .unique();
 }
 
-async function clearOwnerData(ctx: MutationCtx, ownerId: string) {
-  const [tasks, regions] = await Promise.all([
-    ctx.db.query("tasks").withIndex("by_owner_id", (q) => q.eq("ownerId", ownerId)).take(1000),
-    ctx.db.query("regions").withIndex("by_owner_id", (q) => q.eq("ownerId", ownerId)).take(100),
-  ]);
+const clearBatchSize = 64;
+const clearTasksUpToRef = makeFunctionReference<"mutation", { ownerId: string; upTo: number }, null>("garden:clearTasksUpTo");
+
+// Tasks are cleared in small batches so large gardens stay within mutation limits.
+async function clearTaskBatch(ctx: MutationCtx, ownerId: string, upTo: number) {
+  const tasks = await ctx.db
+    .query("tasks")
+    .withIndex("by_owner_id", (q) => q.eq("ownerId", ownerId).lte("_creationTime", upTo))
+    .take(clearBatchSize);
   for (const task of tasks) await ctx.db.delete(task._id);
-  for (const region of regions) await ctx.db.delete(region._id);
+  if (tasks.length === clearBatchSize) await ctx.scheduler.runAfter(0, clearTasksUpToRef, { ownerId, upTo });
 }
+
+async function clearOwnerData(ctx: MutationCtx, ownerId: string) {
+  const regions = await ctx.db.query("regions").withIndex("by_owner_id", (q) => q.eq("ownerId", ownerId)).take(200);
+  for (const region of regions) await ctx.db.delete(region._id);
+  const newest = await ctx.db.query("tasks").withIndex("by_owner_id", (q) => q.eq("ownerId", ownerId)).order("desc").first();
+  if (newest) await clearTaskBatch(ctx, ownerId, newest._creationTime);
+}
+
+async function assertOnboardingOpen(ctx: MutationCtx, ownerId: string) {
+  const profile = await getProfile(ctx, ownerId);
+  if (profile?.onboardingComplete) throw new Error("This garden is already planted");
+}
+
+export const clearTasksUpTo = internalMutation({
+  args: { ownerId: v.string(), upTo: v.number() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await clearTaskBatch(ctx, args.ownerId, args.upTo);
+    return null;
+  },
+});
 
 export const get = query({
   args: {},
@@ -78,14 +100,24 @@ export const get = query({
         .take(100),
       ctx.db
         .query("tasks")
-        .withIndex("by_owner_id_and_sort_order", (q) => q.eq("ownerId", ownerId))
+        .withIndex("by_owner_id_and_status", (q) => q.eq("ownerId", ownerId).eq("status", "active"))
         .take(500),
     ]);
     return {
       regions: regions.map(regionDto),
-      tasks: tasks.map(taskDto),
+      tasks: tasks.map(taskSummaryDto),
       onboardingComplete: profile?.onboardingComplete ?? false,
     };
+  },
+});
+
+export const getTask = query({
+  args: { id: v.id("tasks") },
+  returns: v.union(taskDtoValidator, v.null()),
+  handler: async (ctx, args) => {
+    const ownerId = await requireOwnerId(ctx);
+    const task = await ctx.db.get(args.id);
+    return task && task.ownerId === ownerId ? taskDto(task) : null;
   },
 });
 
@@ -96,6 +128,7 @@ export const completeOnboarding = mutation({
     const ownerId = await requireOwnerId(ctx);
     const names = Array.from(new Set(args.names.map((name) => cleanText(name, 48)).filter(Boolean))).slice(0, 8);
     if (names.length === 0) throw new Error("Name at least one space");
+    await assertOnboardingOpen(ctx, ownerId);
     await clearOwnerData(ctx, ownerId);
     const timestamp = new Date().toISOString();
     for (const [index, name] of names.entries()) {
@@ -124,6 +157,7 @@ export const exploreDemo = mutation({
   returns: v.null(),
   handler: async (ctx) => {
     const ownerId = await requireOwnerId(ctx);
+    await assertOnboardingOpen(ctx, ownerId);
     await clearOwnerData(ctx, ownerId);
     const timestamp = new Date().toISOString();
     const regionIds = [];
@@ -188,30 +222,7 @@ export const restartOnboarding = mutation({
 export const createRegion = mutation({
   args: { name: v.string() },
   returns: regionDtoValidator,
-  handler: async (ctx, args) => {
-    const ownerId = await requireOwnerId(ctx);
-    const name = cleanText(args.name, 48);
-    if (!name) throw new Error("A space needs a name");
-    const last = await ctx.db
-      .query("regions")
-      .withIndex("by_owner_id_and_sort_order", (q) => q.eq("ownerId", ownerId))
-      .order("desc")
-      .first();
-    const sortOrder = (last?.sortOrder ?? -1) + 1;
-    const timestamp = new Date().toISOString();
-    const id = await ctx.db.insert("regions", {
-      ownerId,
-      name,
-      color: regionColors[sortOrder % regionColors.length],
-      note: "Nothing planted.",
-      sortOrder,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-    });
-    const region = await ctx.db.get(id);
-    if (!region) throw new Error("Space could not be created");
-    return regionDto(region);
-  },
+  handler: async (ctx, args) => await createRegionFor(ctx, await requireOwnerId(ctx), args.name),
 });
 
 export const renameRegion = mutation({
@@ -253,85 +264,17 @@ export const removeRegion = mutation({
 export const createTask = mutation({
   args: taskFieldsValidator,
   returns: taskDtoValidator,
-  handler: async (ctx, args) => {
-    const ownerId = await requireOwnerId(ctx);
-    await assertRegionOwner(ctx, ownerId, args.regionId);
-    const title = cleanText(args.title);
-    if (!title) throw new Error("A task needs a title");
-    const last = await ctx.db
-      .query("tasks")
-      .withIndex("by_owner_id_and_sort_order", (q) => q.eq("ownerId", ownerId))
-      .order("desc")
-      .first();
-    const timestamp = new Date().toISOString();
-    const content = cleanContent(args.content);
-    const id = await ctx.db.insert("tasks", {
-      ownerId,
-      title,
-      regionId: args.regionId,
-      dueDate: cleanNullableText(args.dueDate, 10),
-      time: cleanNullableText(args.time, 40),
-      durationMinutes: args.durationMinutes && args.durationMinutes > 0 ? Math.min(args.durationMinutes, 1440) : null,
-      repeatRule: cleanNullableText(args.repeatRule, 180),
-      reminders: cleanReminders(args.reminders),
-      content,
-      status: "active",
-      completedAt: null,
-      sortOrder: (last?.sortOrder ?? -1) + 1,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      searchText: searchText(title, content),
-    });
-    const task = await ctx.db.get(id);
-    if (!task) throw new Error("Task could not be created");
-    return taskDto(task);
-  },
+  handler: async (ctx, args) => await createTaskFor(ctx, await requireOwnerId(ctx), args),
 });
 
 export const updateTask = mutation({
   args: { id: v.id("tasks"), patch: taskPatchValidator },
   returns: taskDtoValidator,
-  handler: async (ctx, args) => {
-    const ownerId = await requireOwnerId(ctx);
-    const task = await getOwnedTask(ctx, ownerId, args.id);
-    if (args.patch.regionId !== undefined) await assertRegionOwner(ctx, ownerId, args.patch.regionId);
-    const patch: Partial<Omit<Doc<"tasks">, "_id" | "_creationTime">> = { updatedAt: new Date().toISOString() };
-    if (args.patch.title !== undefined) {
-      const title = cleanText(args.patch.title);
-      if (!title) throw new Error("A task needs a title");
-      patch.title = title;
-    }
-    if (args.patch.regionId !== undefined) patch.regionId = args.patch.regionId;
-    if (args.patch.dueDate !== undefined) patch.dueDate = cleanNullableText(args.patch.dueDate, 10);
-    if (args.patch.time !== undefined) patch.time = cleanNullableText(args.patch.time, 40);
-    if (args.patch.durationMinutes !== undefined) patch.durationMinutes = args.patch.durationMinutes && args.patch.durationMinutes > 0 ? Math.min(args.patch.durationMinutes, 1440) : null;
-    if (args.patch.repeatRule !== undefined) patch.repeatRule = cleanNullableText(args.patch.repeatRule, 180);
-    if (args.patch.reminders !== undefined) patch.reminders = cleanReminders(args.patch.reminders);
-    if (args.patch.content !== undefined) patch.content = cleanContent(args.patch.content);
-    const nextTitle = patch.title ?? task.title;
-    const nextContent = patch.content ?? task.content;
-    patch.searchText = searchText(nextTitle, nextContent);
-    await ctx.db.patch(args.id, patch);
-    const updated = await ctx.db.get(args.id);
-    if (!updated) throw new Error("Task not found");
-    return taskDto(updated);
-  },
+  handler: async (ctx, args) => await updateTaskFor(ctx, await requireOwnerId(ctx), args.id, args.patch),
 });
 
 export const completeTask = mutation({
   args: { id: v.id("tasks"), completed: v.boolean() },
   returns: taskDtoValidator,
-  handler: async (ctx, args) => {
-    const ownerId = await requireOwnerId(ctx);
-    await getOwnedTask(ctx, ownerId, args.id);
-    const timestamp = new Date().toISOString();
-    await ctx.db.patch(args.id, {
-      status: args.completed ? "completed" : "active",
-      completedAt: args.completed ? timestamp : null,
-      updatedAt: timestamp,
-    });
-    const updated = await ctx.db.get(args.id);
-    if (!updated) throw new Error("Task not found");
-    return taskDto(updated);
-  },
+  handler: async (ctx, args) => await completeTaskFor(ctx, await requireOwnerId(ctx), args.id, args.completed),
 });

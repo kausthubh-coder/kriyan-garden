@@ -1,10 +1,10 @@
 "use client";
 
 import { BellSimple, X } from "@phosphor-icons/react";
-import type { Region, Task } from "@/lib/types";
+import type { Region, TaskSummary } from "@/lib/types";
 import styles from "./kriyan.module.css";
 
-export function ReminderPanel({ tasks, regions, onClose, onOpen }: { tasks: Task[]; regions: Region[]; onClose: () => void; onOpen: (id: string) => void }) {
+export function ReminderPanel({ tasks, regions, onClose, onOpen }: { tasks: TaskSummary[]; regions: Region[]; onClose: () => void; onOpen: (id: string) => void }) {
   const reminded = tasks.filter((task) => task.status === "active" && task.reminders.length > 0);
   const regionMap = new Map(regions.map((region) => [region.id, region]));
   return (

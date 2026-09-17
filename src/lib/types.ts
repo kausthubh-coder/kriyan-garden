@@ -27,9 +27,11 @@ export interface Task {
   updatedAt: string;
 }
 
+export type TaskSummary = Omit<Task, "content">;
+
 export interface GardenData {
   regions: Region[];
-  tasks: Task[];
+  tasks: TaskSummary[];
   onboardingComplete: boolean;
 }
 

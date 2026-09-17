@@ -3,6 +3,7 @@ import "server-only";
 import { createHmac } from "node:crypto";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../convex/_generated/api";
+import { canonicalJson } from "../../convex/canonical";
 import type { Id } from "../../convex/_generated/dataModel";
 
 const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
@@ -16,7 +17,7 @@ const convex = new ConvexHttpClient(convexUrl);
 function serviceEnvelope(ownerId: string, operation: string, payload: unknown) {
   const timestamp = Date.now();
   const signature = createHmac("sha256", serviceSecret!)
-    .update(JSON.stringify([timestamp, ownerId, operation, payload]))
+    .update(canonicalJson([timestamp, ownerId, operation, payload]))
     .digest("hex");
   return { ownerId, timestamp, signature };
 }

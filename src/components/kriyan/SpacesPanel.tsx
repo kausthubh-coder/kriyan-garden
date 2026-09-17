@@ -77,7 +77,7 @@ export function SpacesPanel({ regions, taskCounts, onClose, onCreate, onRename, 
         <button type="submit" disabled={!draft.trim() || saving}><Plus size={16} weight="thin" />add space</button>
       </form>
       <button className={styles.startOverButton} type="button" onClick={() => {
-        if (window.confirm("Start onboarding again? This clears the prototype's local todos and spaces.")) void onReset();
+        if (window.confirm("Start onboarding again? This permanently deletes all of your todos and spaces.")) void onReset();
       }}>start onboarding again</button>
     </aside>
   );

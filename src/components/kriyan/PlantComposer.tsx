@@ -57,6 +57,7 @@ export function PlantComposer({ regions, initialDate, initialRegionId, onCancel,
   const [reminders, setReminders] = useState<ReminderDraft[]>([]);
   const [slashOpen, setSlashOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   const editorRef = useRef<HTMLDivElement>(null);
   const selectedRegion = regions.find((region) => region.id === regionId);
   const rule = repeatLabel(repeatUnit, repeatInterval, repeatDays, repeatEnd, repeatEndDate, repeatCount);
@@ -108,6 +109,7 @@ export function PlantComposer({ regions, initialDate, initialRegionId, onCancel,
     event.preventDefault();
     if (!title.trim() || saving) return;
     setSaving(true);
+    setError("");
     try {
       const reminderValues = reminders.flatMap((reminder) => {
         if (!reminder.value) return [];
@@ -122,6 +124,8 @@ export function PlantComposer({ regions, initialDate, initialRegionId, onCancel,
         reminders: reminderValues,
         content: DOMPurify.sanitize(editorRef.current?.innerHTML || "<p></p>"),
       });
+    } catch {
+      setError("This todo could not be created. Your words are still here; try again.");
     } finally {
       setSaving(false);
     }
@@ -212,6 +216,7 @@ export function PlantComposer({ regions, initialDate, initialRegionId, onCancel,
           ) : null}
         </section>
 
+        {error ? <p className={styles.formError} role="alert">{error}</p> : null}
         <button className={styles.enterTask} type="submit" disabled={!title.trim() || saving}>
           {saving ? "creating" : "create todo"}<ArrowRight size={17} weight="regular" />
         </button>
