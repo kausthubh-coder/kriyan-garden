@@ -10,3 +10,4 @@ coverage/
 .clerk/
 .agents/playwright-mcp/
 .agents/logs/
+.agents/screenshots/

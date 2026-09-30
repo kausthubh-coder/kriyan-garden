@@ -1,4 +1,4 @@
-@import "@kriyan/core/tokens.css";
+@import "./tokens.css";
 * { box-sizing: border-box; }
 html, body { min-height: 100%; }
 body { margin: 0; color: var(--ink); background: var(--bg); font-family: var(--font-schibsted), sans-serif; font-size: var(--text-body); }

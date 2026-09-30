@@ -9,6 +9,7 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  devIndicators: false,
   headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

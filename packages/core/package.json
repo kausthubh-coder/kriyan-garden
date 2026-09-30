@@ -8,6 +8,7 @@
     "./tokens.css": "./src/tokens.css"
   },
   "scripts": {
+    "tokens": "bun run scripts/tokens.ts",
     "typecheck": "tsc --noEmit",
     "test": "bun test"
   },

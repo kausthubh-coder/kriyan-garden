@@ -1,0 +1,39 @@
+import {
+  colors,
+  spacing,
+  radii,
+  typeSizes,
+  motion,
+  layout,
+} from "../src/tokens";
+
+const declarations = [
+  "color-scheme: dark;",
+  ...Object.entries(colors).map(([name, value]) => `--${name}: ${value};`),
+  ...spacing.map((value) => `--space-${value}: ${value}px;`),
+  ...radii.map((value) => `--radius-${value}: ${value}px;`),
+  ...typeSizes.map(
+    (value) => `--text-${String(value).replace(".", "-")}: ${value}px;`,
+  ),
+  `--hh: ${layout.hourHeight}px;`,
+  `--control-height: ${layout.controlHeight}px;`,
+  `--press: ${motion.press}ms;`,
+  `--transition: ${motion.transition}ms;`,
+  `--panel-duration: ${motion.panel}ms;`,
+  `--out: ${motion.easeOut};`,
+  // Existing public styles use these aliases.
+  "--space-small: var(--space-8);",
+  "--space-medium: var(--space-16);",
+  "--space-large: var(--space-24);",
+  "--radius-control: var(--radius-8);",
+  "--text-body: var(--text-15);",
+  "--text-title: var(--text-24);",
+];
+const css = `/* Generated from packages/core/src/tokens.ts. Do not edit. */\n:root {\n  ${declarations.join("\n  ")}\n}\n`;
+for (const path of [
+  "../src/tokens.css",
+  "../../../apps/web/src/app/tokens.css",
+]) {
+  await Bun.write(new URL(path, import.meta.url), css);
+}
+console.log("Generated core and web tokens.css from tokens.ts");
