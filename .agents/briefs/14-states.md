@@ -4,6 +4,10 @@ Read `AGENTS.md`. Open `docs/design/reference/states.html` in a browser and read
 
 Port the reference exactly. The same rules apply to `/demo`, because it shares the components.
 
+## 0. First: a failing end-to-end test after the merge
+
+`bun run e2e` on the current tree: 18 passed, 1 failed, 12 did not run. The failure is `apps/web/e2e/planner.spec.ts:72`, onboarding step 5: `getByLabel("Task", { exact: true })` times out. The onboarding and landing branches were merged after both changed the quick-add component (the landing page added an inline strip and the onboarding step reuses the app's quick add). Find the real cause in the merged code, fix the code or the label so the step 5 field is accessibly labelled "Task" everywhere it appears (app dialog, onboarding step 5, landing strip may use its own label), and get the full suite green before starting section 1. Do not weaken the test.
+
 ## 1. Empty text is never a bordered box
 
 - Remove the bordered empty-state box component everywhere in the app. Empty text is a quiet line (13.5px, `--ink-3`), as in the reference.
