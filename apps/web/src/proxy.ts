@@ -1,12 +1,26 @@
 import { clerkMiddleware } from "@clerk/nextjs/server";
 import { NextResponse, type NextRequest, type NextFetchEvent } from "next/server";
 import { hostRedirect } from "@/lib/origins";
+import { policyConfiguration, securityPolicy } from "@/lib/security-policy";
 
 const authenticated = clerkMiddleware(async (auth, request) => {
   const { pathname } = request.nextUrl;
 
   if (pathname === "/app" || pathname.startsWith("/app/")) {
     await auth.protect();
+  }
+  if (["/app", "/sign-in", "/sign-up"].some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
+    // Next's bundled CSP guide: put the policy on the forwarded request so
+    // the framework can nonce its runtime scripts during dynamic rendering.
+    const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
+    const policy = securityPolicy(policyConfiguration(), nonce);
+    const headers = new Headers(request.headers);
+    headers.set("x-nonce", nonce);
+    headers.set("Content-Security-Policy", policy);
+    const response = NextResponse.next({ request: { headers } });
+    response.headers.set("Content-Security-Policy", policy);
+    response.headers.set("Cache-Control", "private, no-store");
+    return response;
   }
 });
 
