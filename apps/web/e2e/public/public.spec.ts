@@ -24,7 +24,7 @@ test.describe("Demo goals", () => {
     );
     if (info.project.name === "desktop")
       await expect(
-        panel.getByLabel("Goal title", { exact: true }),
+        panel.getByRole("button", {name: "Close goal details"}),
       ).toBeFocused();
     await page.keyboard.press("Escape");
     await expect(panel).not.toBeVisible();
@@ -107,25 +107,18 @@ test.describe("Demo goals", () => {
     await row("status").click();
     await panel.getByRole("button", { name: "Active", exact: true }).click();
     await expect(row("status")).toContainText("Active");
-    await panel.getByLabel("New milestone", { exact: true }).fill("Plan route");
-    await panel
-      .getByLabel("New milestone date", { exact: true })
-      .fill("2029-05-01");
-    await panel
-      .getByRole("button", { name: "Add milestone", exact: true })
-      .click();
+    await panel.getByLabel("Add a milestone", { exact: true }).fill("Plan route");
+    await panel.getByLabel("Add a milestone").press("Enter");
     await expect(
       panel.getByLabel("Milestone title", { exact: true }),
     ).toHaveValue("Plan route");
     await panel
       .getByLabel("Milestone title", { exact: true })
       .fill("Finish route");
-    await panel
-      .getByLabel("Milestone date", { exact: true })
-      .fill("2029-05-02");
-    await panel
-      .getByRole("button", { name: "Save milestone", exact: true })
-      .click();
+    await panel.getByLabel("Milestone title").press("Enter");
+    await panel.getByRole("button", {name: "Set date: Finish route"}).click();
+    await panel.getByRole("button", {name: "Pick a day", exact: true}).click();
+    await panel.getByLabel("Milestone date").fill("2029-05-02");
     await expect(
       panel.getByRole("checkbox", { name: "Complete milestone: Finish route" }),
     ).toBeVisible();
@@ -151,9 +144,7 @@ test.describe("Demo goals", () => {
     await page
       .getByRole("button", { name: "Run the river route", exact: true })
       .click();
-    await expect(
-      panel.getByLabel("Milestone date", { exact: true }),
-    ).toHaveValue("2029-05-02");
+    await expect(panel.getByRole("button", {name: "Set date: Finish route"})).toContainText("Wed 2 May");
     await panel
       .getByRole("checkbox", { name: "Complete milestone: Finish route" })
       .click();
@@ -161,17 +152,17 @@ test.describe("Demo goals", () => {
       panel.getByRole("checkbox", { name: "Complete milestone: Finish route" }),
     ).not.toBeChecked();
     await panel
-      .getByRole("button", { name: "Delete milestone", exact: true })
+      .getByRole("button", { name: "Remove milestone: Finish route", exact: true })
       .click();
     await expect(
       panel.getByLabel("Milestone title", { exact: true }),
     ).toHaveCount(0);
     await panel
-      .getByLabel("New milestone", { exact: true })
+      .getByLabel("Add a milestone", { exact: true })
       .fill("Keep for Undo");
     await panel
-      .getByRole("button", { name: "Add milestone", exact: true })
-      .click();
+      .getByLabel("Add a milestone", {exact: true})
+      .press("Enter");
     await expect(
       panel.getByLabel("Milestone title", { exact: true }),
     ).toHaveValue("Keep for Undo");
@@ -306,16 +297,18 @@ test("landing parser, iframe, keyboard tabs and copy are usable", async ({ page,
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Your day on one timeline.");
-  await expect(page.frameLocator("iframe").getByRole("button", { name: "Add task", exact: true }).first()).toBeVisible();
-  await page.getByRole("button", { name: "essay fri #econ 2h", exact: true }).click();
-  await expect(page.getByRole("status").first()).toContainText("School / Econ 101");
+  await expect(page.frameLocator('iframe[title="Interactive Kriyan demo with sample tasks"]').getByRole("button", { name: "Add task", exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("status").first()).toBeEmpty();
+  await page.getByRole("button", { name: "essay fri 5pm #econ 2h", exact: true }).click();
+  await expect(page.getByRole("status").first()).toContainText("SchoolEcon 101");
   await expect(page.getByRole("status").first()).toContainText("2h");
   const first = page.getByRole("tab", { name: "Claude", exact: true });
   await first.focus(); await page.keyboard.press("ArrowRight");
   await expect(page.getByRole("tab", { name: "Claude Code", exact: true })).toBeFocused();
   await expect(page.getByRole("tabpanel")).toContainText("claude mcp add");
-  await page.getByRole("button", { name: "Copy setup" }).click();
-  await expect(page.getByText("Setup copied.")).toBeVisible();
+  await page.getByRole("button", { name: "Copy", exact: true }).click();
+  await expect(page.getByRole("button", {name:"Copied",exact:true})).toBeVisible();
+  await expect(page.getByRole("button", {name:"Copy",exact:true})).toBeVisible({timeout:3000});
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 test("docs, legal, metadata and planned download route respond", async ({ page, request }, info) => {

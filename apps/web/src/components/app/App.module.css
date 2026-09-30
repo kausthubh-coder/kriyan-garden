@@ -2139,6 +2139,22 @@ h2.h em {
   color: var(--c);
   min-height: 0;
 }
+.app .goalSummary > p { font-size: var(--text-13); color: var(--ink-3); }
+.app .load > div { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; font-size: var(--text-12-5); color: var(--ink-3); }
+.app .load > div i { width: 100%; border-radius: var(--radius-8); display: flex; flex-direction: column-reverse; overflow: hidden; background: var(--s2); min-height: var(--space-4); }
+.app .load > div small { display: block; font-size: var(--text-11-5); }
+.app .dl .top .deadlineTitle { margin-left: 0; flex: 1; font-size: var(--text-14-5); font-weight: 500; color: var(--ink); }
+@media (min-width: 821px) {
+  .app[data-embedded="landing"] .view-day { grid-template-columns: 270px minmax(0, 1fr) 260px; }
+  .app[data-embedded="landing"] .side { display: flex; padding-inline: var(--space-20); }
+  .app[data-embedded="landing"] .tray { padding-inline: var(--space-12); }
+  .app[data-embedded="landing"] .tray .filters { flex-wrap: nowrap; gap: var(--space-4); }
+  .app[data-embedded="landing"] .tray .f { padding-inline: var(--space-8); }
+  .app[data-embedded="landing"] .day { padding-inline: var(--space-20); }
+  .app[data-embedded="landing"] .dh .headerDate { display: none; }
+  .app[data-embedded="landing"] .blk .tx { min-width: 0; }
+  .app[data-embedded="landing"] .blk time { font-size: var(--text-12); }
+}
 .app .goalHeader .goalValue b {
   font-size: var(--text-44);
   line-height: 0.95;
@@ -2266,6 +2282,7 @@ h2.h em {
   margin-top: var(--space-4);
 }
 .app .panel .tt textarea {
+  background: transparent;
   font-size: var(--text-20);
   letter-spacing: -0.015em;
   padding: 0 var(--space-4);
@@ -2278,6 +2295,20 @@ h2.h em {
   outline: none;
   background: var(--s2);
 }
+.app .goalNotes { margin-left: 0; width: 100%; }
+.app .milestonesEditor { margin-top: var(--space-24); }
+.app .milestonesEditor h2 { display: flex; justify-content: space-between; font-size: var(--text-14); font-weight: 600; margin-bottom: var(--space-8); }
+.app .milestonesEditor h2 span { color: var(--ink-3); font-weight: 400; font-size: var(--text-13); }
+.app .milestoneRow { display: flex; align-items: center; gap: var(--space-8); min-height: var(--ctl); }
+.app .milestoneRow .chk { flex: none; }
+.app .milestoneTitle, .app .milestoneAdd { border: 0; box-shadow: none; background: transparent; min-width: 0; min-height: var(--ctl); font-size: var(--text-14-5); padding: var(--space-4); }
+.app .milestoneTitle { flex: 1; width: 0; }
+.app .milestoneAdd { width: 100%; margin-top: var(--space-4); }
+.app .milestoneTitle:focus, .app .milestoneAdd:focus { background: var(--s2); }
+.app .milestoneDate { color: var(--ink-3); font-size: var(--text-13); white-space: nowrap; min-height: var(--ctl); }
+.app .milestoneRemove { opacity: 0; width: var(--ctl); height: var(--ctl); }
+.app .milestoneRow:hover .milestoneRemove, .app .milestoneRow:focus-within .milestoneRemove { opacity: 1; }
+@media (pointer: coarse) { .app .milestoneRemove { opacity: 1; } }
 .app .panelNotes {
   margin: var(--space-8) 0 0 33px;
   width: calc(100% - 33px);
@@ -2523,6 +2554,7 @@ h2.h em {
   .app .wd {
     min-height: 0;
   }
+  .app .wd > button:not(.wt) { align-items: center; padding-bottom: 0; margin-bottom: var(--space-8); }
   .app .help dl {
     grid-template-columns: 110px 1fr;
   }

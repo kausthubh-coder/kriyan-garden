@@ -1,4 +1,4 @@
-import { weekdayName, longDate, shortDate } from "@kriyan/core";
+import { weekdayName, longDate } from "@kriyan/core";
 import {
   addDays,
   deadlineCapacity,
@@ -14,6 +14,7 @@ import {
   type Week,
   type Variables,
 } from "./types";
+import { WeekLoadChart, DeadlineRow } from "./RailParts";
 import s from "./App.module.css";
 export function SideRail({
   week,
@@ -83,42 +84,7 @@ export function SideRail({
           <div className={s.skeleton} />
         ) : (
           <>
-            <div className={s.load}>
-              {Array.from({ length: 7 }, (_, index) => {
-                const day = week?.[index],
-                  dayDate = addDays(start, index),
-                  total = day?.plannedMinutes ?? 0;
-                const height = Math.round(Math.min(total / 480, 1) * 66);
-                const loadLabel = total
-                  ? formatMinutes(total)
-                  : day?.taskCount
-                    ? `${day.taskCount} ${day.taskCount === 1 ? "task" : "tasks"}`
-                    : "Free";
-                return (
-                  <button
-                    key={dayDate}
-                    onClick={() => goDay(dayDate)}
-                    className={dayDate === date ? s.t : ""}
-                    aria-label={`${weekdayName(dayDate)[0]} ${loadLabel}, ${weekdayName(dayDate)}${total > capacity ? ", over capacity" : ""}`}
-                  >
-                    <i style={{ height }}>
-                      {areas
-                        .filter((area) => shown(area._id))
-                        .map((area) => (
-                          <u
-                            key={area._id}
-                            style={{
-                              height: `${total ? ((day?.plannedMinutesByArea[area._id] ?? 0) / total) * 100 : 0}%`,
-                              background: areaColor(area),
-                            }}
-                          />
-                        ))}
-                    </i>
-                    {weekdayName(dayDate)[0]} <small>{loadLabel}</small>
-                  </button>
-                );
-              })}
-            </div>
+            <WeekLoadChart week={week} areas={areas} date={date} capacity={capacity} filter={filter} goDay={goDay} />
             {worst ? (
               <p className={s.cap}>
                 <b className={s.bad}>
@@ -149,63 +115,9 @@ export function SideRail({
                 task.deadline ?? today,
                 capacity,
                 tasks,
-              ),
-              needed = task.durationMinutes,
-              spare = needed === null ? null : free - needed;
+              );
             return (
-              <div
-                key={task._id}
-                className={s.dl}
-                style={
-                  {
-                    "--c":
-                      spare !== null && spare < 0
-                        ? "var(--hot)"
-                        : areaColor(
-                            areas.find((area) => area._id === task.areaId),
-                          ),
-                    "--need":
-                      needed === null
-                        ? 0
-                        : free
-                          ? Math.min((needed / free) * 100, 100)
-                          : 100,
-                  } as Variables
-                }
-              >
-                <div className={s.top}>
-                  <i
-                    className={s.dot}
-                    style={
-                      {
-                        "--c": areaColor(
-                          areas.find((area) => area._id === task.areaId),
-                        ),
-                      } as Variables
-                    }
-                  />
-                  <button onClick={() => open(task)}>{task.title}</button>
-                  <span>{shortDate(task.deadline ?? today)}</span>
-                </div>
-                <div className={s.cush}>
-                  <i />
-                </div>
-                <p>
-                  {needed === null
-                    ? "Length not set"
-                    : `${formatMinutes(needed)} needed`}
-                  , {formatMinutes(free)} free
-                  {spare !== null && (
-                    <b className={spare < 0 ? s.bad : undefined}>
-                      {formatMinutes(Math.abs(spare))}{" "}
-                      {spare < 0 ? "short" : "to spare"}
-                    </b>
-                  )}
-                </p>
-                {task.durationMinutes === null && (
-                  <p>Add a length to compare time needed with time free.</p>
-                )}
-              </div>
+              <DeadlineRow key={task._id} task={task} areas={areas} free={free} open={open} />
             );
           })
         ) : (

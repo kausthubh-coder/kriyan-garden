@@ -382,6 +382,7 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
       className={s.app}
       data-input={modality}
       data-skeleton={planner.showSkeleton}
+      data-embedded={demo && params.get("embed") === "landing" ? "landing" : undefined}
     >
       <Rail
         view={view}

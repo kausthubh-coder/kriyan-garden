@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { dayValue, addedDate } from "@kriyan/core";
+import { dayValue, addedDate, shortDate } from "@kriyan/core";
 import { useGoalTransport } from "./dataAccess";
 import { Dialog } from "./Dialog";
 import { Icon } from "./Icon";
@@ -28,6 +28,7 @@ export function GoalPanel({
     useGoalTransport();
   const action = useFormAction();
   const [open, setOpen] = useState<string | null>(null);
+  const [milestoneDate, setMilestoneDate] = useState<string | null>(null);
   const [numberDraft, setNumberDraft] = useState(false);
   const area = areas.find((area) => area._id === goal.areaId);
   const metric = goal.metric;
@@ -325,8 +326,8 @@ export function GoalPanel({
       label="Goal details"
       className={s.panel}
       close={close}
-      escape={() => (open ? setOpen(null) : close())}
-      initialFocus='textarea[aria-label="Goal title"]'
+      escape={() => (milestoneDate ? setMilestoneDate(null) : open ? setOpen(null) : close())}
+      initialFocus='button[aria-label="Close goal details"]'
     >
       <div
         className={s.panelContent}
@@ -361,130 +362,40 @@ export function GoalPanel({
             }}
           />
         </div>
+        <AutoTextarea className={`${s.panelNotes} ${s.goalNotes}`} aria-label="Note" defaultValue={goal.note} maxLength={180} placeholder="Add notes"
+          onBlur={(event) => { if (event.target.value !== goal.note) void save({note: event.target.value}); }} />
         <fieldset>
           <PropertyList rows={rows} open={open} setOpen={setOpen} />
         </fieldset>
-        <section className={s.form} aria-label="Milestones editor">
-          <h2>Milestones</h2>
-          {!goal.milestones.length && (
-            <p className={s.quiet}>
-              No milestones yet. Add one to break this goal into steps.
-            </p>
-          )}
+        <section className={s.milestonesEditor} aria-label="Milestones editor">
+          <h2>Milestones <span>{goal.milestones.filter((item) => item.doneAt !== null).length} of {goal.milestones.length} done</span></h2>
+          {!goal.milestones.length && <p className={s.quiet}>No milestones yet.</p>}
           {goal.milestones.map((milestone) => (
-            <form
-              key={milestone._id}
-              className={s.milestoneEditor}
-              onSubmit={(event) => {
-                event.preventDefault();
-                const data = new FormData(event.currentTarget);
-                void run(() =>
-                  updateMilestone({
-                    id: milestone._id,
-                    patch: {
-                      title: String(data.get("title")),
-                      targetDate: String(data.get("date")) || null,
-                    },
-                  }),
-                );
-              }}
-            >
-              <fieldset disabled={action.busy} className={s.form}>
-                <label>
-                  Milestone title
-                  <input
-                    name="title"
-                    defaultValue={milestone.title}
-                    required
-                    maxLength={180}
-                  />
-                </label>
-                <label>
-                  Milestone date
-                  <input
-                    name="date"
-                    type="date"
-                    defaultValue={milestone.targetDate ?? ""}
-                  />
-                </label>
-                <div className={s.opts}>
-                  <button
-                    type="button"
-                    className={s.f}
-                    role="checkbox"
-                    aria-checked={milestone.doneAt !== null}
-                    aria-label={`Complete milestone: ${milestone.title}`}
-                    onClick={() =>
-                      void run(() =>
-                        updateMilestone({
-                          id: milestone._id,
-                          patch: {
-                            doneAt:
-                              milestone.doneAt === null ? Date.now() : null,
-                          },
-                        }),
-                      )
-                    }
-                  >
-                    {milestone.doneAt === null ? "Mark done" : "Mark not done"}
-                  </button>
-                  <button className={s.f}>Save milestone</button>
-                  <button
-                    type="button"
-                    className={s.f}
-                    onClick={() =>
-                      void run(() => removeMilestone({ id: milestone._id }))
-                    }
-                  >
-                    Delete milestone
-                  </button>
-                </div>
-              </fieldset>
-            </form>
+            <div key={milestone._id} className={s.milestoneItem}>
+              <div className={s.milestoneRow}>
+                <button type="button" className={`${s.chk} ${milestone.doneAt !== null ? s.is : ""}`} role="checkbox" aria-checked={milestone.doneAt !== null} aria-label={`Complete milestone: ${milestone.title}`} disabled={action.busy}
+                  onClick={() => void run(() => updateMilestone({id: milestone._id, patch: {doneAt: milestone.doneAt === null ? Date.now() : null}}))} />
+                <input aria-label="Milestone title" className={s.milestoneTitle} defaultValue={milestone.title} required maxLength={180}
+                  onBlur={(event) => { const title = event.target.value.trim(); if (title && title !== milestone.title) void run(() => updateMilestone({id: milestone._id, patch: {title}})); if (!title) event.target.value = milestone.title; }}
+                  onKeyDown={(event) => { if (event.key === "Enter" && !event.nativeEvent.isComposing) {event.preventDefault(); event.currentTarget.blur();} }} />
+                <button type="button" className={s.milestoneDate} aria-label={`Set date: ${milestone.title}`} aria-expanded={milestoneDate === milestone._id}
+                  onClick={() => setMilestoneDate(milestoneDate === milestone._id ? null : milestone._id)}>{milestone.targetDate ? shortDate(milestone.targetDate) : "Add date"}</button>
+                <button type="button" className={`${s.iconButton} ${s.milestoneRemove}`} aria-label={`Remove milestone: ${milestone.title}`} disabled={action.busy}
+                  onClick={() => void run(() => removeMilestone({id: milestone._id}))}><Icon name="close" /></button>
+              </div>
+              {milestoneDate === milestone._id && <div className={s.propertyEditor} role="group" aria-label={`Date editor: ${milestone.title}`}>
+                <DateEditor value={milestone.targetDate} today={today} label="Milestone date" change={(targetDate) => void run(() => updateMilestone({id: milestone._id, patch: {targetDate}}))} />
+              </div>}
+            </div>
           ))}
-          <form
-            className={s.form}
-            onSubmit={async (event) => {
-              event.preventDefault();
-              const form = event.currentTarget,
-                data = new FormData(form);
-              if (
-                await run(() =>
-                  createMilestone({
-                    goalId: goal._id,
-                    title: String(data.get("title")),
-                    targetDate: String(data.get("date")) || null,
-                    sortOrder: goal.milestones.length,
-                  }),
-                )
-              )
-                form.reset();
-            }}
-          >
-            <fieldset disabled={action.busy}>
-              <label>
-                New milestone
-                <input name="title" required maxLength={180} />
-              </label>
-              <label>
-                New milestone date
-                <input name="date" type="date" />
-              </label>
-              <button className={s.f}>Add milestone</button>
-            </fieldset>
+          <form onSubmit={async (event) => {
+            event.preventDefault(); const form = event.currentTarget; const title = String(new FormData(form).get("title")).trim(); if (!title) return;
+            if (await run(() => createMilestone({goalId: goal._id, title, targetDate: null, sortOrder: goal.milestones.length}))) form.reset();
+          }}>
+            <input className={s.milestoneAdd} name="title" aria-label="Add a milestone" placeholder="Add a milestone" maxLength={180}
+              onKeyDown={(event) => { if (event.key === "Enter" && !event.nativeEvent.isComposing) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} />
           </form>
         </section>
-        <AutoTextarea
-          className={s.panelNotes}
-          aria-label="Note"
-          defaultValue={goal.note}
-          maxLength={180}
-          placeholder="Add notes"
-          onBlur={(event) => {
-            if (event.target.value !== goal.note)
-              void save({ note: event.target.value });
-          }}
-        />
         {action.error && <p role="alert">{action.error}</p>}
         {action.message && (
           <p role="status" className={s.sr}>

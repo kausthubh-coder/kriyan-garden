@@ -44,7 +44,7 @@ test("goals save number progress, milestones and task progress", async ({
   });
   await trigger.click();
   const details = page.getByRole("dialog", { name: "Goal details" });
-  await expect(details.getByLabel("Goal title", { exact: true })).toBeFocused();
+  await expect(details.getByRole("button", {name: "Close goal details"})).toBeFocused();
   await expect(page).toHaveURL(/goal=/);
   const property = (id: string) => details.locator(`[data-property="${id}"]`);
   await property("current").click();
@@ -100,8 +100,8 @@ test("goals save number progress, milestones and task progress", async ({
     .getByRole("button", { name: "Finish the launch plan", exact: true })
     .click();
   for (const title of ["Write the plan", "Review the plan"]) {
-    await details.getByLabel("New milestone", { exact: true }).fill(title);
-    await details.getByRole("button", { name: "Add milestone" }).click();
+    await details.getByLabel("Add a milestone", { exact: true }).fill(title);
+    await details.getByLabel("Add a milestone").press("Enter");
     await expect(
       details.getByRole("checkbox", {
         name: `Complete milestone: ${title}`,
@@ -123,32 +123,35 @@ test("goals save number progress, milestones and task progress", async ({
   await milestones
     .getByRole("button", { name: "Finish the launch plan", exact: true })
     .click();
-  const milestoneForm = details.locator("form").filter({
+  const milestoneForm = details.locator("div").filter({
     has: page.getByRole("checkbox", {
       name: "Complete milestone: Review the plan",
     }),
-  });
+  }).filter({has: page.getByLabel("Milestone title")}).last();
   await milestoneForm
     .getByLabel("Milestone title")
     .fill("Review the final plan");
-  await milestoneForm.getByLabel("Milestone date").fill(addDays(target, 7));
-  await milestoneForm.getByRole("button", { name: "Save milestone" }).click();
+  await milestoneForm.getByLabel("Milestone title").press("Enter");
+  await details.getByRole("button", {name: "Set date: Review the final plan"}).click();
+  await details.getByRole("button", {name: "Pick a day", exact: true}).click();
+  await details.getByLabel("Milestone date").fill(addDays(target, 7));
   await expect(
     details.getByRole("checkbox", {
       name: "Complete milestone: Review the final plan",
     }),
   ).toBeVisible();
   await details
-    .getByLabel("New milestone", { exact: true })
+    .getByLabel("Add a milestone", { exact: true })
     .fill("Temporary milestone");
-  await details.getByRole("button", { name: "Add milestone" }).click();
-  const temporary = details.locator("form").filter({
+  await details.getByLabel("Add a milestone").press("Enter");
+  const temporary = details.locator("div").filter({
     has: page.getByRole("checkbox", {
       name: "Complete milestone: Temporary milestone",
     }),
   });
-  await temporary.getByRole("button", { name: "Delete milestone" }).click();
+  await details.getByRole("button", { name: "Remove milestone: Temporary milestone" }).click();
   await expect(temporary).toHaveCount(0);
+  await page.keyboard.press("Escape");
   await page.keyboard.press("Escape");
   await expect(
     milestones.getByText("Review the final plan", { exact: false }),
@@ -382,7 +385,7 @@ test("dialogs and panels close with Escape and restore focus at both sizes", asy
     await expect(details).toBeVisible();
     if (width > 820)
       await expect(
-        details.getByLabel("Goal title", { exact: true }),
+        details.getByRole("button", {name: "Close goal details"}),
       ).toBeFocused();
     else await expect(details).toBeFocused();
     await page.screenshot({
@@ -475,11 +478,11 @@ test("delete a goal and undo restores its milestones and task links", async ({
   );
   if (!original) throw new Error("Goal fixture was not found.");
   await panel
-    .getByLabel("New milestone", { exact: true })
+    .getByLabel("Add a milestone", { exact: true })
     .fill("Course review");
   await panel
-    .getByRole("button", { name: "Add milestone", exact: true })
-    .click();
+    .getByLabel("Add a milestone", {exact: true})
+    .press("Enter");
   await expect(
     panel.getByRole("checkbox", { name: "Complete milestone: Course review" }),
   ).toBeVisible();

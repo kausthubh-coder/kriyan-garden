@@ -22,7 +22,7 @@ export default defineConfig({
     {
       name: "polish",
       use: { ...devices["Desktop Chrome"] },
-      testMatch: /polish\.spec\.ts/,
+      testMatch: /(?:polish|leftovers|landing)\.spec\.ts/,
     },
     { name: "setup", testMatch: /auth\.setup\.ts/, teardown: "cleanup" },
     {

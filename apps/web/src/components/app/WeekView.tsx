@@ -21,6 +21,8 @@ export function WeekView(
         title="Week"
         unit="week"
         subtitle={`${longDate(start)} to ${longDate(addDays(start, 6))}`}
+        phoneDate={`${longDate(start)} to ${longDate(addDays(start, 6))}`}
+        summary={`${formatMinutes(p.week?.reduce((sum, day) => sum + day.plannedMinutes, 0) ?? 0)} planned.`}
         navigate={(offset) => p.navigate(offset * 7)}
       />
       <Filters areas={p.areas} filter={p.filter} onChange={p.setFilter} />

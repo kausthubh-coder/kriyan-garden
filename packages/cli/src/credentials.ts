@@ -1,6 +1,6 @@
 import { chmod, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { join, win32 } from "node:path";
 import { randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
@@ -34,16 +34,19 @@ const nativeEntry: EntryFactory = async (account) => {
 };
 
 const execute = promisify(execFile);
+export function windowsSystemCommand(name: "whoami.exe" | "icacls.exe", systemRoot = process.env.SystemRoot): string {
+  return systemRoot ? win32.join(systemRoot, "System32", name) : name;
+}
 async function privateDirectory(directory: string): Promise<void> {
   await mkdir(directory, { recursive: true, mode: 0o700 });
   await chmod(directory, 0o700);
   if (process.platform === "win32") {
     // POSIX mode bits cannot protect Windows credentials. Remove inherited ACLs
     // before creating the temporary file, and grant only the current user's SID.
-    const { stdout } = await execute("whoami.exe", ["/user", "/fo", "csv", "/nh"], { windowsHide: true, timeout: 10_000 });
+    const { stdout } = await execute(windowsSystemCommand("whoami.exe"), ["/user", "/fo", "csv", "/nh"], { windowsHide: true, timeout: 10_000 });
     const sid = stdout.match(/S-1-(?:\d+-)+\d+/)?.[0];
     if (!sid) throw new CliError("Could not protect the credentials directory. Enable your OS keychain and run kriyan login again.");
-    await execute("icacls.exe", [directory, "/inheritance:r", "/grant:r", `*${sid}:(OI)(CI)F`], { windowsHide: true, timeout: 10_000 });
+    await execute(windowsSystemCommand("icacls.exe"), [directory, "/inheritance:r", "/grant:r", `*${sid}:(OI)(CI)F`], { windowsHide: true, timeout: 10_000 });
   }
 }
 

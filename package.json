@@ -8,6 +8,7 @@
     "packages/*"
   ],
   "scripts": {
+    "kriyan": "bun packages/cli/src/kriyan.ts",
     "dev": "bun run --filter @kriyan/web dev",
     "build": "bun run --filter @kriyan/web build",
     "lint": "bun run --filter '*' lint",

@@ -5,9 +5,10 @@ export function Check({
   toggle,
 }: {
   task: Task;
-  toggle: (task: Task) => void;
+  toggle?: (task: Task) => void;
 }) {
   const done = task.status === "completed";
+  if (!toggle) return <i className={`${s.chk} ${done ? s.is : ""}`} />;
   return (
     <button
       className={`${s.chk} ${done ? s.is : ""}`}

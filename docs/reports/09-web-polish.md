@@ -68,3 +68,22 @@ Remaining visible differences are listed beside each capture in the comparison:
 - Quick add uses the existing parser's normalized title and demo project label. Its phone sheet hides optional helper copy to keep the primary action accessible. The phone shortcut key column is narrower so descriptions fit.
 
 Screenshots and raw logs live in the repository's ignored `.agents/screenshots/09/` artifact directory. They remain available locally for review. No required check was skipped; unrelated full public-site, Android-device and cloud-deployment checks were outside this brief.
+
+## 09b leftovers
+
+Completed 30 September 2026 before starting brief 10. The goal panel now has compact milestone rows with completion circles, inline title edits, optional formatted dates using the shared day editor, hover/focus remove buttons (always visible on touch), and an Enter-to-add row. Empty copy is “No milestones yet.” Notes sit under the title; the title is plain until focused. Week on phones puts the range and planned total in the summary, keeps navigation beside the title, and removes the extra gap before items. Windows credential commands resolve from `SystemRoot/System32`; the bare-name fallback is used only without SystemRoot.
+
+Verification:
+
+- `bun run typecheck`: exit 0; all five workspaces and scripts passed.
+- `bun run lint`: exit 0; web, mobile and CLI passed.
+- `bun run test`: exit 0; core 92, backend 42, mobile 2, web 13 Bun plus 45 Vitest, CLI 42 passed.
+- `bun run build`: exit 0; production web build completed.
+- `bun run e2e`: exit 0, **21 passed (2.1m)**, including authenticated CRUD, settings, panel focus, milestone dates and delete/Undo, six demo polish/leftover checks, screenshots and cleanup.
+- `cd packages/cli; bun test` in PowerShell: exit 0, **42 pass, 0 fail, 150 assertions**, 1277ms.
+- `"C:\Program Files\Git\bin\bash.exe" -lc "cd packages/cli && bun test"`: exit 0, **42 pass, 0 fail, 150 assertions**, 813ms.
+- Public demo goal transport checks with `PUBLIC_BASE_URL=http://localhost:3000`, `bun run --filter @kriyan/web test:public --grep 'Demo goals' --output=../../.agents/09b-public-results`: exit 0, **2 passed (23.7s)**; no Clerk/Convex requests or browser errors.
+
+Earlier failures are retained in `.agents/09b-*.log`: the first new interaction found an input-disable race during note autosave, now fixed by serializing submission without disabling the capture input; old tests expected title autofocus and always-visible date forms, now updated; Escape tests now close the milestone date editor before the panel. An initial public run used its default unserved port 3004 and was retried on 3000. Final required gates passed.
+
+Captures: [goal at 1440](../../.agents/screenshots/09b/goal-panel-1440.png), [goal at 390](../../.agents/screenshots/09b/goal-panel-390.png), [Week at 390](../../.agents/screenshots/09b/week-390.png). The sample goal has two milestones created during the capture test; totals come from demo data (15h 40m), rather than the brief’s illustrative 19h. No commit was made.

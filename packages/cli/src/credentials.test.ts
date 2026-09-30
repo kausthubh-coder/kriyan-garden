@@ -1,12 +1,21 @@
 import { describe, expect, test } from "bun:test";
 import { mkdtemp, readFile, rm, stat, writeFile, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { credentials, type KeyringEntry } from "./credentials";
+import { join, win32 } from "node:path";
+import { credentials, windowsSystemCommand, type KeyringEntry } from "./credentials";
 
 const testTokens = { accessToken: "test-access", refreshToken: "test-refresh", clientId: "test-public-client" };
 const origin = "https://app.example";
 describe("credential storage with fake keychain", () => {
+  test("resolves Windows ACL commands independently of PATH", () => {
+    for (const name of ["whoami.exe", "icacls.exe"] as const) {
+      expect(windowsSystemCommand(name, "C:\\Windows")).toBe(`C:\\Windows\\System32\\${name}`);
+      expect(win32.isAbsolute(windowsSystemCommand(name, "C:\\Windows"))).toBe(true);
+      expect(windowsSystemCommand(name, "")).toBe(name);
+      if (process.platform === "win32" && process.env.SystemRoot)
+        expect(win32.isAbsolute(windowsSystemCommand(name))).toBe(true);
+    }
+  });
   test("uses keychain without writing credentials to disk", async () => {
     const home = await mkdtemp(join(tmpdir(), "kriyan-cli-test-"));
     let password: string | null = null;

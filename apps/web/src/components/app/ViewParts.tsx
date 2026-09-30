@@ -149,8 +149,8 @@ export function TaskRow({
   linked = false,
 }: Pick<
   ViewProps,
-  "areas" | "projects" | "goals" | "today" | "open" | "toggle"
-> & { task: Task; withDate?: boolean; linked?: boolean }) {
+  "areas" | "projects" | "goals" | "today"
+> & { open?: ViewProps["open"]; toggle?: ViewProps["toggle"]; task: Task; withDate?: boolean; linked?: boolean }) {
   const goal = goals.find((g) => g._id === task.goalId);
   return (
     <div
@@ -162,10 +162,10 @@ export function TaskRow({
       }
     >
       <Check task={task} toggle={toggle} />
-      <button
+      <TaskRowBody
         className={s.rowOpen}
-        onClick={() => open(task)}
-        onKeyDown={(e) => taskKeys(e, task, open)}
+        open={open}
+        task={task}
         aria-label={`Open task: ${task.title}`}
       >
         <span className={s.t}>{task.title}</span>
@@ -187,7 +187,11 @@ export function TaskRow({
             <span>{formatMinutes(task.durationMinutes)}</span>
           )}
         </span>
-      </button>
+      </TaskRowBody>
     </div>
   );
+}
+
+function TaskRowBody({open, task, children, className, "aria-label": label}: {open?: ViewProps["open"]; task: Task; children: ReactNode; className: string; "aria-label": string}) {
+  return open ? <button className={className} aria-label={label} onClick={() => open(task)} onKeyDown={(event) => taskKeys(event, task, open)}>{children}</button> : <div className={className}>{children}</div>;
 }

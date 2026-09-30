@@ -23,12 +23,29 @@ export const theme = {
   "spacing": [
     4,
     8,
+    10,
     12,
+    14,
     16,
+    18,
+    20,
+    22,
     24,
+    26,
+    28,
+    30,
     32,
+    36,
+    38,
+    40,
     44,
-    48
+    46,
+    48,
+    60,
+    64,
+    72,
+    112,
+    120
   ],
   "radii": [
     8,
@@ -37,7 +54,9 @@ export const theme = {
     11,
     12,
     14,
-    16
+    16,
+    18,
+    38
   ],
   "typeSizes": [
     11.5,
@@ -60,8 +79,10 @@ export const theme = {
     26,
     30,
     32,
+    36,
     40,
     44,
+    52,
     64
   ],
   "motion": {
@@ -74,6 +95,7 @@ export const theme = {
     "hourHeight": 56,
     "phoneHourHeight": 62,
     "controlHeight": 44,
+    "landingChartHeight": 104,
     "phonePadding": 18,
     "phoneSheetPadding": 20,
     "phoneSheetRadius": 24,

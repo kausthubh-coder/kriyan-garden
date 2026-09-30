@@ -40,8 +40,8 @@ export function TimelineBlock({
   projects: Project[];
   goals: Goal[];
   today: string;
-  open: (task: Task, section?: PanelSection) => void;
-  toggle: (task: Task) => void;
+  open?: (task: Task, section?: PanelSection) => void;
+  toggle?: (task: Task) => void;
 }) {
   const { task, event, start, end, column, columns } = block;
   const duration = task ? task.durationMinutes : end - start;
@@ -93,14 +93,14 @@ export function TimelineBlock({
   return (
     <div
       data-task={task._id}
-      data-drag="move"
+      data-drag={open ? "move" : undefined}
       className={`${s.blk} ${duration === null ? s.pt : ""} ${height < 46 ? s.sm : ""} ${task.status === "completed" ? s.isdone : ""}`}
       style={style}
-      tabIndex={0}
+      tabIndex={open ? 0 : undefined}
       role="group"
       aria-label={`${task.title}, ${task.time}${duration ? ` to ${timeOf(end)}` : ", no length"}`}
-      onClick={() => open(task)}
-      onKeyDown={(event) => taskKeys(event, task, open)}
+      onClick={open ? () => open(task) : undefined}
+      onKeyDown={open ? (event) => taskKeys(event, task, open) : undefined}
     >
       <Check task={task} toggle={toggle} />
       <div className={s.tx}>
@@ -111,12 +111,12 @@ export function TimelineBlock({
         {task.time}
         {duration && columns === 1 ? ` to ${timeOf(end)}` : ""}
       </time>
-      <i
+      {open && <i
         className={s.rz}
         data-resize="true"
         aria-hidden="true"
         title="Drag to change the length. Press L for length options."
-      />
+      />}
     </div>
   );
 }

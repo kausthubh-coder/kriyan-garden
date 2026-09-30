@@ -18,6 +18,7 @@ const declarations = [
     (value) => `--text-${String(value).replace(".", "-")}: ${value}px;`,
   ),
   `--hh: ${layout.hourHeight}px;`,
+  `--timeline-hour-height: ${layout.hourHeight}px;`,
   `--phone-hh: ${layout.phoneHourHeight}px;`,
   `--ctl: ${controls.compact}px;`,
   `--ctl-lg: ${controls.primary}px;`,

@@ -25,8 +25,8 @@ export function Timeline({
   areas: Area[];
   projects: Project[];
   goals: Goal[];
-  open: (task: Task, section?: PanelSection) => void;
-  toggle: (task: Task) => void;
+  open?: (task: Task, section?: PanelSection) => void;
+  toggle?: (task: Task) => void;
   loading: boolean;
 }) {
   const blocks: Omit<Block, "column" | "columns">[] = [
