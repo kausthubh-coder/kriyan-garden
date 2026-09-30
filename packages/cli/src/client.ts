@@ -28,7 +28,7 @@ export class ApiClient {
     let response = await send(authorization);
     if (response.status === 401 && !this.apiKey && tokens?.refreshToken) {
       const config = await authConfig(this.http, this.base, this.context);
-      if (config.clientId !== tokens.clientId) throw new CliError("The CLI login configuration changed. Run kriyan login again.", 3);
+      if (config.clientId !== tokens.clientId || (tokens.resource !== undefined && tokens.resource !== config.resource)) throw new CliError("The CLI login configuration changed. Run kriyan login again.", 3);
       const refreshed = await exchange(this.http, config, { grant_type: "refresh_token", refresh_token: tokens.refreshToken }, tokens);
       const storage = await this.store.save(refreshed);
       if (storage === "file") this.notify("Your keychain is unavailable. Credentials now use ~/.config/kriyan/credentials.json with mode 600.");

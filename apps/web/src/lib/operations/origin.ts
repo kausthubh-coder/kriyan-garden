@@ -13,6 +13,8 @@ export function mcpPublicOrigin(request: Request): string {
   return KRIYAN_APP_ORIGIN;
 }
 export const mcpResourceUrl = (request: Request) => `${mcpPublicOrigin(request)}/mcp`;
+export const apiResourceUrl = (request: Request) => `${mcpPublicOrigin(request)}/api/v1`;
+export const apiResourceMetadataUrl = (request: Request) => `${mcpPublicOrigin(request)}/.well-known/oauth-protected-resource/api/v1`;
 
 export function trustedOrigin(request: Request): boolean {
   const origin = request.headers.get("origin");

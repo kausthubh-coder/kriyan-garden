@@ -10,7 +10,7 @@ vi.mock("@clerk/backend", () => ({ createClerkClient: () => ({ idPOAuthAccessTok
 vi.mock("@clerk/mcp-tools/server", () => ({ fetchClerkAuthorizationServerMetadata: async () => ({ authorization_endpoint: "https://clerk.test/oauth/authorize", token_endpoint: "https://clerk.test/oauth/token" }) }));
 import { operations, runOperation, resolveReference, MCP_TOOLS } from "./index";
 import { schemas } from "./schemas";
-import { trustedOrigin, mcpResourceUrl } from "./origin";
+import { trustedOrigin, mcpResourceUrl, apiResourceUrl } from "./origin";
 import { apiRoute } from "./http";
 import { createPlannerMcp } from "./mcp";
 import { scopeChallenge, verifyMcpBearer } from "./mcp-auth";
@@ -92,7 +92,7 @@ test("HTTP authenticates user API keys and returns JSON errors without service d
   fake.auth.mockResolvedValueOnce({ isAuthenticated: false });
   response = await apiRoute("get_day")(request);
   expect(response.status).toBe(401);
-  fake.auth.mockResolvedValueOnce({ isAuthenticated: true, userId: null, subject: "org_other", scopes: caller.scopes });
+  fake.auth.mockResolvedValueOnce({ isAuthenticated: true, tokenType: "api_key", userId: null, subject: "org_other", scopes: caller.scopes });
   expect((await apiRoute("get_day")(request)).status).toBe(403);
   fake.call.mockRejectedValueOnce(new Error("[Request ID: private] Server Error\nCould not find public function for service:plannerContext"));
   response = await apiRoute("get_day")(request);
@@ -102,17 +102,51 @@ test("HTTP authenticates user API keys and returns JSON errors without service d
 test("HTTP rejects malformed JSON and insufficient scopes with useful status codes", async () => {
   const malformed = new Request("http://localhost:3005/api/v1/tasks", { method: "POST", headers: { "content-type": "application/json" }, body: "{" });
   expect((await apiRoute("create_task")(malformed)).status).toBe(400);
-  fake.auth.mockResolvedValueOnce({ isAuthenticated: true, userId: caller.userId, scopes: ["tasks:read"] });
+  fake.auth.mockResolvedValueOnce({ isAuthenticated: true, tokenType: "api_key", userId: caller.userId, scopes: ["tasks:read"] });
   const response = await apiRoute("create_task")(new Request("http://localhost:3005/api/v1/tasks", { method: "POST", headers: { "content-type": "application/json" }, body: '{"title":"Essay"}' }));
   expect(response.status).toBe(403);
   expect(response.headers.get("www-authenticate")).toContain("tasks:write");
+});
+test("REST verifies the actual OAuth bearer and uses its verified identity and scopes", async () => {
+  fake.auth.mockResolvedValue({ isAuthenticated: true, tokenType: "oauth_token", userId: "user_untrusted", scopes: [...SCOPES] });
+  const verified = { aud: ["http://localhost:3005/api/v1"], subject: caller.userId, scopes: ["tasks:read"], clientId: "fixture", expiration: null, revoked: false, expired: false };
+  fake.verifyToken.mockResolvedValue(verified);
+  const request = new Request("http://localhost:3005/api/v1/day?today=2026-09-29", { headers: { authorization: "Bearer offline-fixture" } });
+  expect((await apiRoute("get_day")(request)).status).toBe(200);
+  expect(fake.verifyToken).toHaveBeenCalledWith("offline-fixture", { audience: "http://localhost:3005/api/v1" });
+  expect(fake.call.mock.calls.every(call => call[1] === caller.userId)).toBe(true);
+  fake.call.mockClear();
+  const write = await apiRoute("create_task")(new Request("http://localhost:3005/api/v1/tasks", { method: "POST", headers: { authorization: "Bearer offline-fixture", "content-type": "application/json" }, body: '{"title":"Essay"}' }));
+  expect(write.status).toBe(403);
+  expect(write.headers.get("www-authenticate")).toContain("resource_metadata=\"http://localhost:3005/.well-known/oauth-protected-resource/api/v1\"");
+  expect(fake.call).not.toHaveBeenCalled();
+  for (const patch of [{ aud: undefined }, { aud: ["http://localhost:3005/mcp"] }, { subject: "org_other" }, { subject: "" }, { revoked: true }, { expired: true }]) {
+    fake.verifyToken.mockResolvedValueOnce({ ...verified, ...patch });
+    const response = await apiRoute("get_day")(request);
+    expect(response.status).toBe(401);
+    expect(response.headers.get("www-authenticate")).toContain('error="invalid_token"');
+  }
+  fake.verifyToken.mockRejectedValueOnce(new Error("Private provider response"));
+  const failed = await apiRoute("get_day")(request);
+  expect(failed.status).toBe(401);
+  expect(await failed.text()).not.toContain("Private");
+  fake.verifyToken.mockClear();
+  expect((await apiRoute("get_day")(new Request(request.url))).status).toBe(401);
+  expect(fake.verifyToken).not.toHaveBeenCalled();
+});
+test("REST user API keys retain scoped authentication without an OAuth audience call", async () => {
+  const request = new Request("http://localhost:3005/api/v1/day?today=2026-09-29", { headers: { authorization: "Bearer test-api-key" } });
+  expect((await apiRoute("get_day")(request)).status).toBe(200);
+  expect(fake.verifyToken).not.toHaveBeenCalled();
+  fake.auth.mockResolvedValueOnce({ isAuthenticated: true, tokenType: "api_key", userId: "org_other", scopes: [...SCOPES] });
+  expect((await apiRoute("get_day")(request)).status).toBe(403);
 });
 test("public login configuration echoes a device calendar and never guesses an anonymous timezone", async () => {
   vi.stubEnv("CLERK_CLI_CLIENT_ID", "public_test_client");
   vi.stubEnv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "public_test_key");
   const response = await authConfig(new Request("http://localhost:3005/api/v1/auth-config?today=2026-09-29&timezone=America%2FNew_York"));
   expect(response.status).toBe(200);
-  expect(await response.json()).toMatchObject({ clientId: "public_test_client", today: "2026-09-29", timezone: "America/New_York", scopes: [...SCOPES, "offline_access"] });
+  expect(await response.json()).toMatchObject({ clientId: "public_test_client", resource: "http://localhost:3005/api/v1", today: "2026-09-29", timezone: "America/New_York", scopes: [...SCOPES, "offline_access"] });
   expect((await authConfig(new Request("http://localhost:3005/api/v1/auth-config"))).status).toBe(400);
   vi.stubEnv("CLERK_CLI_CLIENT_ID", "");
   expect((await authConfig(new Request("http://localhost:3005/api/v1/auth-config"))).status).toBe(503);
@@ -169,6 +203,13 @@ test("public audience and challenges ignore internal proxy URLs and untrusted fo
   vi.stubEnv("MCP_PUBLIC_ORIGIN", "https://planner.example");
   const request = new Request("http://localhost:3000/mcp", { method: "POST", headers: { "x-forwarded-host": "attacker.example", "x-forwarded-proto": "http" }, body: JSON.stringify({ method: "tools/call", params: { name: "quick_add" } }) });
   expect(mcpResourceUrl(request)).toBe("https://planner.example/mcp");
+  expect(apiResourceUrl(request)).toBe("https://planner.example/api/v1");
+  vi.stubEnv("CLERK_CLI_CLIENT_ID", "public_test_client");
+  vi.stubEnv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "public_test_key");
+  const configured = await authConfig(new Request("http://localhost:3000/api/v1/auth-config?timezone=America%2FNew_York", { headers: { "x-forwarded-host": "attacker.example" } }));
+  expect(await configured.json()).toMatchObject({ resource: "https://planner.example/api/v1" });
+  fake.auth.mockResolvedValueOnce({ isAuthenticated: false });
+  expect((await apiRoute("get_day")(request)).headers.get("www-authenticate")).toContain("https://planner.example/.well-known/oauth-protected-resource/api/v1");
   const unauthenticated = await mcpPost(request);
   expect(unauthenticated.status).toBe(401);
   expect(unauthenticated.headers.get("www-authenticate")).toContain("https://planner.example/.well-known/oauth-protected-resource/mcp");

@@ -25,6 +25,8 @@ The v1 SDK alone cannot serve the new revision. The handler's v2 SDK integration
 
 Clerk is the OAuth authorization server. A client discovers it through protected-resource metadata, signs in and obtains a user OAuth access token intended for the exact `/mcp` resource URL. Session JWTs, organization identities and API keys cannot substitute for MCP OAuth tokens. Verification supplies the expected audience to Clerk and rejects missing or different audiences. The operator must enable Clerk audience claims; otherwise valid-looking tokens without an audience are rejected. See [MCP audience requirements](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization#token-audience-binding-and-validation).
 
+REST and CLI use the distinct `/api/v1` resource and its own protected-resource metadata. Both URLs use `MCP_PUBLIC_ORIGIN` for a shared canonical public origin, and each rejects tokens intended only for the other. See [development OAuth setup](setup/05-development-oauth.md) for supervisor payloads. Clerk's dynamic-client default scopes must exclude `offline_access`; refresh-capable clients request it explicitly.
+
 | Scope | Allows |
 | --- | --- |
 | `tasks:read` | Read tasks, day/week plans and search |

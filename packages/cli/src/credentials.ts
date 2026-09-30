@@ -6,7 +6,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { CliError, object } from "./errors";
 
-export interface Tokens { accessToken: string; refreshToken?: string; clientId: string }
+export interface Tokens { accessToken: string; refreshToken?: string; clientId: string; resource?: string }
 export interface CredentialStore {
   read(): Promise<Tokens | null>;
   save(tokens: Tokens): Promise<"keychain" | "file">;
@@ -21,10 +21,10 @@ type EntryFactory = (account: string) => Promise<KeyringEntry>;
 
 export function parseTokens(value: unknown): Tokens {
   const record = object(value);
-  if (typeof record.accessToken !== "string" || !record.accessToken || typeof record.clientId !== "string" || !record.clientId || (record.refreshToken !== undefined && typeof record.refreshToken !== "string")) {
+  if (typeof record.accessToken !== "string" || !record.accessToken || typeof record.clientId !== "string" || !record.clientId || (record.refreshToken !== undefined && typeof record.refreshToken !== "string") || (record.resource !== undefined && (typeof record.resource !== "string" || !record.resource))) {
     throw new CliError("Saved credentials are invalid. Run kriyan logout, then kriyan login.", 3);
   }
-  return { accessToken: record.accessToken, clientId: record.clientId, ...(typeof record.refreshToken === "string" ? { refreshToken: record.refreshToken } : {}) };
+  return { accessToken: record.accessToken, clientId: record.clientId, ...(typeof record.resource === "string" ? { resource: record.resource } : {}), ...(typeof record.refreshToken === "string" ? { refreshToken: record.refreshToken } : {}) };
 }
 
 const nativeEntry: EntryFactory = async (account) => {

@@ -26,6 +26,8 @@ kriyan logout
 
 Login opens the browser and uses an OAuth authorization code with S256 PKCE. It listens only on `127.0.0.1`, with a port chosen by the OS, and checks a random callback state. Authorization and token endpoints, the client id and scopes come from `/api/v1/auth-config`.
 
+Auth-config also supplies the exact REST `resource`, normally `https://app.kriyan.app/api/v1`. The CLI requires it to match `KRIYAN_URL` plus `/api/v1`, sends it in authorization, code exchange and refresh, and saves the resource with its credentials. Refresh refuses to switch an already bound credential to a different resource. Existing credentials without an audience may require a new login. Clerk must enable resource-derived audience claims. REST validates this audience independently of the MCP endpoint's `/mcp` audience.
+
 Access and refresh tokens go into the OS keychain under service `kriyan`, separated by the Kriyan server's origin. If the keychain is unavailable, the CLI writes `~/.config/kriyan/credentials.json` with mode 600 in a mode-700 directory and tells you. On Windows, the CLI also removes inherited directory permissions and grants the current user an NTFS ACL before writing credentials. Linux requires a persistent Secret Service keychain; an unavailable service uses the file fallback.
 
 A 401 response triggers one refresh and retries the request once. API keys never trigger OAuth refresh. Logout attempts to remove credentials from both the keychain and the file. If the keychain is unavailable, it reports that keychain removal could not be checked. Logout does not revoke tokens at Clerk.
@@ -81,6 +83,8 @@ Text output uses aligned columns, dates such as `Tue 29 Sep`, 24-hour times, are
 Create a public OAuth application named **Kriyan CLI** in the Clerk dashboard. Do not create a client secret. Register `http://127.0.0.1/callback`, enable PKCE required, and allow `tasks:read`, `tasks:write`, `spaces:read`, `spaces:write`, `goals:read`, `goals:write` and `offline_access` for refresh tokens. Clerk accepts the runtime loopback port for this registered redirect. Set the web server's `CLERK_CLI_CLIENT_ID` to that public client id. The server discovers the Clerk issuer from the existing `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, so there is no separate issuer setting. Enable the OAuth consent screen and the API-key feature for script authentication.
 
 This follows [Clerk's CLI authorization guidance](https://clerk.com/blog/adding-clerk-auth-to-your-cli). The native storage adapter follows [the keyring package's documented API](https://github.com/Brooooooklyn/keyring-node). The build uses [tsdown's dependency bundling rules](https://tsdown.dev/options/dependencies) to include `@kriyan/core` in one ESM file while leaving the optional native keyring dependency installable by npm.
+
+See [development OAuth setup](../../docs/setup/05-development-oauth.md) for the verified supervisor payload examples. `MCP_PUBLIC_ORIGIN` supplies the public origin for both REST and MCP behind a proxy. Dynamic-client default scopes exclude `offline_access`; the registered CLI requests it explicitly. Setup is performed by the supervisor, not by this CLI's login command.
 
 ## Test and release
 

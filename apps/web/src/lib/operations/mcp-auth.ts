@@ -1,20 +1,12 @@
 import { z } from "zod";
-import { createClerkClient } from "@clerk/backend";
+import { verifyUserOAuth } from "./oauth";
 import { MCP_TOOLS, operations } from "./index";
 import { mcpPublicOrigin, mcpResourceUrl } from "./origin";
 
 const toolCall = z.object({ method: z.literal("tools/call"), params: z.object({ name: z.string() }) });
 /** Clerk's default OAuth verification does not bind a token to this resource. */
 export async function verifyMcpBearer(request: Request, bearerToken?: string) {
-  if (!bearerToken) return undefined;
-  try {
-    const resource = mcpResourceUrl(request);
-    const client = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY, publishableKey: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY });
-    const verified = await client.idPOAuthAccessToken.verify(bearerToken, { audience: resource });
-    if (!verified.aud?.includes(resource) || !verified.subject.startsWith("user_") || verified.revoked || verified.expired) return undefined;
-    return { token: bearerToken, clientId: verified.clientId, scopes: verified.scopes,
-      ...(verified.expiration === null ? {} : { expiresAt: verified.expiration }), extra: { userId: verified.subject } };
-  } catch { return undefined; }
+  return verifyUserOAuth(bearerToken, mcpResourceUrl(request));
 }
 /** Challenge before running the SDK so OAuth clients can request missing scopes. */
 export async function scopeChallenge(request: Request): Promise<Response | null> {

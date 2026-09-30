@@ -3,7 +3,8 @@ import { parseArguments } from "./args";
 import { formatDate, formatTasks, formatWeek, matchTask } from "./format";
 import { CliError } from "./errors";
 import { ApiClient } from "./client";
-import { callbackHandler, exchange, pkce, safeUrl, type Http } from "./auth";
+import { authConfig, authorizationUrl, callbackHandler, exchange, pkce, safeUrl, type Http } from "./auth";
+import { parseTokens } from "./credentials";
 import type { CredentialStore, Tokens } from "./credentials";
 import { run } from "./run";
 import { createHash } from "node:crypto";
@@ -17,7 +18,7 @@ const fakeStore = (initial: Tokens | null = { accessToken: "test-access", refres
   return store;
 };
 const context = { today: "2026-09-29", timezone: "America/New_York" };
-const config = { clientId: "public-client", authorizationEndpoint: "https://clerk.example/oauth/authorize", tokenEndpoint: "https://clerk.example/oauth/token", scopes: ["tasks:read", "tasks:write", "offline_access"] };
+const config = { clientId: "public-client", resource: "https://app.example/api/v1", authorizationEndpoint: "https://clerk.example/oauth/authorize", tokenEndpoint: "https://clerk.example/oauth/token", scopes: ["tasks:read", "tasks:write", "offline_access"] };
 function harness(http: Http, store = fakeStore()) {
   const stdout: string[] = [], stderr: string[] = [], opened: string[] = [];
   return { stdout, stderr, opened, invoke: (args: string[]) => run(args, { http, store, env: { KRIYAN_URL: "https://app.example" }, now: () => new Date("2026-09-30T01:00:00Z"), timezone: context.timezone, stdout: (value) => stdout.push(value), stderr: (value) => stderr.push(value), open: async (url) => { opened.push(url); } }) };
@@ -84,7 +85,8 @@ describe("HTTP and authentication", () => {
     };
     expect(await new ApiClient("https://app.example", context, store, http).request("/me")).toEqual({ userId: "user-test" });
     expect(attempts).toBe(2); expect(grants[0]).toContain("grant_type=refresh_token");
-    expect(await store.read()).toEqual({ accessToken: "test-rotated", refreshToken: "test-rotated-refresh", clientId: config.clientId });
+    expect(new URLSearchParams(grants[0]).get("resource")).toBe(config.resource);
+    expect(await store.read()).toEqual({ accessToken: "test-rotated", refreshToken: "test-rotated-refresh", clientId: config.clientId, resource: config.resource });
   });
   test("API keys bypass saved credentials and never refresh", async () => {
     let calls = 0; const http: Http = async (_url, init) => { calls++; expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer test-api-key"); return response({}, 401); };
@@ -106,9 +108,55 @@ describe("HTTP and authentication", () => {
     expect(proof.challenge).toBe(createHash("sha256").update(proof.verifier).digest("base64url")); expect(pkce().state).not.toBe(proof.state);
   });
   test("token exchange is public and preserves an unrotated refresh token", async () => {
-    const http: Http = async (_url, init) => { const fields = new URLSearchParams(String(init?.body)); expect(fields.get("client_id")).toBe(config.clientId); expect(fields.has("client_secret")).toBe(false); expect(init?.redirect).toBe("error"); return response({ access_token: "test-new", token_type: "bearer" }); };
+    const http: Http = async (_url, init) => { const fields = new URLSearchParams(String(init?.body)); expect(fields.get("client_id")).toBe(config.clientId); expect(fields.get("resource")).toBe(config.resource); expect(fields.has("client_secret")).toBe(false); expect(init?.redirect).toBe("error"); return response({ access_token: "test-new", token_type: "bearer" }); };
     const previous = { accessToken: "test-old", refreshToken: "test-refresh", clientId: config.clientId };
-    expect(await exchange(http, config, { grant_type: "refresh_token", refresh_token: previous.refreshToken }, previous)).toEqual({ ...previous, accessToken: "test-new" });
+    expect(await exchange(http, config, { grant_type: "refresh_token", refresh_token: previous.refreshToken }, previous)).toEqual({ ...previous, accessToken: "test-new", resource: config.resource });
+  });
+  test("login resource must match the canonical API and cannot redirect authorization to another resource", async () => {
+    for (const resource of [undefined, "https://other.example/api/v1", "https://app.example/mcp", "https://app.example/api/v1/", "https://app.example/api/v1?x=1"]) {
+      await expect(authConfig(async () => response({ ...config, resource }), "https://app.example", context)).rejects.toBeInstanceOf(CliError);
+    }
+    expect(parseTokens({ accessToken: "fixture", clientId: config.clientId, resource: config.resource }).resource).toBe(config.resource);
+  });
+  test("public code exchange binds resource even if a caller supplies a different resource", async () => {
+    const http: Http = async (_url, init) => {
+      const fields = new URLSearchParams(String(init?.body));
+      expect(fields.get("grant_type")).toBe("authorization_code");
+      expect(fields.get("resource")).toBe(config.resource);
+      expect(fields.has("client_secret")).toBe(false);
+      return response({ access_token: "test-new", token_type: "bearer" });
+    };
+    expect((await exchange(http, config, { grant_type: "authorization_code", code: "fixture", code_verifier: "fixture", redirect_uri: "http://127.0.0.1:12345/callback", resource: "https://other.example" })).resource).toBe(config.resource);
+  });
+  test("PKCE login binds authorization and code exchange to the same resource", async () => {
+    const proof = pkce();
+    const redirect = "http://127.0.0.1:12345/callback";
+    const authorize = authorizationUrl(config, redirect, proof);
+    expect(authorize.searchParams.get("resource")).toBe(config.resource);
+    expect(authorize.searchParams.get("redirect_uri")).toBe(redirect);
+    expect(authorize.searchParams.get("state")).toBe(proof.state);
+    expect(authorize.searchParams.get("code_challenge_method")).toBe("S256");
+    expect(authorize.searchParams.get("code_challenge")).toBe(createHash("sha256").update(proof.verifier).digest("base64url"));
+    const http: Http = async (_url, init) => {
+      const fields = new URLSearchParams(String(init?.body));
+      expect(fields.get("resource")).toBe(config.resource);
+      expect(fields.get("grant_type")).toBe("authorization_code");
+      expect(fields.get("code_verifier")).toBe(proof.verifier);
+      expect(fields.get("redirect_uri")).toBe(redirect);
+      return response({ access_token: "test-new", refresh_token: "test-refresh", token_type: "bearer" });
+    };
+    expect((await exchange(http, config, { grant_type: "authorization_code", code: "fixture", code_verifier: proof.verifier, redirect_uri: redirect })).resource).toBe(config.resource);
+  });
+  test("refresh refuses to switch an already bound credential resource", async () => {
+    let exchanges = 0;
+    const http: Http = async url => {
+      if (url.includes("auth-config")) return response(config);
+      if (url === config.tokenEndpoint) { exchanges++; return response({ access_token: "fixture" }); }
+      return response({}, 401);
+    };
+    const store = fakeStore({ accessToken: "fixture", refreshToken: "fixture", clientId: config.clientId, resource: "https://app.example/mcp" });
+    await expect(new ApiClient("https://app.example", context, store, http).request("/me")).rejects.toMatchObject({ exitCode: 3 });
+    expect(exchanges).toBe(0);
   });
   test("rejects insecure app endpoints and URL credentials", () => {
     expect(() => safeUrl("http://app.example")).toThrow(CliError); expect(() => safeUrl("https://user:password@app.example")).toThrow(CliError);
