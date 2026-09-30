@@ -10,7 +10,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 # Kriyan project rules
 
-Kriyan is an open-source (MIT) planner for todos and goals across three areas of life: School, Business and Life. It ships as a web app, an Android app, an MCP server and a CLI, all on one Convex backend with Clerk for identity.
+Kriyan is an open-source (MIT) planner that makes organising and planning your life easy, and lets the AI you already use (ChatGPT, Claude, Cursor and others) plan with you. Areas are whatever the person chooses; School, Business and Life are only the suggested defaults, never the product's frame. It ships as a web app, an Android app, an MCP server and a CLI, all on one Convex backend with Clerk for identity.
 
 ## Read first
 
@@ -30,7 +30,8 @@ Kriyan is an open-source (MIT) planner for todos and goals across three areas of
 
 - Colours, spacing, radii, type sizes and motion come from the tokens in `packages/core`. Do not hard-code values that a token covers.
 - One typeface: Schibsted Grotesk, weights 400 to 700. No monospace for labels.
-- Colour only ever means an area (School blue, Business orange, Life green) or a status (hot red for late or over). Primary buttons are neutral ink.
+- Colour only ever means an area (each area has one of the eight named colours; the defaults are School blue, Business orange, Life green) or a status (hot red for late or over). Primary buttons are neutral ink.
+- Copy never assumes the three default areas. Say "your areas" or name the person's own areas; sample data may use the defaults.
 - Never: gradients, glow, glassmorphism, coloured side stripes on cards, nested cards, uppercase eyebrow labels, emoji as icons, bounce or elastic easing.
 - Motion: press feedback 160ms, transitions 150 to 250ms, ease-out `cubic-bezier(0.23, 1, 0.32, 1)`. Animate only `transform` and `opacity`. No animation on keyboard-triggered actions. Respect `prefers-reduced-motion`.
 - On touch devices (`pointer: coarse`, and always in the Android app) every target is at least 44px. On desktop with a fine pointer, controls are 32 to 36px tall. Text contrast is at least 4.5:1. Status is never shown by colour alone.
