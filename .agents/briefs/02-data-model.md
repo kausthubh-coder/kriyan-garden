@@ -78,7 +78,7 @@ Rules that must live here:
 - `day.get(date)` returns: tasks with that date, split into `timed` (has time) and `anytime`; `events` that occur on that weekday within their date range; and `unscheduled` (active tasks with no date). Plus totals: planned minutes (active tasks with a duration), count without a duration.
 - `week.get(startDate)` returns for each of 7 days: planned minutes by area, task count, count without a duration, and the day's tasks and events, using the same shapes as `day.get`.
 - `goals.list()` returns goals with `linkedTasks` counts (total and done) and milestones.
-- `tasks.quickAdd(text, today)` uses `@kriyan/core`'s parser with the owner's areas and projects, then creates the task. `defaultAreaId` is the first area by sort order. Add `@kriyan/core` as a dependency of the backend package; Convex bundles workspace packages.
+- `tasks.quickAdd(text, today)`: if the parse gives a time but no date, use `today` as the date. It uses `@kriyan/core`'s parser with the owner's areas and projects, then creates the task. `defaultAreaId` is the first area by sort order. Add `@kriyan/core` as a dependency of the backend package; Convex bundles workspace packages.
 
 ## Public functions (Clerk session identity)
 
@@ -101,7 +101,7 @@ Rename `mcp.ts` and `mcpInternal.ts` to `service.ts` and `serviceInternal.ts`. K
 
 ## Data reset
 
-The Convex dev deployment still holds v1 rows in `regions`, `tasks` and `profiles`, which will fail validation against the new schema. Before pushing the schema, clear those tables. The owner has approved this. Use the Convex CLI from `packages/backend`: for each of `regions`, `tasks`, `profiles`, run `bunx convex import --table <name> --replace --format jsonLines /dev/null` on a POSIX shell or an empty file on Windows (create `empty.jsonl` in a temp location, do not commit it), and confirm each with `--yes` if the CLI asks. Then run `bunx convex dev --once` to push the schema and regenerate `_generated`. Commit the regenerated `_generated` files.
+The v1 tables on the Convex dev deployment have already been emptied, so the new schema will push cleanly. Run `bunx convex dev --once` from `packages/backend` (its `.env.local` selects the deployment) to push the schema and regenerate `_generated`. Commit the regenerated files.
 
 ## Tests
 
