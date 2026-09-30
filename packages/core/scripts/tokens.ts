@@ -6,6 +6,7 @@ import {
   motion,
   layout,
 } from "../src/tokens";
+import { nativeThemeSource } from "./nativeTokens";
 
 const declarations = [
   "color-scheme: dark;",
@@ -37,3 +38,5 @@ for (const path of [
   await Bun.write(new URL(path, import.meta.url), css);
 }
 console.log("Generated core and web tokens.css from tokens.ts");
+await Bun.write(new URL("../../../apps/mobile/src/theme.ts", import.meta.url), nativeThemeSource());
+console.log("Generated mobile theme.ts from tokens.ts");

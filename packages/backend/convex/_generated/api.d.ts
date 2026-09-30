@@ -22,12 +22,16 @@ import type * as model_goals from "../model/goals.js";
 import type * as model_habits from "../model/habits.js";
 import type * as model_profiles from "../model/profiles.js";
 import type * as model_projects from "../model/projects.js";
+import type * as model_reminders from "../model/reminders.js";
 import type * as model_sample from "../model/sample.js";
 import type * as model_shared from "../model/shared.js";
 import type * as model_tasks from "../model/tasks.js";
 import type * as model_week from "../model/week.js";
 import type * as profiles from "../profiles.js";
 import type * as projects from "../projects.js";
+import type * as pushClient from "../pushClient.js";
+import type * as pushTokens from "../pushTokens.js";
+import type * as reminders from "../reminders.js";
 import type * as service from "../service.js";
 import type * as serviceAuth from "../serviceAuth.js";
 import type * as serviceInternal from "../serviceInternal.js";
@@ -56,12 +60,16 @@ declare const fullApi: ApiFromModules<{
   "model/habits": typeof model_habits;
   "model/profiles": typeof model_profiles;
   "model/projects": typeof model_projects;
+  "model/reminders": typeof model_reminders;
   "model/sample": typeof model_sample;
   "model/shared": typeof model_shared;
   "model/tasks": typeof model_tasks;
   "model/week": typeof model_week;
   profiles: typeof profiles;
   projects: typeof projects;
+  pushClient: typeof pushClient;
+  pushTokens: typeof pushTokens;
+  reminders: typeof reminders;
   service: typeof service;
   serviceAuth: typeof serviceAuth;
   serviceInternal: typeof serviceInternal;
@@ -96,4 +104,6 @@ export declare const internal: FilterApi<
   FunctionReference<any, "internal">
 >;
 
-export declare const components: {};
+export declare const components: {
+  pushNotifications: import("@convex-dev/expo-push-notifications/_generated/component.js").ComponentApi<"pushNotifications">;
+};
