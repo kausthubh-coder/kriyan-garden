@@ -44,3 +44,12 @@ export const remove = mutation({
     return model.remove(ctx, ownerId, args);
   },
 });
+
+export const reorder = mutation({
+  args: { ids: v.array(v.id("areas")) },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const ownerId = await requireOwnerId(ctx);
+    return model.reorder(ctx, ownerId, args);
+  },
+});

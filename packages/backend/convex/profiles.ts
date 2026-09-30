@@ -6,11 +6,20 @@ import { requireOwnerId } from "./model/shared";
 import { seedSample as seed } from "./model/sample";
 
 export const seedSample = mutation({
-  args: { today: v.string() },
+  args: { today: v.string(), replace: v.optional(v.boolean()) },
   returns: V.profile,
   handler: async (ctx, args) => {
     const ownerId = await requireOwnerId(ctx);
     return seed(ctx, ownerId, args);
+  },
+});
+
+export const saveOnboarding = mutation({
+  args: { step: v.optional(v.number()), drafts: v.optional(v.record(v.string(), v.string())) },
+  returns: V.profile,
+  handler: async (ctx, args) => {
+    const ownerId = await requireOwnerId(ctx);
+    return model.saveOnboarding(ctx, ownerId, args);
   },
 });
 

@@ -52,7 +52,7 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
   const rawView =
       pathname === "/app/welcome"
         ? "onboarding"
-        : pathname === "/app/settings"
+        : pathname.startsWith("/app/settings")
           ? "settings"
           : (params.get("view") ?? "day"),
     view = (
@@ -356,24 +356,21 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
         data-skeleton={planner.showSkeleton}
         data-welcome="true"
       >
-        {planner.loading || !clock ? (
-          <main className={s.page}>
-            <p role="status">{planner.error || "Loading setup."}</p>
-            {planner.error && (
-              <button className={s.f} onClick={planner.retry}>
-                Retry loading
-              </button>
-            )}
-          </main>
-        ) : (
-          <Onboarding
-            areas={areas}
-            projects={projects}
-            events={planner.events ?? []}
-            today={clock.today}
-            finish={finish}
-          />
-        )}
+        <Onboarding
+          key={planner.profile?._id ?? "loading"}
+          areas={areas}
+          projects={projects}
+          events={planner.events ?? []}
+          goals={goals}
+          tasks={tasks}
+          profile={planner.profile ?? undefined}
+          today={clock?.today ?? ""}
+          now={clock?.minutes ?? 0}
+          loading={planner.loading || !clock}
+          error={planner.error}
+          retry={planner.retry}
+          finish={finish}
+        />
       </div>
     );
   }
@@ -486,23 +483,23 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
             )
           ) : view === "goals" ? (
             viewProps && <GoalsView {...viewProps} openGoal={openGoal} />
-          ) : planner.profile && !planner.loading ? (
+          ) : (
             <Settings
               areas={areas}
               projects={projects}
               events={planner.events ?? []}
               habits={planner.habits ?? []}
-              profile={planner.profile}
+              profile={planner.profile ?? undefined}
+              tasks={tasks}
+              loading={planner.loading}
+              error={planner.error}
+              retry={planner.retry}
               today={clock.today}
               reset={() => {
                 planner.retry();
                 router.replace("/app/welcome");
               }}
             />
-          ) : (
-            <main className={s.page}>
-              <p role="status">Loading settings.</p>
-            </main>
           )
         ) : (
           <main className={s.page}>

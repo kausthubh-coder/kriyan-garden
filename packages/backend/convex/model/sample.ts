@@ -105,11 +105,26 @@ const taskRows: readonly [
 export async function seedSample(
   ctx: MutationCtx,
   ownerId: string,
-  args: { today: string },
+  args: { today: string; replace?: boolean },
 ) {
   const today = date(args.today),
     profile = await profiles.ensure(ctx, ownerId, {});
   if (profile.onboardingComplete) return profile;
+  if (args.replace) {
+    // Replacement is one transaction. Bound the read/write count and never
+    // leave a delayed reset capable of deleting newly created sample rows.
+    const tables = ["reminderJobs", "habitLogs", "tasks", "milestones", "projects", "goals", "events", "habits", "areas"] as const;
+    const batches = await Promise.all(tables.map((table) => ctx.db.query(table).withIndex("by_owner", (q) => q.eq("ownerId", ownerId)).take(2001)));
+    if (batches.some((rows) => rows.length > 2000) || batches.reduce((n, rows) => n + rows.length, 0) > 4000)
+      throw new Error("There is too much data to replace during setup. Keep your planner or reset it in settings.");
+    for (const rows of batches) for (const row of rows) {
+      if ("scheduledId" in row && row.state === "pending" && row.scheduledId) await ctx.scheduler.cancel(row.scheduledId);
+      await ctx.db.delete(row._id);
+    }
+    for (const [name, color] of [["School", "blue"], ["Business", "orange"], ["Life", "green"]] as const)
+      await areas.create(ctx, ownerId, { name, color });
+    await ctx.db.patch(profile._id, { onboardingDraft: {}, onboardingStep: 1 });
+  }
   for (const table of [
     "tasks",
     "projects",

@@ -211,139 +211,86 @@ test("goals save number progress, milestones and task progress", async ({
       .getByRole("progressbar"),
   ).toHaveAttribute("aria-valuenow", "100");
 });
-test("settings saves preferences and enforces the area deletion refusal", async ({
+test("settings inline saves, area refusal, reorder, classes, habits and planning", async ({
   page,
 }) => {
-  await page.goto("/app/settings");
-  const areas = page
-    .locator("section")
-    .filter({ has: page.getByRole("heading", { name: "Areas", exact: true }) });
-  await areas.getByLabel("New area name").fill("Work");
-  await areas.getByRole("button", { name: "Add area", exact: true }).click();
-  await expect(areas.getByLabel("Area name", { exact: true })).toHaveCount(4);
-  const row = areas.locator("form").nth(3);
-  await row.getByLabel("Area name", { exact: true }).fill("Work plans");
-  await expect(row.getByRole("radio")).toHaveCount(8);
-  const orange = row.getByRole("radio", { name: "Orange", exact: true });
-  await orange.check();
-  await expect(orange.locator("..")).toHaveAttribute("title", "Orange");
-  const swatch = orange.locator("..").locator("span");
-  await expect(swatch).toHaveCSS("width", "32px");
-  await expect(swatch).toHaveCSS("height", "32px");
-  await row.getByRole("button", { name: "Save area" }).click();
+  await page.goto("/app/settings/areas");
+  await page.getByRole("button", { name: "Add an area", exact: true }).click();
+  await page.getByLabel("New area name").fill("Work plans");
+  await page.getByLabel("New area name").press("Enter");
+  await page.getByRole("button", { name: "Work plans", exact: true }).click();
+  await page.getByRole("radio", { name: "Orange", exact: true }).check();
+  const areaInput = page.getByLabel("Area name", { exact: true });
+  await areaInput.fill("Client plans");
+  await areaInput.press("Tab");
   await expect(
-    row.getByRole("button", { name: "Move Work plans up" }),
+    page.getByRole("button", { name: "Client plans", exact: true }),
   ).toBeVisible();
   await page
-    .getByRole("navigation", { name: "Settings sections" })
-    .getByRole("button", { name: "Projects and courses", exact: true })
-    .click();
-  const projects = page.locator("section").filter({
-    has: page.getByRole("heading", {
-      name: "Projects and courses",
-      exact: true,
-    }),
-  });
-  await projects.getByLabel("New project or course").fill("Project review");
-  await projects
-    .getByRole("combobox", { name: "Area", exact: true })
-    .selectOption({ label: "Work plans" });
-  await projects
-    .getByRole("button", { name: "Add project", exact: true })
-    .click();
-  await expect(projects.getByLabel("Name", { exact: true })).toHaveValue(
-    "Project review",
+    .getByRole("button", {
+      name: "Reorder Client plans. Use arrow keys to move.",
+    })
+    .focus();
+  await page.keyboard.press("ArrowUp");
+  await expect(page.locator("[data-area-row]").nth(2)).toContainText(
+    "Client plans",
   );
-  await page
-    .getByRole("navigation", { name: "Settings sections" })
-    .getByRole("button", { name: "Areas", exact: true })
-    .click();
-  await row.getByRole("button", { name: "Delete area" }).click();
-  await expect(areas.getByRole("alert")).toContainText("Area is in use");
-  await page
-    .getByRole("navigation", { name: "Settings sections" })
-    .getByRole("button", { name: "Projects and courses", exact: true })
-    .click();
-  await projects.getByRole("button", { name: "Delete project" }).click();
-  await expect(projects.getByLabel("Name", { exact: true })).toHaveCount(0);
-  await page
-    .getByRole("navigation", { name: "Settings sections" })
-    .getByRole("button", { name: "Areas", exact: true })
-    .click();
-  await row.getByRole("button", { name: "Move Work plans up" }).click();
-  await expect(
-    areas.getByLabel("Area name", { exact: true }).nth(2),
-  ).toHaveValue("Work plans");
-  await areas.getByRole("button", { name: "Move Work plans down" }).click();
-  await expect(
-    areas.getByLabel("Area name", { exact: true }).nth(3),
-  ).toHaveValue("Work plans");
-  await row.getByRole("button", { name: "Delete area" }).click();
-  await expect(areas.getByLabel("Area name", { exact: true })).toHaveCount(3);
-  await page
-    .getByRole("navigation", { name: "Settings sections" })
-    .getByRole("button", { name: "Classes and meetings", exact: true })
-    .click();
-  const meetings = page.locator("section").filter({
-    has: page.getByRole("heading", {
-      name: "Classes and meetings",
-      exact: true,
-    }),
+  await page.goto("/app/settings/projects");
+  const addRows = page.getByRole("button", {
+    name: "Add a project or course",
+    exact: true,
   });
-  await meetings.getByLabel("New class or meeting").fill("Weekly review");
-  await meetings.getByRole("checkbox", { name: "Mon", exact: true }).check();
-  await meetings.getByLabel("Location").fill("Library");
-  await meetings.getByRole("button", { name: "Add meeting" }).click();
-  await expect(meetings.getByLabel("Meeting title")).toHaveValue(
-    "Weekly review",
-  );
-  const meeting = meetings.locator("form").first();
-  await meeting.getByLabel("Meeting title").fill("Course review");
-  await meeting.getByRole("button", { name: "Save meeting" }).click();
-  await expect(meeting.getByRole("status")).toContainText("Changes saved.");
-  await meeting.getByRole("button", { name: "Delete meeting" }).click();
-  await expect(meetings.getByLabel("Meeting title")).toHaveCount(0);
+  await addRows.nth(2).click();
   await page
-    .getByRole("navigation", { name: "Settings sections" })
-    .getByRole("button", { name: "Habits", exact: true })
-    .click();
-  const habits = page.locator("section").filter({
-    has: page.getByRole("heading", { name: "Habits", exact: true }),
-  });
-  await habits.getByLabel("New habit").fill("Read daily");
-  await habits.getByRole("button", { name: "Add habit" }).click();
-  await expect(habits.getByLabel("Habit title")).toHaveValue("Read daily");
-  const habit = habits.locator("form").first();
-  await habit.getByLabel("Weekly target").fill("5");
-  await habit.getByRole("button", { name: "Save habit" }).click();
-  await expect(habit.getByRole("status")).toContainText("Changes saved.");
-  await habit.getByRole("button", { name: "Delete habit" }).click();
-  await expect(habits.getByLabel("Habit title")).toHaveCount(0);
+    .getByLabel("New project or course in Client plans")
+    .fill("Project review");
+  await page.getByLabel("New project or course in Client plans").press("Enter");
+  await page.goto("/app/settings/areas");
+  await page.getByRole("button", { name: "Client plans", exact: true }).click();
+  await page.getByRole("button", { name: "Delete area", exact: true }).click();
+  await expect(page.locator("main").getByRole("alert")).toContainText("Area is in use");
+  await page.goto("/app/settings/classes");
   await page
-    .getByRole("navigation", { name: "Settings sections" })
-    .getByRole("button", { name: "Planning", exact: true })
+    .getByRole("button", { name: "Add a class or meeting", exact: true })
     .click();
-  await page.getByLabel("Daily capacity in minutes").fill("480");
-  await page.getByLabel("Day start hour").fill("6");
-  await page.getByLabel("Day end hour").fill("22");
-  await page.getByRole("button", { name: "Save preferences" }).click();
+  await page.getByLabel("New class or meeting").fill("Weekly review");
+  await page.getByRole("button", { name: "Mon", exact: true }).click();
+  await page.getByLabel("Place, optional").fill("Library");
+  await page.getByRole("button", { name: "Add class", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Weekly review", exact: true })
+    .click();
+  await page.getByLabel("Meeting title").fill("Course review");
+  await page.getByLabel("Meeting title").press("Tab");
   await expect(
-    page.getByRole("status").filter({ hasText: "Changes saved." }).last(),
+    page.getByRole("button", { name: "Course review", exact: true }),
   ).toBeVisible();
+  await page.goto("/app/settings/habits");
+  await page.getByRole("button", { name: "Add a habit", exact: true }).click();
+  await page.getByLabel("New habit").fill("Read daily");
+  await page.getByRole("button", { name: "Add habit", exact: true }).click();
+  await page.getByRole("button", { name: "Read daily", exact: true }).click();
+  await page
+    .getByRole("group", { name: "Weekly target", exact: true })
+    .getByRole("button", { name: "7", exact: true })
+    .click();
+  await expect(page.getByText("7 of 7 a week", { exact: true })).toBeVisible();
+  await page.goto("/app/settings/planning");
+  await page.locator('[data-property="capacity"]').click();
+  await page.getByRole("button", { name: "8h", exact: true }).click();
+  await page.locator('[data-property="start"]').click();
+  await page.getByLabel("Day starts", { exact: true }).fill("6");
+  await page.getByLabel("Day starts", { exact: true }).press("Tab");
   await page.reload();
-  await page
-    .getByRole("navigation", { name: "Settings sections" })
-    .getByRole("button", { name: "Planning", exact: true })
-    .click();
-  await expect(page.getByLabel("Daily capacity in minutes")).toHaveValue("480");
-  await expect(page.getByLabel("Day start hour")).toHaveValue("6");
-  await expect(page.getByLabel("Day end hour")).toHaveValue("22");
-  await page
-    .getByRole("navigation", { name: "Settings sections" })
-    .getByRole("button", { name: "Account", exact: true })
-    .click();
+  await expect(page.locator('[data-property="capacity"]')).toContainText("8h");
+  await expect(page.locator('[data-property="start"]')).toContainText("06:00");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/app/settings");
+  await page.getByRole("link", { name: "Planning", exact: true }).click();
+  await expect(page).toHaveURL(/settings\/planning$/);
+  await page.getByRole("link", { name: "Settings", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "Account", exact: true }),
+    page.getByRole("navigation", { name: "Settings sections" }),
   ).toBeVisible();
 });
 

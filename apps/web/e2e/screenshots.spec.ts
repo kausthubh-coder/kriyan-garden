@@ -28,12 +28,12 @@ for (const [width, height] of [
     ).toBeVisible();
     // Existing dedicated prototype fixture users may predate onboarding.
     if (
-      await page.getByRole("button", { name: "Continue setup" }).isVisible()
+      await page.getByRole("button", { name: "Continue" }).isVisible()
     ) {
-      await page.getByRole("button", { name: "Continue setup" }).click();
+      await page.getByRole("button", { name: "Continue" }).click();
       for (let i = 0; i < 3; i++)
-        await page.getByRole("button", { name: "Skip step" }).click();
-      await page.getByRole("button", { name: "Finish setup" }).click();
+        await page.getByRole("button", { name: "Skip" }).click();
+      await page.getByRole("button", { name: "Open my planner" }).click();
     }
     await expect(page.locator('[aria-busy="false"]').first()).toBeVisible();
     const backend = email ? await backendFor(page) : null;
@@ -95,9 +95,9 @@ for (const [width, height] of [
         "Habits",
         "Planning",
         "Account",
-        "Danger zone",
+        "Reset everything",
       ]) {
-        await index.getByRole("button", { name, exact: true }).click();
+        await page.goto(`/app/settings/${({ Areas: "areas", "Projects and courses": "projects", "Classes and meetings": "classes", Habits: "habits", Planning: "planning", Account: "account", "Reset everything": "reset" } as Record<string, string>)[name]}`);
         await expect(
           page.getByRole("heading", { name, exact: true }),
         ).toBeVisible();

@@ -1,4 +1,4 @@
-import { relativeDay } from "@kriyan/core";
+import { relativeDay, timeValue } from "@kriyan/core";
 import { timeOf, layout } from "@kriyan/core";
 import { Check } from "./Check";
 import { taskKeys } from "./Tray";
@@ -32,6 +32,7 @@ export function TimelineBlock({
   today,
   open,
   toggle,
+  static: staticProp = false,
 }: {
   block: Block;
   startHour: number;
@@ -42,7 +43,10 @@ export function TimelineBlock({
   today: string;
   open?: (task: Task, section?: PanelSection) => void;
   toggle?: (task: Task) => void;
+  /** Presentation only: no drag, click, keyboard or tab stop. Also implied when `open` is absent. */
+  static?: boolean;
 }) {
+  const isStatic = staticProp || !open;
   const { task, event, start, end, column, columns } = block;
   const duration = task ? task.durationMinutes : end - start;
   const visibleStart = Math.max(start, startHour * 60);
@@ -77,8 +81,8 @@ export function TimelineBlock({
           </span>
         </div>
         <time>
-          {event.startTime}
-          {columns === 1 ? ` to ${event.endTime}` : ""}
+          {timeValue(event.startTime, null)}
+          {columns === 1 ? ` to ${timeValue(event.endTime, null)}` : ""}
         </time>
       </div>
     );
@@ -93,14 +97,14 @@ export function TimelineBlock({
   return (
     <div
       data-task={task._id}
-      data-drag={open ? "move" : undefined}
+      data-drag={isStatic ? undefined : "move"}
       className={`${s.blk} ${duration === null ? s.pt : ""} ${height < 46 ? s.sm : ""} ${task.status === "completed" ? s.isdone : ""}`}
       style={style}
-      tabIndex={open ? 0 : undefined}
+      tabIndex={isStatic ? undefined : 0}
       role="group"
       aria-label={`${task.title}, ${task.time}${duration ? ` to ${timeOf(end)}` : ", no length"}`}
-      onClick={open ? () => open(task) : undefined}
-      onKeyDown={open ? (event) => taskKeys(event, task, open) : undefined}
+      onClick={isStatic || !open ? undefined : () => open(task)}
+      onKeyDown={isStatic || !open ? undefined : (event) => taskKeys(event, task, open)}
     >
       <Check task={task} toggle={toggle} />
       <div className={s.tx}>
@@ -108,15 +112,17 @@ export function TimelineBlock({
         <span>{sub}</span>
       </div>
       <time>
-        {task.time}
-        {duration && columns === 1 ? ` to ${timeOf(end)}` : ""}
+        {timeValue(task.time, null)}
+        {duration && columns === 1 ? ` to ${timeValue(timeOf(end), null)}` : ""}
       </time>
-      {open && <i
-        className={s.rz}
-        data-resize="true"
-        aria-hidden="true"
-        title="Drag to change the length. Press L for length options."
-      />}
+      {!isStatic && (
+        <i
+          className={s.rz}
+          data-resize="true"
+          aria-hidden="true"
+          title="Drag to change the length. Press L for length options."
+        />
+      )}
     </div>
   );
 }

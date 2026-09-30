@@ -152,6 +152,19 @@ export function remindersValue(reminders: readonly Reminder[]): string {
 export const countText = (count: number, singular: string, plural = `${singular}s`): string =>
   `${count} ${count === 1 ? singular : plural}`;
 
+/** A named city and its current offset, including daylight saving. */
+export function timezoneValue(timezone: string, at: number = Date.now()): string {
+  const city = timezone.split("/").at(-1)?.replace(/_/g, " ") ?? timezone;
+  const offset = new Intl.DateTimeFormat("en", { timeZone: timezone, timeZoneName: "shortOffset" }).formatToParts(at).find((part) => part.type === "timeZoneName")?.value ?? "GMT";
+  return `${city} (${offset.replace("GMT", "UTC").replace("-", "−")})`;
+}
+
+/** Monday-first summary of a class or meeting. */
+export function eventValue(event: { weekdays: readonly number[]; startTime: string; endTime: string; location: string; untilDate: string | null }): string {
+  const days = [...event.weekdays].sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7)).map((day) => (WEEKDAYS[day] ?? "").slice(0, 3)).join(", ");
+  return `${days} ${timeValue(event.startTime, null)} to ${timeValue(event.endTime, null)}${event.location ? `, ${event.location}` : ""}${event.untilDate ? `, until ${shortDate(event.untilDate).slice(4)}` : ""}`;
+}
+
 /** Day summary line: "7 tasks left, 4h 5m planned, 2 with no length." or "Nothing planned." */
 export function daySummary(input: {
   left: number;

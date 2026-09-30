@@ -62,8 +62,8 @@ export async function update(
   if (finite(next.dailyCapacityMinutes) < 1 || next.dailyCapacityMinutes > 1440)
     throw new Error("Invalid capacity. Choose 1 to 1440 minutes.");
   if (
-    !Number.isInteger(next.dayStartHour) ||
-    !Number.isInteger(next.dayEndHour) ||
+    !Number.isInteger(next.dayStartHour * 60) ||
+    !Number.isInteger(next.dayEndHour * 60) ||
     next.dayStartHour < 0 ||
     next.dayEndHour > 24 ||
     next.dayStartHour >= next.dayEndHour
@@ -82,6 +82,18 @@ export const completeOnboarding = (
   ownerId: string,
   _args = {},
 ) => update(ctx, ownerId, { patch: { onboardingComplete: true } });
+
+export async function saveOnboarding(ctx: MutationCtx, ownerId: string, args: { step?: number; drafts?: Record<string, string> }) {
+  const current = await get(ctx, ownerId);
+  if (!current) throw new Error("Profile not found. Reload setup and try again.");
+  if (args.step !== undefined && (!Number.isInteger(args.step) || args.step < 1 || args.step > 5))
+    throw new Error("Invalid setup step. Choose a step from 1 to 5.");
+  const draft = { ...current.onboardingDraft, ...args.drafts };
+  if (Object.keys(draft).length > 100 || Object.entries(draft).some(([key, value]) => key.length > 100 || value.length > 1000))
+    throw new Error("Setup answer is too long. Shorten it and try again.");
+  await ctx.db.patch(current._id, { onboardingDraft: draft, ...(args.step !== undefined ? { onboardingStep: args.step } : {}), updatedAt: Date.now() });
+  return { ...current, onboardingDraft: draft, ...(args.step !== undefined ? { onboardingStep: args.step } : {}) };
+}
 const resetRef = makeFunctionReference<
   "mutation",
   { ownerId: string; upTo: number },
