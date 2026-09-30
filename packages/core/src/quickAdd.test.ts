@@ -1,3 +1,5 @@
+import { quickAddCases } from "./quickAddCases";
+import { quickAddGrammar } from "./quickAddGrammar";
 import { describe, expect, test } from "bun:test";
 import { addDays, getWeekday, parse, toIsoDate, weekdayIndex } from "./index";
 import type { QuickAddContext, QuickAddResult } from "./index";
@@ -24,26 +26,12 @@ const defaults: QuickAddResult = {
 };
 
 describe("prototype quick add grammar", () => {
-  const cases: { text: string; expected: Partial<QuickAddResult> }[] = [
-    { text: "gym tomorrow 7am", expected: { title: "Gym", date: "2026-09-30", time: "07:00" } },
-    { text: "call amma", expected: { title: "Call amma" } },
-    { text: "essay fri #econ 2h", expected: { title: "Essay", areaId: "school", projectId: "econ", date: "2026-10-02", durationMinutes: 120 } },
-    { text: "read for 20 minutes at 9", expected: { title: "Read for 20 minutes", time: "09:00" } },
-    { text: "standup 9:30 15m #biz", expected: { title: "Standup", areaId: "biz", time: "09:30", durationMinutes: 15 } },
-    { text: "revise 1h30m tonight", expected: { title: "Revise", date: "2026-09-29", durationMinutes: 90 } },
-    { text: "buy milk later", expected: { title: "Buy milk", date: null } },
-    { text: "lunch at 1", expected: { title: "Lunch", time: "13:00" } },
-    { text: "report tue", expected: { title: "Report", date: "2026-10-06" } },
-    { text: "", expected: { title: "" } },
-    { text: " \t\n ", expected: { title: "" } },
-    { text: "study on Wednesday 1.5hrs", expected: { title: "Study", date: "2026-09-30", durationMinutes: 90 } },
-    { text: "call at 12am", expected: { title: "Call", time: "00:00" } },
-    { text: "lunch 12pm", expected: { title: "Lunch", time: "12:00" } },
-    { text: "read #unknown", expected: { title: "Read #unknown" } },
-    { text: "essay #ECON101", expected: { title: "Essay", projectId: "econ", areaId: "school" } },
-    { text: "standup #business", expected: { title: "Standup", areaId: "biz" } },
-    { text: "call today fri", expected: { title: "Call fri", date: "2026-09-29" } },
-  ];
+  for (const row of quickAddGrammar) for (const token of row.tokens) {
+    test(`documented token ${token}`, () => {
+      expect(parse(`task ${token}${row.suffix}`, context)).toEqual({ ...defaults, title: "Task", ...row.expected });
+    });
+  }
+  const cases = quickAddCases;
 
   for (const { text, expected } of cases) {
     test(JSON.stringify(text), () => {

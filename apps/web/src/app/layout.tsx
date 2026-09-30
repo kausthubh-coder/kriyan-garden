@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
-import { Schibsted_Grotesk } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
-const font = Schibsted_Grotesk({ variable: "--font-schibsted", subsets: ["latin"], weight: ["400", "500", "600", "700"] });
+const font = localFont({ src: "../../public/fonts/SchibstedGrotesk.woff2", variable: "--font-schibsted", weight: "400 700", display: "swap" });
 
 export const metadata: Metadata = {
-  title: "Kriyan",
+  metadataBase: new URL("https://kriyan.app"),
+  title: { default: "Kriyan", template: "%s | Kriyan" },
   description: "A planner for tasks and goals across School, Business and Life.",
+  openGraph: { type: "website", siteName: "Kriyan", title: "Kriyan", description: "Your day on one timeline." },
+  twitter: { card: "summary_large_image" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

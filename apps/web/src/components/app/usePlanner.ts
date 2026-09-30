@@ -21,7 +21,7 @@ export function useClock(timezone?: string) {
   }, [timezone]);
   return clock;
 }
-export function usePlanner(selectedDate: string | null) {
+export function useConvexPlanner(selectedDate: string | null) {
   const client = useConvex(),
     { isAuthenticated } = useConvexAuth();
   const ensure = useMutation(api.profiles.ensure);
@@ -131,7 +131,6 @@ export function usePlanner(selectedDate: string | null) {
     return () => clearTimeout(timer);
   }, [loading]);
   return {
-    client,
     clock,
     profile,
     areas,

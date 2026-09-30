@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
-import { useMutation } from "convex/react";
-import { api } from "@kriyan/backend/convex/_generated/api";
+import { useGoalTransport } from "./dataAccess";
 import type { Id } from "@kriyan/backend/convex/_generated/dataModel";
 import { Dialog } from "./Dialog";
 import { Icon } from "./Icon";
@@ -20,11 +19,8 @@ export function GoalPanel({
   close: () => void;
   remove: (goal: Goal) => Promise<void>;
 }) {
-  const update = useMutation(api.goals.update),
-    createMilestone = useMutation(api.goals.createMilestone),
-    updateMilestone = useMutation(api.goals.updateMilestone),
-    removeMilestone = useMutation(api.goals.removeMilestone),
-    action = useFormAction();
+  const { update, createMilestone, updateMilestone, removeMilestone } = useGoalTransport();
+  const action = useFormAction();
   const [kind, setKind] = useState(goal.metric.kind);
   return (
     <Dialog

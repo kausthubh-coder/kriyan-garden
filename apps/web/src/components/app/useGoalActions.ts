@@ -1,13 +1,11 @@
 "use client";
 import { useCallback, useState } from "react";
-import { useMutation } from "convex/react";
-import { api } from "@kriyan/backend/convex/_generated/api";
+import { useGoalTransport } from "./dataAccess";
 import type { Goal } from "./types";
 import type { ToastMessage } from "./Toast";
 
 export function useGoalActions(close: () => void) {
-  const remove = useMutation(api.goals.deleteForUndo),
-    restore = useMutation(api.goals.restore);
+  const { deleteForUndo: remove, restore } = useGoalTransport();
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const [error, setError] = useState("");
   const [failedUndo, setFailedUndo] = useState<(() => Promise<void>) | null>(

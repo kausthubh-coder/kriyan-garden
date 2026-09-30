@@ -1,11 +1,8 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import { useConvexAuth, useQuery } from "convex/react";
-import { api } from "@kriyan/backend/convex/_generated/api";
-import type { Id } from "@kriyan/backend/convex/_generated/dataModel";
 import { addDays, type QuickAddResult } from "@kriyan/core";
-import { usePlanner } from "./usePlanner";
+import { usePlannerData, useSelectedTask, useSelectedGoal } from "./dataAccess";
 import { useTaskActions } from "./useTaskActions";
 import { Rail } from "./Rail";
 import { DayView } from "./DayView";
@@ -40,7 +37,7 @@ const views: readonly string[] = [
   "settings",
 ];
 const emptyAreas: Area[] = [];
-export function AppShell() {
+export function AppShell({ demo = false }: { demo?: boolean }) {
   const params = useSearchParams(),
     router = useRouter(),
     pathname = usePathname();
@@ -57,11 +54,10 @@ export function AppShell() {
         : pathname === "/app/settings"
           ? "settings"
           : (params.get("view") ?? "day"),
-    view = (views.includes(rawView) ? rawView : "day") as View;
-  const planner = usePlanner(validDate),
+    view = (views.includes(rawView) && !(demo && ["settings", "onboarding"].includes(rawView)) ? rawView : "day") as View;
+  const planner = usePlannerData(validDate),
     clock = planner.clock,
-    date = validDate ?? clock?.today ?? null,
-    { isAuthenticated } = useConvexAuth();
+    date = validDate ?? clock?.today ?? null;
   const [overlay, setOverlay] = useState<"add" | "palette" | "help" | null>(
       null,
     ),
@@ -81,14 +77,14 @@ export function AppShell() {
   }, [pathname]);
   useEffect(() => {
     if (
-      planner.profile &&
+      !demo && planner.profile &&
       !planner.profile.onboardingComplete &&
       pathname !== "/app/welcome"
     )
       router.replace("/app/welcome");
     if (planner.profile?.onboardingComplete && pathname === "/app/welcome")
       router.replace("/app");
-  }, [planner.profile, pathname, router]);
+  }, [planner.profile, pathname, router, demo]);
   const navigateUrl = useCallback(
     (patch: Record<string, string | null>) => {
       const next = new URLSearchParams(window.location.search);
@@ -98,15 +94,15 @@ export function AppShell() {
       }
       const view = next.get("view");
       const target =
-        view === "settings"
+        demo ? "/demo" : view === "settings"
           ? "/app/settings"
           : view === "onboarding"
             ? "/app/welcome"
             : "/app";
-      if (target !== "/app") next.delete("view");
+      if (!demo && target !== "/app") next.delete("view");
       router.push(`${target}?${next.toString()}`, { scroll: false });
     },
-    [router],
+    [router, demo],
   );
   const close = useCallback(() => {
     setOverlay(null);
@@ -131,14 +127,11 @@ export function AppShell() {
         area.name.toLowerCase() === rawArea.toLowerCase(),
     )?._id ?? "all";
   const selectedGoalId = params.get("goal");
-  const selectedGoal = goals.find((goal) => goal._id === selectedGoalId);
+  const selectedGoalRow = useSelectedGoal(selectedGoalId, planner.goals);
+  const listedGoal = goals.find((goal) => goal._id === selectedGoalId);
+  const selectedGoal = selectedGoalRow && listedGoal ? { ...listedGoal, ...selectedGoalRow } : undefined;
   const selectedId = params.get("task");
-  const selected = useQuery(
-    api.tasks.get,
-    selectedId && isAuthenticated && !selectedId.startsWith("optimistic-")
-      ? { id: selectedId as Id<"tasks"> }
-      : "skip",
-  );
+  const selected = useSelectedTask(selectedId);
   const open = useCallback(
     (task: Task, section?: PanelSection) => {
       if (task._id.startsWith("optimistic-")) return;
@@ -161,10 +154,11 @@ export function AppShell() {
   );
   const navigate = useCallback(
     (view: View) => {
+      if (demo && (view === "settings" || view === "onboarding")) return;
       setOverlay(null);
       navigateUrl({ view, task: null, goal: null });
     },
-    [navigateUrl],
+    [navigateUrl, demo],
   );
   const add = useCallback(
     (text = "") => {

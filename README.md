@@ -1,69 +1,47 @@
 # Kriyan
 
-Kriyan is an open-source planner for tasks and goals across School, Business and Life. The web app uses Clerk for identity, Convex for isolated realtime data, and a Clerk OAuth-protected MCP endpoint for AI clients. Task length is optional.
+Your day on one timeline. Kriyan is an open-source planner for school, business and life. Tasks with a time sit on the timeline. Tasks without one wait beside it. Length is optional.
 
-## Repository layout
+![The real Kriyan Day view with sample tasks](apps/web/public/landing/day.webp)
 
-```text
-apps/web/          Next.js 16 web app, public assets and MCP routes
-packages/backend/ Convex schema, functions and shared operations
-packages/core/    Pure TypeScript quick-add parser and calendar date helpers
-docs/             Implementation plan and approved design prototype
-```
+[Open Kriyan](https://app.kriyan.app/app) | [Try the public demo](https://kriyan.app/demo) | [Read the docs](docs/site/index.md)
 
-The repository uses Bun workspaces with hoisted dependencies. React and React DOM are pinned to 19.2.3. The backend package exports its generated API and data model through `@kriyan/backend/convex/_generated/api` and `@kriyan/backend/convex/_generated/dataModel`.
+## Four ways to plan
 
-## Local development
+- **Web:** Day, List, Week and Goals, with quick add, a timeline and task details.
+- **Android:** In development. The [latest GitHub release route](https://github.com/kausthubh-coder/kriyan-garden/releases/latest) is where an APK will appear when available. No verified APK is included here.
+- **MCP:** A remote endpoint for OAuth-capable AI clients. [Setup drafts](docs/site/mcp.md) await brief 05 integration and client verification.
+- **CLI:** A planned thin client over the same API. [CLI docs](docs/site/cli.md) await brief 05; npm publication is not claimed.
 
-Use Bun 1.3.14. Run these commands from the repository root:
+All four surfaces use one Convex backend and Clerk identity. The public demo uses the real web components with an isolated in-memory store. It never writes to your account and resets on reload.
 
-1. Install dependencies with `bun install`.
-2. Copy `apps/web/.env.example` to `apps/web/.env.local` and fill in your Clerk and Convex configuration. Environment files remain ignored by Git.
-3. Start the backend: `cd packages/backend && bunx convex dev`. The first run links the folder to your Convex project and writes `CONVEX_DEPLOYMENT` to `packages/backend/.env.local`.
-4. In another terminal, start the web app with `bun run dev`.
+## Run locally
 
-Open [http://localhost:3000](http://localhost:3000). Next.js loads the web app's environment from `apps/web/.env.local`.
+Use Bun 1.3.14. Run `bun install`, configure your own projects using `apps/web/.env.example`, and run `bun run dev`. Open localhost:3000. The public landing and demo need no signed-in account. Read [self-hosting](docs/site/self-hosting.md) for Clerk, Convex, Vercel and Android build requirements.
 
-## Required configuration
-
-The web app needs `NEXT_PUBLIC_CONVEX_URL`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, the Clerk server key, and `SERVICE_SECRET`. Clerk needs a JWT template named `convex` with `aud` set to `convex`. The Convex deployment needs `CLERK_JWT_ISSUER_DOMAIN` and the same random `SERVICE_SECRET` used by the web server. Keep the service secret in server environments, without a `NEXT_PUBLIC_` prefix. Set `SERVICE_SECRET` in both Convex and the web environment. `MCP_SERVICE_SECRET` is accepted as a temporary fallback; existing local env files are not changed. The signed envelope is `[timestamp, nonce, ownerId, operation, payload]`, with a five-minute window and replay protection.
-
-To configure your Convex deployment, run the following from `packages/backend` with your own values:
-
-```bash
-bunx convex env set CLERK_JWT_ISSUER_DOMAIN https://your-clerk-issuer.example
-bunx convex env set SERVICE_SECRET your-random-secret
-```
-
-## MCP
-
-Connect an OAuth-capable MCP client to `https://kriyan.vercel.app/mcp`.
-
-`kriyan.app` is the public landing page. Product and automation routes redirect to the app host at `kriyan.vercel.app`.
-
-The server advertises OAuth metadata under `/.well-known/`, authenticates through Clerk, and exposes these user-scoped tools:
-
-- `list_tasks`, `get_task`, `create_task`, `update_task`, `complete_task`
-- `list_spaces`, `create_space`
-- `search_notes`
-
-## Commands and verification
-
-Run from the repository root:
-
-```bash
-bun install
-bun run dev
+```sh
+bun run docs:quick-add
 bun run typecheck
 bun run lint
 bun run test
 bun run build
 ```
 
-`dev` and `build` run the web workspace. `typecheck` generates Next.js route types and checks all workspaces. `lint` and `test` run each workspace that defines the corresponding script. The web app defines linting; core defines Bun tests for the parser and date helpers, and backend defines Vitest tests using convex-test. To serve a production build, run `bun run --filter @kriyan/web start`.
+## Repository
 
-GitHub Actions runs installation with `--frozen-lockfile`, typechecking, linting, tests and the web build for pull requests and pushes to `main` or `v2`. The CI build uses fake Convex, Clerk publishable-key and MCP secret placeholders. They permit build-time validation without production credentials; use your own configuration to run the app.
+```text
+apps/web/          Next.js web app, public landing, demo, docs and MCP
+packages/backend/  Convex schema, shared operations and owner-isolation tests
+packages/core/     Parser, dates, planning, goal logic and design tokens
+docs/site/         Public documentation source
+docs/PLAN.md       Implementation plan
+.agents/briefs/    Scoped implementation and verification briefs
+```
+
+Android and CLI workspaces are supplied by parallel implementation briefs. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup and review, [SECURITY.md](SECURITY.md) for private vulnerability reports, and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for community expectations.
+
+The hosted version is free. Your data is yours to export or delete. The production backend region and final account deletion behavior require integration review, as described in the [privacy policy](docs/site/privacy.md).
 
 ## License
 
-MIT
+[MIT](LICENSE). Schibsted Grotesk is distributed under its [SIL Open Font License](apps/web/public/fonts/OFL.txt).

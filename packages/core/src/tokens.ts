@@ -29,10 +29,15 @@ export const namedAreaColors = {
   red: colors["area-red"], yellow: colors["area-yellow"],
   purple: colors["area-purple"], teal: colors["area-teal"], grey: colors["ink-2"],
 } as const;
+/** sRGB equivalents for the social-image renderer, which cannot use OKLCH. */
+export const socialImageTokens = {
+  background: "#121110", ink: "#f3f2ee", wordmarkSize: 96, lineSize: 44,
+  padding: 96, gap: 32,
+} as const;
 export const spacing = [4, 8, 12, 16, 24, 32, 48] as const;
 export const radii = [8, 9, 10, 11, 12, 14, 16] as const;
 export const typeSizes = [
-  11.5, 12, 12.5, 13, 13.5, 14, 14.5, 15, 16, 17, 18, 19, 22, 24, 30, 32, 44,
+  11.5, 12, 12.5, 13, 13.5, 14, 14.5, 15, 16, 17, 18, 19, 22, 24, 30, 32, 40, 44, 64,
 ] as const;
 export const motion = {
   press: 160,

@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
-import { useMutation } from "convex/react";
-import { api } from "@kriyan/backend/convex/_generated/api";
+import { useGoalTransport } from "./dataAccess";
 import type { Id } from "@kriyan/backend/convex/_generated/dataModel";
 import { useFormAction } from "./useFormAction";
 import type { Area } from "./types";
@@ -15,7 +14,7 @@ export function GoalForm({
   today: string;
   saved: () => void;
 }) {
-  const create = useMutation(api.goals.create),
+  const { create } = useGoalTransport(),
     action = useFormAction();
   const [kind, setKind] = useState<"tasks" | "number" | "milestones">("tasks");
   return (

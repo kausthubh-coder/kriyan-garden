@@ -1,54 +1,13 @@
 "use client";
-import { useCallback, useMemo, useState } from "react";
-import { useConvex, useMutation } from "convex/react";
-import { api } from "@kriyan/backend/convex/_generated/api";
+import { useCallback, useState } from "react";
+import { useTaskTransport } from "./dataAccess";
 import type { TaskPatch, TaskCreate } from "@kriyan/backend/convex/validators";
 import type { Task } from "./types";
 import type { ToastMessage } from "./Toast";
-import {
-  cacheTask,
-  optimisticCreate,
-  optimisticPatch,
-  optimisticStatus,
-  taskValues,
-} from "./optimistic";
+import { taskValues } from "./optimistic";
 
 export function useTaskActions(close: () => void) {
-  const client = useConvex();
-  const updateMutation = useMutation(api.tasks.update),
-    createMutation = useMutation(api.tasks.create),
-    completeMutation = useMutation(api.tasks.complete),
-    reopenMutation = useMutation(api.tasks.reopen),
-    removeMutation = useMutation(api.tasks.remove);
-  const update = useMemo(
-    () => updateMutation.withOptimisticUpdate(optimisticPatch),
-    [updateMutation],
-  );
-  const create = useMemo(
-    () => createMutation.withOptimisticUpdate(optimisticCreate),
-    [createMutation],
-  );
-  const complete = useMemo(
-    () =>
-      completeMutation.withOptimisticUpdate((store, args) =>
-        optimisticStatus(store, args.id, "completed"),
-      ),
-    [completeMutation],
-  );
-  const reopen = useMemo(
-    () =>
-      reopenMutation.withOptimisticUpdate((store, args) =>
-        optimisticStatus(store, args.id, "active"),
-      ),
-    [reopenMutation],
-  );
-  const remove = useMemo(
-    () =>
-      removeMutation.withOptimisticUpdate((store, args) =>
-        cacheTask(store, args.id, null),
-      ),
-    [removeMutation],
-  );
+  const { update, create, complete, reopen, remove, listActive } = useTaskTransport();
   const [toast, setToast] = useState<ToastMessage | null>(null),
     [error, setError] = useState("");
   const [failedAction, setFailedAction] = useState<
@@ -96,11 +55,11 @@ export function useTaskActions(close: () => void) {
       const run = async () => {
         const before =
           task.repeat && !done
-            ? await client.query(api.tasks.list, { status: "active" })
+            ? await listActive()
             : [];
         await (done ? reopen : complete)({ id: task._id });
         if (!task.repeat || done) return [];
-        const after = await client.query(api.tasks.list, { status: "active" });
+        const after = await listActive();
         const known = new Set(before.map((row) => row._id));
         return after.filter(
           (row) =>
@@ -130,7 +89,7 @@ export function useTaskActions(close: () => void) {
       });
       void pending.catch((error: unknown) => failure(error, run));
     },
-    [client, complete, reopen, remove, update, show, failure],
+    [listActive, complete, reopen, remove, update, show, failure],
   );
   const deleteTask = useCallback(
     (task: Task) => {
