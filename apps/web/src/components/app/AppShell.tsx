@@ -16,6 +16,8 @@ import { Onboarding } from "./Onboarding";
 import { Settings } from "./Settings";
 import { QuickAdd } from "./QuickAdd";
 import { CommandPalette } from "./CommandPalette";
+import { GoalPanel } from "./GoalPanel";
+import { useGoalActions } from "./useGoalActions";
 import { TaskPanel } from "./TaskPanel";
 import { Toast } from "./Toast";
 import { HelpSheet } from "./HelpSheet";
@@ -23,6 +25,7 @@ import {
   relativeDate,
   type Area,
   type Task,
+  type Goal,
   type View,
   type PanelSection,
 } from "./types";
@@ -108,10 +111,14 @@ export function AppShell() {
   const close = useCallback(() => {
     setOverlay(null);
     setSection(undefined);
-    if (new URLSearchParams(window.location.search).has("task"))
-      navigateUrl({ task: null });
+    if (
+      new URLSearchParams(window.location.search).has("task") ||
+      new URLSearchParams(window.location.search).has("goal")
+    )
+      navigateUrl({ task: null, goal: null });
   }, [navigateUrl]);
   const actions = useTaskActions(close);
+  const goalActions = useGoalActions(close);
   const areas = planner.areas ?? emptyAreas,
     projects = planner.projects ?? [],
     goals = planner.goals ?? [],
@@ -123,6 +130,8 @@ export function AppShell() {
         area._id === rawArea ||
         area.name.toLowerCase() === rawArea.toLowerCase(),
     )?._id ?? "all";
+  const selectedGoalId = params.get("goal");
+  const selectedGoal = goals.find((goal) => goal._id === selectedGoalId);
   const selectedId = params.get("task");
   const selected = useQuery(
     api.tasks.get,
@@ -137,40 +146,57 @@ export function AppShell() {
       setSection(section);
       navigateUrl({
         task: task._id,
+        goal: null,
         ...(task.date ? { date: task.date } : {}),
       });
+    },
+    [navigateUrl],
+  );
+  const openGoal = useCallback(
+    (goal: Goal) => {
+      setOverlay(null);
+      navigateUrl({ goal: goal._id, task: null });
     },
     [navigateUrl],
   );
   const navigate = useCallback(
     (view: View) => {
       setOverlay(null);
-      navigateUrl({ view, task: null });
+      navigateUrl({ view, task: null, goal: null });
     },
     [navigateUrl],
   );
   const add = useCallback(
     (text = "") => {
       if (planner.areas !== undefined && !areas.length) {
-        navigateUrl({ view: "settings", task: null });
+        navigateUrl({ view: "settings", task: null, goal: null });
         return;
       }
       setInitialText(text);
       setOverlay("add");
-      if (new URLSearchParams(window.location.search).has("task"))
-        navigateUrl({ task: null });
+      if (
+        new URLSearchParams(window.location.search).has("task") ||
+        new URLSearchParams(window.location.search).has("goal")
+      )
+        navigateUrl({ task: null, goal: null });
     },
     [navigateUrl, areas.length, planner.areas],
   );
   const palette = useCallback(() => {
     setOverlay("palette");
-    if (new URLSearchParams(window.location.search).has("task"))
-      navigateUrl({ task: null });
+    if (
+      new URLSearchParams(window.location.search).has("task") ||
+      new URLSearchParams(window.location.search).has("goal")
+    )
+      navigateUrl({ task: null, goal: null });
   }, [navigateUrl]);
   const help = useCallback(() => {
     setOverlay("help");
-    if (new URLSearchParams(window.location.search).has("task"))
-      navigateUrl({ task: null });
+    if (
+      new URLSearchParams(window.location.search).has("task") ||
+      new URLSearchParams(window.location.search).has("goal")
+    )
+      navigateUrl({ task: null, goal: null });
   }, [navigateUrl]);
   const setFilter = useCallback(
     (value: string) => {
@@ -180,7 +206,8 @@ export function AppShell() {
     [areas, navigateUrl],
   );
   const goDay = useCallback(
-    (date: string) => navigateUrl({ view: "day", date, task: null }),
+    (date: string) =>
+      navigateUrl({ view: "day", date, task: null, goal: null }),
     [navigateUrl],
   );
   const goToday = useCallback(() => {
@@ -192,6 +219,7 @@ export function AppShell() {
         navigateUrl({
           date: offset ? addDays(date, offset) : clock.today,
           task: null,
+          goal: null,
         });
     },
     [date, clock, navigateUrl],
@@ -207,7 +235,7 @@ export function AppShell() {
         return;
       }
       if (event.key === "Escape") {
-        if (overlay || selectedId) {
+        if (overlay || selectedId || selectedGoalId) {
           event.preventDefault();
           close();
         }
@@ -219,6 +247,8 @@ export function AppShell() {
         view === "onboarding" ||
         view === "settings" ||
         selectedId ||
+        selectedGoalId ||
+        document.querySelector("dialog[open]") ||
         event.ctrlKey ||
         event.metaKey ||
         event.altKey ||
@@ -255,6 +285,7 @@ export function AppShell() {
   }, [
     overlay,
     selectedId,
+    selectedGoalId,
     close,
     palette,
     add,
@@ -364,19 +395,34 @@ export function AppShell() {
             Offline, changes will sync when you reconnect. Keep this tab open.
           </div>
         )}
-        {(planner.error || actions.error) && (
+        {(planner.error || actions.error || goalActions.error) && (
           <div className={s.status} role="alert">
-            {planner.error || actions.error}
+            {planner.error || actions.error || goalActions.error}
             {planner.error ? (
               <button className={s.f} onClick={planner.retry}>
                 Retry loading
               </button>
+            ) : goalActions.error ? (
+              <>
+                <button className={s.f} onClick={goalActions.retryUndo}>
+                  Retry undo
+                </button>
+                <button className={s.f} onClick={goalActions.clearError}>
+                  Dismiss error
+                </button>
+              </>
             ) : (
               <>
                 <button className={s.f} onClick={actions.retry}>
                   Retry change
                 </button>
-                <button className={s.f} onClick={actions.clearError}>
+                <button
+                  className={s.f}
+                  onClick={() => {
+                    actions.clearError();
+                    goalActions.clearError();
+                  }}
+                >
                   Dismiss error
                 </button>
               </>
@@ -421,7 +467,7 @@ export function AppShell() {
               />
             )
           ) : view === "goals" ? (
-            viewProps && <GoalsView {...viewProps} />
+            viewProps && <GoalsView {...viewProps} openGoal={openGoal} />
           ) : planner.profile && !planner.loading ? (
             <Settings
               areas={areas}
@@ -502,6 +548,22 @@ export function AppShell() {
               undo={actions.undo}
             />
           }
+        />
+      )}
+      {selectedGoal && !overlay && (
+        <GoalPanel
+          key={selectedGoal._id}
+          goal={selectedGoal}
+          areas={areas}
+          close={close}
+          remove={goalActions.deleteGoal}
+        />
+      )}
+      {goalActions.toast && (
+        <Toast
+          message={goalActions.toast}
+          dismiss={goalActions.dismiss}
+          undo={goalActions.undo}
         />
       )}
       {(!selected || overlay) && (

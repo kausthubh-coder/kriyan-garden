@@ -1,6 +1,6 @@
 /* Port of the approved prototype. Geometry and class names are preserved. */
 .app,
-.app * {
+.app :where(*):not(:where(:global(.cl-userProfile-root), :global(.cl-userProfile-root) *)) {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -14,11 +14,11 @@
   text-rendering: optimizeLegibility;
   overflow: hidden;
 }
-.app :where(button, input, select, textarea) {
+.app :where(button, input, select, textarea):not(:where(:global(.cl-userProfile-root) *)) {
   font: inherit;
   color: inherit;
 }
-.app :where(button) {
+.app :where(button):not(:where(:global(.cl-userProfile-root) *)) {
   background: none;
   border: 0;
   cursor: pointer;
@@ -32,22 +32,17 @@
   outline: 2px solid var(--ink);
   outline-offset: 2px;
 }
-.app svg {
+.app svg:not(:where(:global(.cl-userProfile-root) *)) {
   stroke: currentColor;
   fill: none;
   stroke-width: 1.7;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.app button,
-.app input,
-.app select {
+.app :where(button, input, select):not(:where(:global(.cl-userProfile-root) *)) {
   min-height: 0;
 }
-.app h1,
-.app h2,
-.app h3,
-.app p {
+.app :where(h1, h2, h3, p):not(:where(:global(.cl-userProfile-root) *)) {
   margin: 0;
 }
 .dot {
@@ -1624,7 +1619,7 @@ h2.h em {
 }
 .app .inlineForm label { flex: 1; min-width: 120px; }
 .app .formHeading { align-items: center; justify-content: space-between; }
-.app .weekdayChoices { display: flex; flex-wrap: wrap; gap: var(--space-8); }
+.app .form fieldset.weekdayChoices { display: flex; flex-direction: row; flex-wrap: wrap; gap: var(--space-8); }
 .app .weekdayChoices label { flex-direction: row; align-items: center; min-height: var(--control-height); }
 .app .weekdayChoices input { min-height: 0; width: var(--space-16); height: var(--space-16); }
 .app .goalDialog {
@@ -1922,3 +1917,114 @@ h2.h em {
     animation-name: fade;
   }
 }
+
+/* Review 03c: quiet cards, focused settings and a single-column setup. */
+.app .goalValue, .app .goalTitle {
+  text-align: left;
+  min-height: var(--control-height);
+  border-radius: var(--radius-8);
+  transition: transform var(--press) var(--out);
+}
+.app .goalValue:active, .app .goalTitle:active { transform: scale(.97); }
+.app .goalTitle { font-weight: 600; }
+.app .milestoneList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding: var(--space-12) 0;
+  font-size: var(--text-13-5);
+}
+.app .milestoneList li > span, .app .milestoneList small { color: var(--ink-3); margin-right: var(--space-8); }
+.app .milestoneList small { margin-left: var(--space-8); }
+.app .milestoneEditor { padding-bottom: var(--space-16); border-bottom: 1px solid var(--line); }
+.app .milestoneEditor .opts { display: flex; flex-wrap: wrap; gap: var(--space-8); }
+.app .settingsLayout { display: grid; grid-template-columns: 220px minmax(0, 760px); gap: var(--space-48); }
+.app .settingsIndex { display: flex; flex-direction: column; gap: var(--space-8); padding-top: var(--space-24); align-self: start; }
+.app .settingsIndex .f { justify-content: flex-start; white-space: normal; height: auto; padding: var(--space-8) var(--space-12); }
+.app .settings { min-width: 0; }
+.app .settings .editor { border-bottom: 0; }
+.app .settings :global(.cl-userProfile-root),
+.app .settings :global(.cl-cardBox),
+.app .settings :global(.cl-card),
+.app .settings :global(.cl-scrollBox) {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+.app .editor fieldset.colorChoices {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 0;
+}
+.app .colorChoices legend { color: var(--ink-2); font-size: var(--text-13-5); margin-bottom: var(--space-8); }
+.app .colorChoices label.colorChoice {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--control-height);
+  height: var(--control-height);
+  min-width: var(--control-height);
+  flex: none;
+  cursor: pointer;
+}
+.app .colorChoice input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+.app .colorChoice span {
+  width: var(--space-32);
+  height: var(--space-32);
+  border-radius: 50%;
+  pointer-events: none;
+}
+.app .colorChoice input:checked + span { outline: 2px solid var(--ink); outline-offset: 2px; }
+.app .colorChoice input:checked + span::after { content: "\2713"; display: grid; place-items: center; height: 100%; color: var(--on); font-weight: 700; }
+.app .colorChoice input:focus-visible + span { outline: 2px solid var(--ink); outline-offset: var(--space-4); }
+.app .colorChoice input:hover:not(:disabled) + span { transform: scale(1.06); }
+.app .colorChoice input:active:not(:disabled) + span { transform: scale(.96); }
+.app .colorChoice input:disabled + span { opacity: .5; cursor: default; }
+.app .colorChoice span { transition: transform var(--press) var(--out); }
+.app .welcomeContent { max-width: 620px; }
+.app .welcomeContent > p { margin-bottom: var(--space-24); color: var(--ink-2); }
+.app .welcomeContent > .quiet { color: var(--ink-3); margin-bottom: var(--space-12); }
+.app .welcomeContent .editor { padding: var(--space-16) 0; border-bottom: 0; }
+.app .welcomeContent .editor > h2, .app .welcomeContent .editor > h2 + p { display: none; }
+.app .welcomeContent .inlineForm { flex-direction: column; align-items: stretch; }
+.app .welcomeContent .inlineForm label { flex: none; }
+.app .welcomeContent > .formHeading { justify-content: flex-end; margin-top: var(--space-24); }
+.app .quietAction { box-shadow: none; color: var(--ink-3); }
+.app .areaDetails { border-bottom: 1px solid var(--line); padding-bottom: var(--space-8); }
+.app .areaDetails summary { display: flex; align-items: center; justify-content: space-between; min-height: var(--control-height); cursor: pointer; border-radius: var(--radius-8); }
+.app .areaDetails summary span { color: var(--ink-3); font-size: var(--text-13); }
+.app .areaDetails summary:hover { background: var(--s2); }
+.app .areaDetails summary:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.app .areaDetails summary:active { opacity: .85; }
+@media (max-width: 820px) {
+  .app .settingsLayout { display: flex; flex-direction: column; gap: var(--space-16); }
+  .app .settingsIndex { flex-direction: row; overflow-x: auto; max-width: 100%; width: 100%; padding: var(--space-8) 0; gap: var(--space-4); }
+  .app .settingsIndex .f { flex: none; white-space: nowrap; }
+  .app .settings .editor { padding-top: 0; }
+  .app .welcomeContent > .formHeading { flex-wrap: wrap; }
+  .app .welcome .form fieldset.weekdayChoices { gap: var(--space-4); }
+}
+
+.app .form fieldset.weekdayChoices {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+.app .weekdayChoices label {
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  min-height: var(--control-height);
+  gap: var(--space-4);
+}
+.app .welcomeContent .meetingTimes { flex-direction: row; }
+.app .welcomeContent .meetingTimes label { flex: 1; }

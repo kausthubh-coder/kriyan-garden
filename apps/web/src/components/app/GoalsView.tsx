@@ -1,12 +1,9 @@
 "use client";
 import { useState } from "react";
-import { useMutation } from "convex/react";
-import { api } from "@kriyan/backend/convex/_generated/api";
 import { goalProgress } from "@kriyan/core";
 import { Filters } from "./Filters";
 import { Dialog } from "./Dialog";
 import { GoalForm } from "./GoalForm";
-import { useFormAction } from "./useFormAction";
 import {
   TaskRow,
   ViewHeader,
@@ -16,7 +13,8 @@ import {
 } from "./ViewParts";
 import { areaColor, longDate, type Goal, type Variables } from "./types";
 import s from "./App.module.css";
-export function GoalsView(p: ViewProps) {
+type GoalsProps = ViewProps & { openGoal: (goal: Goal) => void };
+export function GoalsView(p: GoalsProps) {
   const [adding, setAdding] = useState(false);
   const goals = p.goals.filter(
     (g) => p.filter === "all" || g.areaId === p.filter,
@@ -68,16 +66,10 @@ export function GoalsView(p: ViewProps) {
     </main>
   );
 }
-function GoalCard(p: ViewProps & { goal: Goal }) {
+function GoalCard(p: GoalsProps & { goal: Goal }) {
   const { goal } = p,
     metric = goal.metric,
-    progress = goalProgress(goal, p.today),
-    action = useFormAction();
-  const update = useMutation(api.goals.update),
-    createMilestone = useMutation(api.goals.createMilestone),
-    updateMilestone = useMutation(api.goals.updateMilestone),
-    removeMilestone = useMutation(api.goals.removeMilestone);
-  const [editing, setEditing] = useState(false);
+    progress = goalProgress(goal, p.today);
   const linked = p.tasks
     .filter((t) => t.goalId === goal._id)
     .sort(
@@ -98,33 +90,46 @@ function GoalCard(p: ViewProps & { goal: Goal }) {
       }
     >
       <div className={s.gt}>
-        <b>
-          {metric.kind === "number"
-            ? `${metric.current}${metric.unit === "%" ? "" : " "}${metric.unit}`
-            : `${Math.round(progress.progress * 100)}%`}
-        </b>
+        <button
+          className={s.goalValue}
+          onClick={() => p.openGoal(goal)}
+          aria-label={`Open goal progress: ${goal.title}`}
+        >
+          <b>
+            {metric.kind === "number"
+              ? `${metric.current}${metric.unit === "%" ? "" : " "}${metric.unit}`
+              : `${Math.round(progress.progress * 100)}%`}
+          </b>
+        </button>
         <div>
-          {goal.title}
+          <button className={s.goalTitle} onClick={() => p.openGoal(goal)}>
+            {goal.title}
+          </button>
           <small>
             {p.areas.find((a) => a._id === goal.areaId)?.name}.{" "}
+            {metric.kind === "number"
+              ? `Target ${metric.target}${metric.unit === "%" ? "" : " "}${metric.unit}. `
+              : `${progress.done} of ${progress.total} done. `}
             {goal.targetDate
               ? `Due ${longDate(goal.targetDate)}`
               : "No target date"}
           </small>
         </div>
-        <span
-          className={
-            progress.status === "Behind pace" || progress.status === "Late"
-              ? s.bad
-              : undefined
-          }
-        >
-          {goal.status === "active"
-            ? progress.status
-            : goal.status === "done"
-              ? "Done"
-              : "Archived"}
-        </span>
+        {goal.targetDate && (
+          <span
+            className={
+              progress.status === "Behind pace" || progress.status === "Late"
+                ? s.bad
+                : undefined
+            }
+          >
+            {goal.status === "active"
+              ? progress.status
+              : goal.status === "done"
+                ? "Done"
+                : "Archived"}
+          </span>
+        )}
       </div>
       <div
         className={s.pace}
@@ -143,165 +148,24 @@ function GoalCard(p: ViewProps & { goal: Goal }) {
           : "Set a target date to show your pace."}{" "}
         {goal.linkedTasks.done} of {goal.linkedTasks.total} linked tasks done.
       </p>
-      {metric.kind === "number" && (
-        <form
-          className={s.inlineForm}
-          onSubmit={(e) => {
-            e.preventDefault();
-            const current = Number(
-              new FormData(e.currentTarget).get("current"),
-            );
-            void action.run(() =>
-              update({
-                id: goal._id,
-                patch: { metric: { ...metric, current } },
-              }),
-            );
-          }}
-        >
-          <label>
-            Current value for {goal.title}
-            <input
-              name="current"
-              type="number"
-              step="any"
-              required
-              defaultValue={metric.current}
-              key={metric.current}
-            />
-          </label>
-          <button className={s.f} disabled={action.busy}>
-            Update progress
-          </button>
-        </form>
+      {goal.milestones.length > 0 && (
+        <ul className={s.milestoneList} aria-label="Milestones">
+          {goal.milestones.map((m) => (
+            <li key={m._id}>
+              <span>{m.doneAt !== null ? "Done" : "To do"}</span>{" "}
+              {m.doneAt !== null ? <s>{m.title}</s> : m.title}
+              {m.targetDate && <small>Due {longDate(m.targetDate)}</small>}
+            </li>
+          ))}
+        </ul>
       )}
-      <div className={s.inlineForm}>
-        <label>
-          Status for {goal.title}
-          <select
-            value={goal.status}
-            disabled={action.busy}
-            onChange={(e) => {
-              const status = e.target.value as Goal["status"];
-              void action.run(() =>
-                update({ id: goal._id, patch: { status } }),
-              );
-            }}
-          >
-            <option value="active">Active</option>
-            <option value="done">Done</option>
-            <option value="archived">Archived</option>
-          </select>
-        </label>
-        <button className={s.f} onClick={() => setEditing(!editing)}>
-          {editing ? "Close milestones" : "Edit milestones"}
-        </button>
-      </div>
-      {goal.milestones.map((m) => (
-        <div key={m._id} className={s.milestone}>
-          <button
-            className={s.f}
-            role="checkbox"
-            aria-checked={m.doneAt !== null}
-            aria-label={`Complete milestone: ${m.title}`}
-            disabled={action.busy}
-            onClick={() =>
-              void action.run(() =>
-                updateMilestone({
-                  id: m._id,
-                  patch: { doneAt: m.doneAt === null ? Date.now() : null },
-                }),
-              )
-            }
-          >
-            {m.doneAt !== null ? "Done" : "Mark done"}
-          </button>
-          {editing ? (
-            <form
-              className={s.inlineForm}
-              onSubmit={(e) => {
-                e.preventDefault();
-                const d = new FormData(e.currentTarget);
-                void action.run(() =>
-                  updateMilestone({
-                    id: m._id,
-                    patch: {
-                      title: String(d.get("title")),
-                      targetDate: String(d.get("date")) || null,
-                    },
-                  }),
-                );
-              }}
-            >
-              <label>
-                Milestone title
-                <input name="title" defaultValue={m.title} required />
-              </label>
-              <label>
-                Milestone date
-                <input
-                  name="date"
-                  type="date"
-                  defaultValue={m.targetDate ?? ""}
-                />
-              </label>
-              <button className={s.f} disabled={action.busy}>
-                Save milestone
-              </button>
-              <button
-                type="button"
-                className={s.f}
-                disabled={action.busy}
-                onClick={() =>
-                  void action.run(() => removeMilestone({ id: m._id }))
-                }
-              >
-                Delete milestone
-              </button>
-            </form>
-          ) : (
-            <span>
-              {m.title}
-              {m.targetDate ? `, ${longDate(m.targetDate)}` : ""}
-            </span>
-          )}
-        </div>
-      ))}
-      {editing && (
-        <form
-          className={s.inlineForm}
-          onSubmit={async (e) => {
-            e.preventDefault();
-            const form = e.currentTarget,
-              d = new FormData(form);
-            if (
-              await action.run(() =>
-                createMilestone({
-                  goalId: goal._id,
-                  title: String(d.get("title")),
-                  targetDate: String(d.get("date")) || null,
-                  sortOrder: goal.milestones.length,
-                }),
-              )
-            )
-              form.reset();
-          }}
-        >
-          <label>
-            New milestone
-            <input name="title" required maxLength={180} />
-          </label>
-          <label>
-            Target date
-            <input name="date" type="date" />
-          </label>
-          <button className={s.f} disabled={action.busy}>
-            Add milestone
-          </button>
-        </form>
-      )}
-      {action.error && <p role="alert">{action.error}</p>}
-      {action.message && <p role="status">{action.message}</p>}
+      <button
+        className={s.f}
+        onClick={() => p.openGoal(goal)}
+        aria-label={`Open goal details: ${goal.title}`}
+      >
+        Details
+      </button>
       {linked.map((task) => (
         <TaskRow {...p} task={task} withDate key={task._id} />
       ))}

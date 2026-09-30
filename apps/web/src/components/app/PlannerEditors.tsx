@@ -1,4 +1,5 @@
 "use client";
+import { namedAreaColors } from "@kriyan/core";
 import { useMutation } from "convex/react";
 import { api } from "@kriyan/backend/convex/_generated/api";
 import type { Doc, Id } from "@kriyan/backend/convex/_generated/dataModel";
@@ -41,144 +42,192 @@ export function AreaSelect({
     </label>
   );
 }
-export function AreasEditor({ areas }: { areas: Area[] }) {
+function ColorChoices({
+  selected,
+  label,
+}: {
+  selected: Area["color"];
+  label: string;
+}) {
+  return (
+    <fieldset className={s.colorChoices}>
+      <legend>{label}</legend>
+      {(Object.entries(namedAreaColors) as [Area["color"], string][]).map(
+        ([color, value]) => {
+          const name = color[0].toUpperCase() + color.slice(1);
+          return (
+            <label className={s.colorChoice} key={color} title={name}>
+              <input
+                type="radio"
+                name="color"
+                value={color}
+                defaultChecked={selected === color}
+                aria-label={name}
+              />
+              <span style={{ background: value }} aria-hidden="true" />
+            </label>
+          );
+        },
+      )}
+    </fieldset>
+  );
+}
+export function AreasEditor({
+  areas,
+  compact = false,
+}: {
+  areas: Area[];
+  compact?: boolean;
+}) {
   const create = useMutation(api.areas.create),
     update = useMutation(api.areas.update),
     remove = useMutation(api.areas.remove),
     action = useFormAction();
+  const addForm = (
+    <form
+      className={s.inlineForm}
+      onSubmit={async (e) => {
+        e.preventDefault();
+        const form = e.currentTarget,
+          d = new FormData(form);
+        if (
+          await action.run(() =>
+            create({
+              name: value(d, "name"),
+              color: value(d, "color") as Area["color"],
+            }),
+          )
+        )
+          form.reset();
+      }}
+    >
+      <label>
+        New area name
+        <input name="name" required maxLength={48} />
+      </label>
+      <ColorChoices selected="grey" label="New area colour" />
+      <button className={s.f} disabled={areas.length >= 12}>
+        Add area
+      </button>
+    </form>
+  );
   return (
     <section className={s.editor}>
-      <h2>Areas</h2>
+      {!compact && (
+        <>
+          <h2>Areas</h2>
+          <p className={s.quiet}>
+            Name and colour the areas you use to organize your tasks and goals.
+          </p>
+        </>
+      )}
       <fieldset disabled={action.busy}>
-        {areas.map((a, i) => (
-          <form
-            className={s.inlineForm}
-            key={a._id}
-            onSubmit={(e) => {
-              e.preventDefault();
-              const d = new FormData(e.currentTarget);
-              void action.run(() =>
-                update({
-                  id: a._id,
-                  patch: {
-                    name: value(d, "name"),
-                    color: value(d, "color") as Area["color"],
-                  },
-                }),
-              );
-            }}
-          >
-            <label>
-              Area name
-              <input
-                name="name"
-                required
-                maxLength={48}
-                defaultValue={a.name}
-              />
-            </label>
-            <label>
-              Area colour
-              <select name="color" defaultValue={a.color}>
-                {(["blue", "orange", "green", "grey"] as const).map((c) => (
-                  <option key={c}>{c}</option>
-                ))}
-                {!["blue", "orange", "green", "grey"].includes(a.color) && (
-                  <option>{a.color}</option>
-                )}
-              </select>
-            </label>
-            <button className={s.f}>Save area</button>
-            <button
-              className={s.f}
-              type="button"
-              disabled={i === 0}
-              aria-label={`Move ${a.name} up`}
-              onClick={() =>
-                void action.run(async () => {
-                  const previous = areas[i - 1];
-                  if (!previous) return;
-                  await update({
+        {areas.map((a, i) => {
+          const form = (
+            <form
+              className={s.inlineForm}
+              key={a._id}
+              onSubmit={(e) => {
+                e.preventDefault();
+                const d = new FormData(e.currentTarget);
+                void action.run(() =>
+                  update({
                     id: a._id,
-                    patch: { sortOrder: previous.sortOrder },
-                  });
-                  await update({
-                    id: previous._id,
-                    patch: { sortOrder: a.sortOrder },
-                  });
-                })
-              }
+                    patch: {
+                      name: value(d, "name"),
+                      color: value(d, "color") as Area["color"],
+                    },
+                  }),
+                );
+              }}
             >
-              Move up
-            </button>
-            <button
-              className={s.f}
-              type="button"
-              disabled={i === areas.length - 1}
-              aria-label={`Move ${a.name} down`}
-              onClick={() =>
-                void action.run(async () => {
-                  const next = areas[i + 1];
-                  if (!next) return;
-                  await update({
-                    id: a._id,
-                    patch: { sortOrder: next.sortOrder },
-                  });
-                  await update({
-                    id: next._id,
-                    patch: { sortOrder: a.sortOrder },
-                  });
-                })
-              }
-            >
-              Move down
-            </button>
-            <button
-              className={s.f}
-              type="button"
-              onClick={() => void action.run(() => remove({ id: a._id }))}
-            >
-              Delete area
-            </button>
-          </form>
-        ))}
+              <label>
+                Area name
+                <input
+                  name="name"
+                  required
+                  maxLength={48}
+                  defaultValue={a.name}
+                />
+              </label>
+              <ColorChoices selected={a.color} label="Area colour" />
+              <button className={s.f}>Save area</button>
+              <button
+                className={s.f}
+                type="button"
+                disabled={i === 0}
+                aria-label={`Move ${a.name} up`}
+                onClick={() =>
+                  void action.run(async () => {
+                    const previous = areas[i - 1];
+                    if (!previous) return;
+                    await update({
+                      id: a._id,
+                      patch: { sortOrder: previous.sortOrder },
+                    });
+                    await update({
+                      id: previous._id,
+                      patch: { sortOrder: a.sortOrder },
+                    });
+                  })
+                }
+              >
+                Move up
+              </button>
+              <button
+                className={s.f}
+                type="button"
+                disabled={i === areas.length - 1}
+                aria-label={`Move ${a.name} down`}
+                onClick={() =>
+                  void action.run(async () => {
+                    const next = areas[i + 1];
+                    if (!next) return;
+                    await update({
+                      id: a._id,
+                      patch: { sortOrder: next.sortOrder },
+                    });
+                    await update({
+                      id: next._id,
+                      patch: { sortOrder: a.sortOrder },
+                    });
+                  })
+                }
+              >
+                Move down
+              </button>
+              <button
+                className={s.f}
+                type="button"
+                onClick={() => void action.run(() => remove({ id: a._id }))}
+              >
+                Delete area
+              </button>
+            </form>
+          );
+          return compact ? (
+            <details className={s.areaDetails} key={a._id}>
+              <summary>
+                {a.name}
+                <span>Edit area</span>
+              </summary>
+              {form}
+            </details>
+          ) : (
+            form
+          );
+        })}
         {!areas.length && (
           <p>No areas yet. Add an area to organize your tasks.</p>
         )}
-        <form
-          className={s.inlineForm}
-          onSubmit={async (e) => {
-            e.preventDefault();
-            const form = e.currentTarget,
-              d = new FormData(form);
-            if (
-              await action.run(() =>
-                create({
-                  name: value(d, "name"),
-                  color: value(d, "color") as Area["color"],
-                }),
-              )
-            )
-              form.reset();
-          }}
-        >
-          <label>
-            New area name
-            <input name="name" required maxLength={48} />
-          </label>
-          <label>
-            New area colour
-            <select name="color">
-              <option value="grey">Grey</option>
-              <option value="blue">Blue</option>
-              <option value="orange">Orange</option>
-              <option value="green">Green</option>
-            </select>
-          </label>
-          <button className={s.f} disabled={areas.length >= 12}>
-            Add area
-          </button>
-        </form>
+        {compact ? (
+          <details className={s.areaDetails}>
+            <summary>Add area</summary>
+            {addForm}
+          </details>
+        ) : (
+          addForm
+        )}
       </fieldset>
       <Feedback action={action} />
     </section>
@@ -198,6 +247,9 @@ export function ProjectsEditor({
   return (
     <section className={s.editor}>
       <h2>Projects and courses</h2>
+      <p className={s.quiet}>
+        Group related work under an area as a project or course.
+      </p>
       <fieldset disabled={action.busy}>
         {projects.map((p) => (
           <form
@@ -289,19 +341,30 @@ export function EventsEditor({
   areas,
   events,
   today,
+  compact = false,
 }: {
   areas: Area[];
   events: Doc<"events">[];
   today: string;
+  compact?: boolean;
 }) {
   return (
     <section className={s.editor}>
-      <h2>Classes and fixed meetings</h2>
+      <h2>Classes and meetings</h2>
+      <p className={s.quiet}>
+        Add fixed weekly times for classes and meetings.
+      </p>
       {!events.length && <p>No classes or fixed meetings yet.</p>}
       {events.map((event) => (
-        <EventForm areas={areas} event={event} today={today} key={event._id} />
+        <EventForm
+          areas={areas}
+          event={event}
+          today={today}
+          key={event._id}
+          compact={compact}
+        />
       ))}
-      <EventForm areas={areas} today={today} />
+      <EventForm areas={areas} today={today} compact={compact} />
     </section>
   );
 }
@@ -309,15 +372,47 @@ function EventForm({
   areas,
   event,
   today,
+  compact,
 }: {
   areas: Area[];
   event?: Doc<"events">;
   today: string;
+  compact?: boolean;
 }) {
   const create = useMutation(api.events.create),
     update = useMutation(api.events.update),
     remove = useMutation(api.events.remove),
     action = useFormAction();
+  const options = (
+    <>
+      {compact && (
+        <AreaSelect areas={areas} selected={event?.areaId} optional />
+      )}
+      <label>
+        Location
+        <input name="location" defaultValue={event?.location} />
+      </label>
+      <div className={s.inlineForm}>
+        <label>
+          From date
+          <input
+            name="from"
+            type="date"
+            required
+            defaultValue={event?.fromDate ?? today}
+          />
+        </label>
+        <label>
+          Until date
+          <input
+            name="until"
+            type="date"
+            defaultValue={event?.untilDate ?? ""}
+          />
+        </label>
+      </div>
+    </>
+  );
   return (
     <form
       className={s.form}
@@ -354,11 +449,9 @@ function EventForm({
             maxLength={180}
           />
         </label>
-        <AreaSelect areas={areas} selected={event?.areaId} optional />
-        <label>
-          Location
-          <input name="location" defaultValue={event?.location} />
-        </label>
+        {!compact && (
+          <AreaSelect areas={areas} selected={event?.areaId} optional />
+        )}
         <fieldset className={s.weekdayChoices}>
           <legend>Weekdays</legend>
           {[
@@ -381,7 +474,7 @@ function EventForm({
             </label>
           ))}
         </fieldset>
-        <div className={s.inlineForm}>
+        <div className={`${s.inlineForm} ${s.meetingTimes}`}>
           <label>
             Start time
             <input
@@ -401,25 +494,14 @@ function EventForm({
             />
           </label>
         </div>
-        <div className={s.inlineForm}>
-          <label>
-            From date
-            <input
-              name="from"
-              type="date"
-              required
-              defaultValue={event?.fromDate ?? today}
-            />
-          </label>
-          <label>
-            Until date
-            <input
-              name="until"
-              type="date"
-              defaultValue={event?.untilDate ?? ""}
-            />
-          </label>
-        </div>
+        {compact ? (
+          <details className={s.areaDetails}>
+            <summary>More options</summary>
+            {options}
+          </details>
+        ) : (
+          options
+        )}
         <div className={s.inlineForm}>
           <button className={s.f}>
             {event ? "Save meeting" : "Add meeting"}
@@ -449,6 +531,9 @@ export function HabitsEditor({
   return (
     <section className={s.editor}>
       <h2>Habits</h2>
+      <p className={s.quiet}>
+        Choose the habits you want to complete each week.
+      </p>
       {!habits.length && <p>No habits yet.</p>}
       {habits.map((habit) => (
         <HabitForm areas={areas} habit={habit} key={habit._id} />

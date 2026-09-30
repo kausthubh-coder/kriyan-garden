@@ -1,6 +1,6 @@
 import type { FunctionReturnType } from "convex/server";
 import type { CSSProperties } from "react";
-import { addDays } from "@kriyan/core";
+import { addDays, namedAreaColors } from "@kriyan/core";
 import type { Doc } from "@kriyan/backend/convex/_generated/dataModel";
 import { api } from "@kriyan/backend/convex/_generated/api";
 
@@ -20,13 +20,7 @@ export type Variables = CSSProperties & {
 };
 export type PanelSection = "time" | "length" | undefined;
 export function areaColor(area?: Area) {
-  return area?.color === "blue"
-    ? "var(--school)"
-    : area?.color === "orange"
-      ? "var(--biz)"
-      : area?.color === "green"
-        ? "var(--life)"
-        : "var(--ink-2)";
+  return namedAreaColors[area?.color ?? "grey"];
 }
 export const localToday = () => {
   const now = new Date();

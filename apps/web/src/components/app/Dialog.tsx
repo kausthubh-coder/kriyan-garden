@@ -21,8 +21,19 @@ export function Dialog({
       dialog.dataset.animation =
         dialog.closest("[data-input]")?.getAttribute("data-input") ??
         "keyboard";
+    dialog?.setAttribute("autofocus", "");
     dialog?.showModal();
-    if (initialFocus) dialog?.querySelector<HTMLElement>(initialFocus)?.focus();
+    if (window.matchMedia("(min-width: 821px)").matches) {
+      dialog
+        ?.querySelector<HTMLElement>(
+          initialFocus ??
+            'input:not([type="hidden"]):not(:disabled), textarea:not(:disabled), select:not(:disabled)',
+        )
+        ?.focus();
+    } else {
+      // Keep the phone keyboard closed until the user chooses a field.
+      dialog?.focus();
+    }
     return () => {
       dialog?.close();
       if (previous instanceof HTMLElement && previous.isConnected)
@@ -34,6 +45,7 @@ export function Dialog({
       ref={ref}
       className={className}
       aria-label={label}
+      tabIndex={-1}
       onCancel={(event) => {
         event.preventDefault();
         close();

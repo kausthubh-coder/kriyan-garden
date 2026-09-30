@@ -32,6 +32,7 @@ export const task = v.object({ ...common, ...taskFields, status: taskStatus, com
 export const habit = v.object({ ...common, ...habitFields, _id: v.id("habits"), _creationTime: v.number() });
 export const habitLog = v.object({ ...common, ...habitLogFields, _id: v.id("habitLogs"), _creationTime: v.number() });
 export const goalWithProgress = v.object({ ...goal.fields, linkedTasks: v.object({ total: v.number(), done: v.number() }), milestones: v.array(milestone) });
+export const deletedGoal = v.object({ goal, milestones: v.array(milestone), tasks: v.array(v.object({ id: v.id("tasks"), updatedAt: v.number() })) });
 export const day = v.object({ date: v.string(), timed: v.array(task), anytime: v.array(task), unscheduled: v.array(task), events: v.array(event), plannedMinutes: v.number(), countWithoutDuration: v.number() });
 export const weekDay = v.object({ ...day.fields, plannedMinutesByArea: v.record(v.string(), v.number()), taskCount: v.number() });
 

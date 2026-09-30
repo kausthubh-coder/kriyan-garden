@@ -139,7 +139,7 @@ export function TaskPanel({
           ? "#task-time"
           : section === "length"
             ? "#task-length button"
-            : undefined
+            : 'textarea[aria-label="Task title"]'
       }
     >
       <div className={s.ph}>

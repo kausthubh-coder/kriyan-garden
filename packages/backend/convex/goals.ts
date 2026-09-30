@@ -68,3 +68,19 @@ export const removeMilestone = mutation({
     return model.removeMilestone(ctx, ownerId, args);
   },
 });
+export const deleteForUndo = mutation({
+  args: { id: v.id("goals") },
+  returns: V.deletedGoal,
+  handler: async (ctx, args) => {
+    const ownerId = await requireOwnerId(ctx);
+    return model.deleteForUndo(ctx, ownerId, args);
+  },
+});
+export const restore = mutation({
+  args: { snapshot: V.deletedGoal },
+  returns: V.goal,
+  handler: async (ctx, args) => {
+    const ownerId = await requireOwnerId(ctx);
+    return model.restore(ctx, ownerId, args);
+  },
+});

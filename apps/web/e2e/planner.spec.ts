@@ -1,3 +1,4 @@
+import { mkdir } from "node:fs/promises";
 import { test, expect, type Page } from "@playwright/test";
 import { addDays } from "@kriyan/core";
 test.describe.configure({ mode: "serial" });
@@ -22,11 +23,46 @@ test("sign in and complete onboarding with the default three areas", async ({
 }) => {
   await page.goto("/app/welcome");
   await expect(
-    page.getByRole("textbox", { name: "Area name", exact: true }),
+    page.locator("details").filter({
+      has: page.locator("summary").filter({ hasText: "Edit area" }),
+    }),
   ).toHaveCount(3);
-  await page.getByRole("button", { name: "Continue setup" }).click();
-  for (let i = 0; i < 3; i++)
-    await page.getByRole("button", { name: "Skip step" }).click();
+  await mkdir("../../.agents/screenshots/03c", { recursive: true });
+  for (let step = 1; step <= 5; step++) {
+    await expect(
+      page.getByText(`Step ${step} of 5`, { exact: true }),
+    ).toBeVisible();
+    for (const [width, height] of [
+      [1440, 900],
+      [390, 844],
+    ]) {
+      await page.setViewportSize({ width, height });
+      await page.locator("main").evaluate((element) => {
+        element.scrollTop = 0;
+      });
+      await page.evaluate(async () => {
+        await document.fonts.ready;
+      });
+      await expect
+        .poll(() =>
+          page.evaluate(
+            () => document.documentElement.scrollWidth <= innerWidth,
+          ),
+        )
+        .toBe(true);
+      await page.screenshot({
+        path: `../../.agents/screenshots/03c/welcome-step-${step}-${width}.png`,
+        animations: "disabled",
+      });
+    }
+    await page.setViewportSize({ width: 1440, height: 900 });
+    if (step < 5)
+      await page
+        .getByRole("button", {
+          name: step === 1 ? "Continue setup" : "Skip step",
+        })
+        .click();
+  }
   await page.getByRole("button", { name: "Finish setup" }).click();
   await expect(page).toHaveURL(/\/app$/);
   for (const area of ["School", "Business", "Life"])

@@ -11,9 +11,16 @@ import s from "./App.module.css";
 const steps = [
   "Areas",
   "Projects and courses",
-  "Classes and fixed meetings",
+  "Classes and meetings",
   "One goal",
   "First tasks",
+];
+const explanations = [
+  "Start with School, Business and Life. Rename them or add an area to suit your day.",
+  "Add a project or course under an area. You can add more later in settings.",
+  "Put your fixed weekly times on the timeline so you can plan around them.",
+  "Choose one goal and a target date. Linked tasks, a number or milestones can measure progress.",
+  "Write a few tasks to start your planner. Dates, times and lengths are optional.",
 ];
 export function Onboarding({
   areas,
@@ -58,15 +65,12 @@ export function Onboarding({
       <div className={s.welcomeContent}>
         <p className={s.quiet}>Step {step + 1} of 5</p>
         <h1>{steps[step]}</h1>
-        <p>
-          Make room for School, Business and Life. You can change everything in
-          settings.
-        </p>
+        <p>{explanations[step]}</p>
         {step === 0 && (
           <>
-            <AreasEditor areas={areas} />
+            <AreasEditor areas={areas} compact />
             <button
-              className={s.f}
+              className={`${s.f} ${s.quietAction}`}
               disabled={action.busy}
               onClick={async () => {
                 if (await action.run(() => sample({ today }))) finish();
@@ -78,7 +82,7 @@ export function Onboarding({
         )}
         {step === 1 && <ProjectsEditor areas={areas} projects={projects} />}
         {step === 2 && (
-          <EventsEditor areas={areas} events={events} today={today} />
+          <EventsEditor areas={areas} events={events} today={today} compact />
         )}
         {step === 3 && (
           <GoalForm areas={areas} today={today} saved={() => setStep(4)} />
@@ -107,7 +111,7 @@ export function Onboarding({
         <div className={s.formHeading}>
           {step > 0 && (
             <button
-              className={s.f}
+              className={`${s.f} ${s.quietAction}`}
               disabled={action.busy}
               onClick={() => setStep(step - 1)}
             >
@@ -115,19 +119,21 @@ export function Onboarding({
             </button>
           )}
           <button
-            className={s.f}
+            className={`${s.f} ${s.quietAction}`}
             disabled={action.busy}
             onClick={() => (step === 4 ? void done() : setStep(step + 1))}
           >
             Skip step
           </button>
-          <button
-            className={s.btn}
-            disabled={action.busy || !areas.length}
-            onClick={() => (step === 4 ? void done(true) : setStep(step + 1))}
-          >
-            {step === 4 ? "Finish setup" : "Continue setup"}
-          </button>
+          {step !== 3 && (
+            <button
+              className={s.btn}
+              disabled={action.busy || !areas.length}
+              onClick={() => (step === 4 ? void done(true) : setStep(step + 1))}
+            >
+              {step === 4 ? "Finish setup" : "Continue setup"}
+            </button>
+          )}
         </div>
       </div>
     </main>

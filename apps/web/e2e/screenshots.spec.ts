@@ -84,6 +84,49 @@ for (const [width, height] of [
         await page.goto(`/app?view=${view}`);
         await capture(view);
       }
+      await page.goto("/app/settings");
+      await mkdir("../../.agents/screenshots/03c", { recursive: true });
+      const index = page.getByRole("navigation", { name: "Settings sections" });
+      await expect(index).toBeVisible();
+      for (const name of [
+        "Areas",
+        "Projects and courses",
+        "Classes and meetings",
+        "Habits",
+        "Planning",
+        "Account",
+        "Danger zone",
+      ]) {
+        await index.getByRole("button", { name, exact: true }).click();
+        await expect(
+          page.getByRole("heading", { name, exact: true }),
+        ).toBeVisible();
+        if (name === "Account") {
+          await expect(page.locator(".cl-userProfile-root")).toBeVisible();
+          await expect(
+            page.getByRole("button", { name: "Update profile", exact: true }),
+          ).toBeInViewport();
+        }
+        await page.evaluate(async () => {
+          await document.fonts.ready;
+        });
+        await expect
+          .poll(() =>
+            page.evaluate(
+              () => document.documentElement.scrollWidth <= innerWidth,
+            ),
+          )
+          .toBe(true);
+        await page.screenshot({
+          path: `../../.agents/screenshots/03c/settings-${name.toLowerCase().replaceAll(" ", "-")}-${width}.png`,
+          animations: "disabled",
+        });
+        if (name === "Areas")
+          await page.screenshot({
+            path: `../../.agents/screenshots/03c/settings-${width}.png`,
+            animations: "disabled",
+          });
+      }
       await page.goto("/app");
       await page
         .getByRole("button", { name: "Add task", exact: true })

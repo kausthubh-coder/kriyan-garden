@@ -18,6 +18,16 @@ test("reset the disposable planner and remove its test user", async ({
   )
     throw new Error("Disposable test user record is invalid.");
   await page.goto("/app/settings");
+  const backend = await backendFor(page);
+  // A failed onboarding test still needs its disposable user cleaned up.
+  if (!(await backend.query(api.profiles.get, {}))?.onboardingComplete) {
+    await backend.mutation(api.profiles.completeOnboarding, {});
+    await page.goto("/app/settings");
+  }
+  await page
+    .getByRole("navigation", { name: "Settings sections" })
+    .getByRole("button", { name: "Danger zone", exact: true })
+    .click();
   const reset = page.getByRole("button", {
     name: "Reset everything",
     exact: true,
@@ -29,7 +39,6 @@ test("reset the disposable planner and remove its test user", async ({
   await reset.click();
   await expect(page).toHaveURL(/\/app\/welcome$/);
   await expect(page.getByLabel("Area name", { exact: true })).toHaveCount(3);
-  const backend = await backendFor(page);
   // Close the app before the final reset so it cannot recreate a profile.
   await page.close();
   await backend.mutation(api.profiles.resetAll, {});

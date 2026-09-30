@@ -18,4 +18,8 @@ The setup project uses `@clerk/testing` to obtain a testing token, creates a dis
 
 The new `profiles.seedSample` operation is covered by local backend tests. Exercising its onboarding button against a hosted backend requires that operation to have been deployed separately.
 
+Brief 03c captures all five welcome steps at 1440x900 and 390x844 during the onboarding test. Settings captures include the initial Areas section and each of its seven sections at both sizes. These files are saved in `.agents/screenshots/03c/`.
+
+The configuration tests cover goal-panel URL state, editing, read-only cards, and Escape, initial focus and return focus for every app dialog and panel at both sizes. The deletion test first probes `goals:deleteForUndo` with an invalid ID, which cannot change data. It reports a skip if that function is missing from the hosted backend. Deploying backend functions is outside brief 03c; deletion, restore and owner isolation are also covered by local Convex tests.
+
 Clerk references: [Playwright setup](https://clerk.com/docs/guides/development/testing/playwright/overview) and [test helpers](https://clerk.com/docs/guides/development/testing/playwright/test-helpers).

@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+import { goalProgress } from "@kriyan/core";
 import { convexTest } from "convex-test";
 import { afterEach, expect, test, vi } from "vitest";
 import { api, internal } from "../_generated/api";
@@ -22,7 +23,14 @@ test("sample data is relative to client today, isolated, complete and idempotent
   expect(rows.find(row => row.title === "Calculus problem sheet 5")).toMatchObject({ date: "2026-09-30" });
   expect(rows.find(row => row.title === "Gym, legs")?.status).toBe("completed");
   expect(await a.query(api.projects.list, {})).toHaveLength(7);
-  expect(await a.query(api.goals.list, {})).toHaveLength(3);
+  const sampleGoals = await a.query(api.goals.list, {});
+  expect(sampleGoals).toHaveLength(3);
+  for (const goal of sampleGoals) {
+    expect(goal.startDate < "2026-09-29").toBe(true);
+    expect(goal.targetDate && goal.targetDate > "2026-09-29").toBe(true);
+    expect(goalProgress(goal, "2026-09-29").expected).toBeGreaterThan(0);
+    expect(goalProgress(goal, "2026-09-29").status).not.toBe("No target date");
+  }
   expect(await a.query(api.events.list, {})).toHaveLength(7);
   await a.mutation(api.profiles.seedSample, { today: "2026-09-30" });
   expect(await a.query(api.tasks.list, {})).toEqual(rows);
@@ -262,4 +270,39 @@ test("resetAll deletes owner data in 100-row batches and preserves another owner
   expect(await a.query(api.profiles.get, {})).toBeNull();
   expect(await b.query(api.areas.list, {})).toHaveLength(3);
   expect(await t.run((ctx) => ctx.db.query("habitLogs").withIndex("by_owner", (q) => q.eq("ownerId", "user-a")).take(100))).toEqual([]);
+});
+
+
+test("goal deletion and undo restore milestones and links without losing changed tasks", async () => {
+  const { t, a, b } = setup();
+  const area = await a.mutation(api.areas.create, { name: "Life" });
+  const goal = await a.mutation(api.goals.create, { areaId: area._id, title: "Read", note: "Books", startDate: "2026-09-01", targetDate: "2026-10-01", metric: { kind: "milestones" } });
+  const task = await a.mutation(api.tasks.create, { title: "First book", areaId: area._id, goalId: goal._id });
+  const changed = await a.mutation(api.tasks.create, { title: "Second book", areaId: area._id, goalId: goal._id });
+  await a.mutation(api.goals.createMilestone, { goalId: goal._id, title: "First chapter", doneAt: 123, targetDate: "2026-09-15" });
+  await expect(t.mutation(api.goals.deleteForUndo, { id: goal._id })).rejects.toThrow("Not authenticated");
+  await expect(b.mutation(api.goals.deleteForUndo, { id: goal._id })).rejects.toThrow("not found");
+  const snapshot = await a.mutation(api.goals.deleteForUndo, { id: goal._id });
+  expect(await a.query(api.goals.list, {})).toEqual([]);
+  expect((await a.query(api.tasks.get, { id: task._id })).goalId).toBeNull();
+  await expect(b.mutation(api.goals.restore, { snapshot })).rejects.toThrow("not found");
+  // A later task edit should survive Undo, even if its goal is still empty.
+  await t.run(async ctx => { await ctx.db.patch(changed._id, { title: "Changed later", updatedAt: snapshot.tasks[0].updatedAt + 100 }); });
+  const restored = await a.mutation(api.goals.restore, { snapshot });
+  expect(restored).toMatchObject({ title: "Read", note: "Books", targetDate: "2026-10-01", metric: { kind: "milestones" } });
+  expect((await a.query(api.tasks.get, { id: task._id })).goalId).toBe(restored._id);
+  expect((await a.query(api.tasks.get, { id: changed._id })).goalId).toBeNull();
+  expect((await a.query(api.goals.list, {}))[0].milestones[0]).toMatchObject({ title: "First chapter", doneAt: 123, targetDate: "2026-09-15" });
+});
+
+test("goal undo cannot attach another owner's task and rolls back atomically", async () => {
+  const { a, b } = setup();
+  const area = await a.mutation(api.areas.create, { name: "Life" });
+  const goal = await a.mutation(api.goals.create, { areaId: area._id, title: "Read", startDate: "2026-09-01" });
+  await b.mutation(api.profiles.ensure, {});
+  const other = await b.mutation(api.tasks.create, { title: "Private" });
+  const snapshot = await a.mutation(api.goals.deleteForUndo, { id: goal._id });
+  await expect(a.mutation(api.goals.restore, { snapshot: { ...snapshot, tasks: [{ id: other._id, updatedAt: other.updatedAt }] } })).rejects.toThrow("not found");
+  expect(await a.query(api.goals.list, {})).toEqual([]);
+  expect((await b.query(api.tasks.get, { id: other._id })).goalId).toBeNull();
 });

@@ -13,12 +13,21 @@ export const colors = {
   biz: "oklch(79% 0.15 60)",
   school: "oklch(78% 0.11 245)",
   hot: "oklch(74% 0.17 28)",
+  "area-red": "oklch(78% 0.15 28)",
+  "area-yellow": "oklch(84% 0.14 95)",
+  "area-purple": "oklch(78% 0.12 305)",
+  "area-teal": "oklch(80% 0.12 185)",
   scrim: "oklch(10% 0.005 70 / 0.62)",
 } as const;
 export const areaColors = {
   school: colors.school,
   business: colors.biz,
   life: colors.life,
+} as const;
+export const namedAreaColors = {
+  blue: colors.school, orange: colors.biz, green: colors.life,
+  red: colors["area-red"], yellow: colors["area-yellow"],
+  purple: colors["area-purple"], teal: colors["area-teal"], grey: colors["ink-2"],
 } as const;
 export const spacing = [4, 8, 12, 16, 24, 32, 48] as const;
 export const radii = [8, 9, 10, 11, 12, 14, 16] as const;

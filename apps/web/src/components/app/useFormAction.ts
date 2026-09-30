@@ -28,5 +28,14 @@ export function useFormAction() {
       setBusy(false);
     }
   }
-  return { busy, error, message, run };
+  return {
+    busy,
+    error,
+    message,
+    run,
+    clearFeedback: () => {
+      setError("");
+      setMessage("");
+    },
+  };
 }
