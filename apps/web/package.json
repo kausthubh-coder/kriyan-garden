@@ -11,17 +11,19 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@kriyan/backend": "workspace:*",
     "@clerk/mcp-tools": "^0.6.0",
     "@clerk/nextjs": "^7.8.3",
+    "@kriyan/backend": "workspace:*",
     "@phosphor-icons/react": "^2.1.10",
     "convex": "^1.45.0",
+    "convex-helpers": "^0.1.124",
     "dompurify": "^3.4.14",
     "mcp-handler": "^2.1.1",
     "next": "16.3.3",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "zod": "^4.5.4"
+    "zod": "^4.5.4",
+    "@kriyan/core": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20",

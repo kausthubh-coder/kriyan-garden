@@ -1,46 +1,17 @@
-:root {
-  --paper: #f2eee5;
-  --paper-light: #faf8f2;
-  --ink: #2d2923;
-  --muted: #968f82;
-  --line: #d6cdbd;
-  --green: #637b54;
-  --terracotta: #bb6546;
-  --ochre: #c5a04f;
-  --stone: #8a7c6c;
-}
-
-* { box-sizing: border-box; margin: 0; padding: 0; }
+@import "@kriyan/core/tokens.css";
+* { box-sizing: border-box; }
 html, body { min-height: 100%; }
-html { background: var(--paper); }
-body {
-  color: var(--ink);
-  background: var(--paper);
-  font-family: var(--font-atkinson), Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-}
-button, input, select, textarea { color: inherit; font: inherit; }
-button, a { -webkit-tap-highlight-color: transparent; }
-a { color: inherit; text-decoration: none; }
-::selection { color: var(--ink); background: #d8dfce; }
-
-.route-state {
-  min-height: 100vh;
-  display: grid;
-  place-content: center;
-  gap: 1rem;
-  text-align: center;
-  color: var(--muted);
-  font-family: var(--font-spectral), Georgia, serif;
-  font-size: 1.15rem;
-  font-style: italic;
-}
-
-.route-state button {
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 0.65rem 1.15rem;
-  background: var(--paper-light);
-  cursor: pointer;
-}
+body { margin: 0; color: var(--ink); background: var(--bg); font-family: var(--font-schibsted), sans-serif; font-size: var(--text-body); }
+button, input { font: inherit; color: inherit; min-height: var(--control-height); border: 1px solid var(--ink-2); border-radius: var(--radius-control); padding: var(--space-small); }
+button { background: var(--ink); color: var(--on); cursor: pointer; }
+input { background: var(--s1); }
+button:hover { opacity: .9; }
+button:active { opacity: .8; }
+button:disabled, input:disabled { opacity: .6; cursor: default; }
+a { color: inherit; }
+a:hover, a:active { opacity: .8; }
+button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.placeholder { padding: var(--space-large); }
+.placeholder h1, .placeholder h2 { font-size: var(--text-title); }
+.placeholder form { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-small); }
+.placeholder ul { padding-left: var(--space-large); }

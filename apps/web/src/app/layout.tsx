@@ -1,18 +1,17 @@
 import type { Metadata } from "next";
-import { Atkinson_Hyperlegible, Spectral } from "next/font/google";
+import { Schibsted_Grotesk } from "next/font/google";
 import "./globals.css";
 
-const spectral = Spectral({ variable: "--font-spectral", subsets: ["latin"], weight: ["300", "400", "500", "600"], style: ["normal", "italic"] });
-const atkinson = Atkinson_Hyperlegible({ variable: "--font-atkinson", subsets: ["latin"], weight: ["400", "700"] });
+const font = Schibsted_Grotesk({ variable: "--font-schibsted", subsets: ["latin"], weight: ["400", "500", "600", "700"] });
 
 export const metadata: Metadata = {
   title: "Kriyan",
-  description: "A garden for the things you mean to keep.",
+  description: "A planner for tasks and goals across School, Business and Life.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${spectral.variable} ${atkinson.variable}`}>
+    <html lang="en" className={font.variable}>
       <body>{children}</body>
     </html>
   );

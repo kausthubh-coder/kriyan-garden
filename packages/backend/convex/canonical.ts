@@ -1,4 +1,4 @@
-// Convex sorts object keys on the wire, so both sides of the MCP service
+// Convex sorts object keys on the wire, so both sides of the service
 // signature must serialize with a stable key order.
 export function canonicalJson(value: unknown): string {
   return JSON.stringify(value, (_key, item: unknown) => {

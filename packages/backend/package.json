@@ -11,13 +11,24 @@
     "./convex/_generated/dataModel": {
       "types": "./convex/_generated/dataModel.d.ts"
     },
-    "./convex/canonical": "./convex/canonical.ts"
+    "./convex/canonical": "./convex/canonical.ts",
+    "./convex/validators": "./convex/validators.ts"
   },
   "scripts": {
     "dev": "convex dev",
     "deploy": "convex deploy",
-    "typecheck": "tsc --noEmit -p convex"
+    "typecheck": "tsc --noEmit -p convex",
+    "test": "vitest run"
   },
-  "dependencies": { "convex": "^1.45.0" },
-  "devDependencies": { "@types/node": "^20", "typescript": "^5" }
+  "dependencies": {
+    "@kriyan/core": "workspace:*",
+    "convex": "^1.45.0"
+  },
+  "devDependencies": {
+    "@edge-runtime/vm": "^5.0.0",
+    "@types/node": "^20",
+    "convex-test": "^0.0.60",
+    "typescript": "^5",
+    "vitest": "^5.0.2"
+  }
 }

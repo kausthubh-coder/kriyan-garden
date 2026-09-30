@@ -11,10 +11,13 @@ export default clerkMiddleware(async (auth, request) => {
   }
 
   if (hostname?.endsWith(".vercel.app") && pathname === "/") {
-    return NextResponse.redirect(new URL("/garden", request.url), 307);
+    return NextResponse.redirect(new URL("/app", request.url), 307);
   }
 
   if (pathname === "/garden" || pathname.startsWith("/garden/")) {
+    return NextResponse.redirect(new URL("/app", request.url), 307);
+  }
+  if (pathname === "/app" || pathname.startsWith("/app/")) {
     await auth.protect();
   }
 });

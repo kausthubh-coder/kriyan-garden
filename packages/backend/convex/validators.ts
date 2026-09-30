@@ -1,71 +1,55 @@
 import { v } from "convex/values";
+import type { Infer } from "convex/values";
 
-export const horizonValidator = v.union(
-  v.literal("now"),
-  v.literal("season"),
-  v.literal("someday"),
-);
+export const nullableString = v.union(v.string(), v.null());
+export const nullableNumber = v.union(v.number(), v.null());
+export const color = v.union(v.literal("blue"), v.literal("orange"), v.literal("green"), v.literal("red"), v.literal("yellow"), v.literal("purple"), v.literal("teal"), v.literal("grey"));
+export const taskStatus = v.union(v.literal("active"), v.literal("completed"));
+export const goalStatus = v.union(v.literal("active"), v.literal("done"), v.literal("archived"));
+export const repeat = v.union(v.null(), v.object({ every: v.number(), unit: v.union(v.literal("day"), v.literal("week"), v.literal("month"), v.literal("year")), weekdays: v.optional(v.array(v.number())) }));
+export const reminder = v.union(v.object({ type: v.literal("at_start") }), v.object({ type: v.literal("before"), minutes: v.number() }), v.object({ type: v.literal("morning_of") }), v.object({ type: v.literal("day_before") }), v.object({ type: v.literal("at_time"), time: v.string() }));
+export const metric = v.union(v.object({ kind: v.literal("tasks") }), v.object({ kind: v.literal("number"), unit: v.string(), target: v.number(), current: v.number() }), v.object({ kind: v.literal("milestones") }));
+export const common = { ownerId: v.string(), createdAt: v.number(), updatedAt: v.number() };
+export const serviceEnvelope = { ownerId: v.string(), timestamp: v.number(), nonce: v.string(), signature: v.string() };
+export const profileFields = { onboardingComplete: v.boolean(), timezone: v.string(), dailyCapacityMinutes: v.number(), dayStartHour: v.number(), dayEndHour: v.number() };
+export const areaFields = { name: v.string(), color, sortOrder: v.number() };
+export const projectFields = { areaId: v.id("areas"), name: v.string(), kind: v.union(v.literal("project"), v.literal("course")), note: v.string(), sortOrder: v.number(), archivedAt: nullableNumber };
+export const goalFields = { areaId: v.id("areas"), title: v.string(), note: v.string(), targetDate: nullableString, startDate: v.string(), metric, status: goalStatus, sortOrder: v.number() };
+export const milestoneFields = { goalId: v.id("goals"), title: v.string(), targetDate: nullableString, doneAt: nullableNumber, sortOrder: v.number() };
+export const eventFields = { areaId: v.union(v.id("areas"), v.null()), title: v.string(), location: v.string(), weekdays: v.array(v.number()), startTime: v.string(), endTime: v.string(), fromDate: v.string(), untilDate: nullableString };
+export const taskFields = { title: v.string(), areaId: v.id("areas"), projectId: v.union(v.id("projects"), v.null()), goalId: v.union(v.id("goals"), v.null()), date: nullableString, time: nullableString, durationMinutes: nullableNumber, deadline: nullableString, repeat, reminders: v.array(reminder), notes: v.string(), sortOrder: v.number() };
+export const habitFields = { areaId: v.id("areas"), title: v.string(), weeklyTarget: v.number(), archivedAt: nullableNumber };
+export const habitLogFields = { habitId: v.id("habits"), date: v.string() };
+export const nonceFields = { nonce: v.string(), expiresAt: v.number() };
 
-export const taskStatusValidator = v.union(
-  v.literal("active"),
-  v.literal("completed"),
-);
+export const profile = v.object({ ...common, ...profileFields, _id: v.id("profiles"), _creationTime: v.number() });
+export const area = v.object({ ...common, ...areaFields, _id: v.id("areas"), _creationTime: v.number() });
+export const project = v.object({ ...common, ...projectFields, _id: v.id("projects"), _creationTime: v.number() });
+export const goal = v.object({ ...common, ...goalFields, _id: v.id("goals"), _creationTime: v.number() });
+export const milestone = v.object({ ...common, ...milestoneFields, _id: v.id("milestones"), _creationTime: v.number() });
+export const event = v.object({ ...common, ...eventFields, _id: v.id("events"), _creationTime: v.number() });
+export const task = v.object({ ...common, ...taskFields, status: taskStatus, completedAt: nullableNumber, searchText: v.string(), _id: v.id("tasks"), _creationTime: v.number() });
+export const habit = v.object({ ...common, ...habitFields, _id: v.id("habits"), _creationTime: v.number() });
+export const habitLog = v.object({ ...common, ...habitLogFields, _id: v.id("habitLogs"), _creationTime: v.number() });
+export const goalWithProgress = v.object({ ...goal.fields, linkedTasks: v.object({ total: v.number(), done: v.number() }), milestones: v.array(milestone) });
+export const day = v.object({ date: v.string(), timed: v.array(task), anytime: v.array(task), unscheduled: v.array(task), events: v.array(event), plannedMinutes: v.number(), countWithoutDuration: v.number() });
+export const weekDay = v.object({ ...day.fields, plannedMinutesByArea: v.record(v.string(), v.number()), taskCount: v.number() });
 
-export const regionDtoValidator = v.object({
-  id: v.string(),
-  name: v.string(),
-  color: v.string(),
-  note: v.string(),
-  sortOrder: v.number(),
-});
-
-const taskSummaryFields = {
-  id: v.string(),
-  title: v.string(),
-  regionId: v.union(v.string(), v.null()),
-  horizon: horizonValidator,
-  dueDate: v.union(v.string(), v.null()),
-  time: v.union(v.string(), v.null()),
-  durationMinutes: v.union(v.number(), v.null()),
-  repeatRule: v.union(v.string(), v.null()),
-  reminders: v.array(v.string()),
-  status: taskStatusValidator,
-  completedAt: v.union(v.string(), v.null()),
-  sortOrder: v.number(),
-  createdAt: v.string(),
-  updatedAt: v.string(),
-};
-
-export const taskSummaryValidator = v.object(taskSummaryFields);
-export const taskDtoValidator = v.object({ ...taskSummaryFields, content: v.string() });
-
-export const gardenDataValidator = v.object({
-  regions: v.array(regionDtoValidator),
-  tasks: v.array(taskSummaryValidator),
-  onboardingComplete: v.boolean(),
-});
-
-export const nullableStringValidator = v.union(v.string(), v.null());
-export const nullableNumberValidator = v.union(v.number(), v.null());
-
-export const taskFieldsValidator = {
-  title: v.string(),
-  regionId: v.union(v.id("regions"), v.null()),
-  dueDate: nullableStringValidator,
-  time: nullableStringValidator,
-  durationMinutes: nullableNumberValidator,
-  repeatRule: nullableStringValidator,
-  reminders: v.array(v.string()),
-  content: v.string(),
-};
-
-export const taskPatchValidator = v.object({
-  title: v.optional(v.string()),
-  regionId: v.optional(v.union(v.id("regions"), v.null())),
-  dueDate: v.optional(nullableStringValidator),
-  time: v.optional(nullableStringValidator),
-  durationMinutes: v.optional(nullableNumberValidator),
-  repeatRule: v.optional(nullableStringValidator),
-  reminders: v.optional(v.array(v.string())),
-  content: v.optional(v.string()),
-});
+export const profilePatch = v.object({ onboardingComplete: v.optional(v.boolean()), timezone: v.optional(v.string()), dailyCapacityMinutes: v.optional(v.number()), dayStartHour: v.optional(v.number()), dayEndHour: v.optional(v.number()) });
+export const areaCreate = { name: v.string(), color: v.optional(color), sortOrder: v.optional(v.number()) };
+export const areaPatch = v.object({ name: v.optional(v.string()), color: v.optional(color), sortOrder: v.optional(v.number()) });
+export const projectCreate = { areaId: v.id("areas"), name: v.string(), kind: v.optional(projectFields.kind), note: v.optional(v.string()), sortOrder: v.optional(v.number()), archivedAt: v.optional(nullableNumber) };
+export const projectPatch = v.object({ areaId: v.optional(v.id("areas")), name: v.optional(v.string()), kind: v.optional(projectFields.kind), note: v.optional(v.string()), sortOrder: v.optional(v.number()), archivedAt: v.optional(nullableNumber) });
+export const goalCreate = { areaId: v.id("areas"), title: v.string(), startDate: v.string(), note: v.optional(v.string()), targetDate: v.optional(nullableString), metric: v.optional(metric), status: v.optional(goalStatus), sortOrder: v.optional(v.number()) };
+export const goalPatch = v.object({ areaId: v.optional(v.id("areas")), title: v.optional(v.string()), startDate: v.optional(v.string()), note: v.optional(v.string()), targetDate: v.optional(nullableString), metric: v.optional(metric), status: v.optional(goalStatus), sortOrder: v.optional(v.number()) });
+export const milestoneCreate = { goalId: v.id("goals"), title: v.string(), targetDate: v.optional(nullableString), doneAt: v.optional(nullableNumber), sortOrder: v.optional(v.number()) };
+export const milestonePatch = v.object({ title: v.optional(v.string()), targetDate: v.optional(nullableString), doneAt: v.optional(nullableNumber), sortOrder: v.optional(v.number()) });
+export const eventCreate = { ...eventFields, areaId: v.optional(eventFields.areaId), location: v.optional(v.string()), untilDate: v.optional(nullableString) };
+export const eventPatch = v.object({ areaId: v.optional(eventFields.areaId), title: v.optional(v.string()), location: v.optional(v.string()), weekdays: v.optional(v.array(v.number())), startTime: v.optional(v.string()), endTime: v.optional(v.string()), fromDate: v.optional(v.string()), untilDate: v.optional(nullableString) });
+export const taskCreate = { ...taskFields, areaId: v.optional(v.id("areas")), projectId: v.optional(taskFields.projectId), goalId: v.optional(taskFields.goalId), date: v.optional(nullableString), time: v.optional(nullableString), durationMinutes: v.optional(nullableNumber), deadline: v.optional(nullableString), repeat: v.optional(repeat), reminders: v.optional(v.array(reminder)), notes: v.optional(v.string()), sortOrder: v.optional(v.number()) };
+export const taskPatch = v.object({ title: v.optional(v.string()), areaId: v.optional(v.id("areas")), projectId: v.optional(taskFields.projectId), goalId: v.optional(taskFields.goalId), date: v.optional(nullableString), time: v.optional(nullableString), durationMinutes: v.optional(nullableNumber), deadline: v.optional(nullableString), repeat: v.optional(repeat), reminders: v.optional(v.array(reminder)), notes: v.optional(v.string()), sortOrder: v.optional(v.number()) });
+export const habitCreate = { areaId: v.id("areas"), title: v.string(), weeklyTarget: v.number(), archivedAt: v.optional(nullableNumber) };
+export const habitPatch = v.object({ areaId: v.optional(v.id("areas")), title: v.optional(v.string()), weeklyTarget: v.optional(v.number()), archivedAt: v.optional(nullableNumber) });
+const taskCreateObject = v.object(taskCreate);
+export type TaskCreate = Infer<typeof taskCreateObject>;
+export type TaskPatch = Infer<typeof taskPatch>;

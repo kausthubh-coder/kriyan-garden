@@ -26,13 +26,13 @@ Open [http://localhost:3000](http://localhost:3000). Next.js loads the web app's
 
 ## Required configuration
 
-The web app needs `NEXT_PUBLIC_CONVEX_URL`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, the Clerk server key, and `MCP_SERVICE_SECRET`. Clerk needs a JWT template named `convex` with `aud` set to `convex`. The Convex deployment needs `CLERK_JWT_ISSUER_DOMAIN` and the same random `MCP_SERVICE_SECRET` used by the web server. Keep the service secret in server environments, without a `NEXT_PUBLIC_` prefix.
+The web app needs `NEXT_PUBLIC_CONVEX_URL`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, the Clerk server key, and `SERVICE_SECRET`. Clerk needs a JWT template named `convex` with `aud` set to `convex`. The Convex deployment needs `CLERK_JWT_ISSUER_DOMAIN` and the same random `SERVICE_SECRET` used by the web server. Keep the service secret in server environments, without a `NEXT_PUBLIC_` prefix. Set `SERVICE_SECRET` in both Convex and the web environment. `MCP_SERVICE_SECRET` is accepted as a temporary fallback; existing local env files are not changed. The signed envelope is `[timestamp, nonce, ownerId, operation, payload]`, with a five-minute window and replay protection.
 
 To configure your Convex deployment, run the following from `packages/backend` with your own values:
 
 ```bash
 bunx convex env set CLERK_JWT_ISSUER_DOMAIN https://your-clerk-issuer.example
-bunx convex env set MCP_SERVICE_SECRET your-random-secret
+bunx convex env set SERVICE_SECRET your-random-secret
 ```
 
 ## MCP
@@ -60,7 +60,7 @@ bun run test
 bun run build
 ```
 
-`dev` and `build` run the web workspace. `typecheck` generates Next.js route types and checks all workspaces. `lint` and `test` run each workspace that defines the corresponding script. The web app defines linting; core defines Bun tests for the parser and date helpers. To serve a production build, run `bun run --filter @kriyan/web start`.
+`dev` and `build` run the web workspace. `typecheck` generates Next.js route types and checks all workspaces. `lint` and `test` run each workspace that defines the corresponding script. The web app defines linting; core defines Bun tests for the parser and date helpers, and backend defines Vitest tests using convex-test. To serve a production build, run `bun run --filter @kriyan/web start`.
 
 GitHub Actions runs installation with `--frozen-lockfile`, typechecking, linting, tests and the web build for pull requests and pushes to `main` or `v2`. The CI build uses fake Convex, Clerk publishable-key and MCP secret placeholders. They permit build-time validation without production credentials; use your own configuration to run the app.
 
