@@ -17,6 +17,10 @@ export function Dialog({
   useEffect(() => {
     const dialog = ref.current;
     const previous = document.activeElement;
+    if (dialog)
+      dialog.dataset.animation =
+        dialog.closest("[data-input]")?.getAttribute("data-input") ??
+        "keyboard";
     dialog?.showModal();
     if (initialFocus) dialog?.querySelector<HTMLElement>(initialFocus)?.focus();
     return () => {

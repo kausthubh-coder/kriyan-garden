@@ -15,3 +15,4 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
 .placeholder h1, .placeholder h2 { font-size: var(--text-title); }
 .placeholder form { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-small); }
 .placeholder ul { padding-left: var(--space-large); }
+.auth-page { display: flex; align-items: center; justify-content: center; min-height: 100dvh; padding: var(--space-16); }

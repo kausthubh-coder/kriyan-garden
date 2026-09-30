@@ -14,7 +14,11 @@ function calendarDate(date: string): Date {
 export function addDays(date: string, days: number): string {
   const value = calendarDate(date);
   value.setUTCDate(value.getUTCDate() + days);
-  return toIsoDate(value.getUTCFullYear(), value.getUTCMonth() + 1, value.getUTCDate());
+  return toIsoDate(
+    value.getUTCFullYear(),
+    value.getUTCMonth() + 1,
+    value.getUTCDate(),
+  );
 }
 
 /** Sunday is 0, Saturday is 6. */
@@ -24,4 +28,23 @@ export function getWeekday(date: string): number {
 
 export function weekdayIndex(name: string): number {
   return weekdays.findIndex((day) => day === name.toLowerCase().slice(0, 3));
+}
+
+/** Use the user's timezone, defaulting to the current device's timezone. */
+export function localClock(now: Date, timezone?: string) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(now);
+  const part = (name: Intl.DateTimeFormatPartTypes) =>
+    parts.find((p) => p.type === name)?.value ?? "00";
+  return {
+    today: `${part("year")}-${part("month")}-${part("day")}`,
+    minutes: Number(part("hour")) * 60 + Number(part("minute")),
+  };
 }

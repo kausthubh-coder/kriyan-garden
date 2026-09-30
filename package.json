@@ -9,7 +9,8 @@
     "build": "bun run --filter @kriyan/web build",
     "lint": "bun run --filter '*' lint",
     "typecheck": "bun run --filter @kriyan/web typegen && bun run --filter '*' typecheck",
-    "test": "bun run --filter '*' test"
+    "test": "bun run --filter '*' test",
+    "e2e": "bun run --filter @kriyan/web e2e"
   },
   "overrides": {
     "js-yaml": "^4.3.2",

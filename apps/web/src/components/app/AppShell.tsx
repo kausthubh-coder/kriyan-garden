@@ -1,11 +1,11 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "@kriyan/backend/convex/_generated/api";
 import type { Id } from "@kriyan/backend/convex/_generated/dataModel";
 import { addDays, type QuickAddResult } from "@kriyan/core";
-import { useClock, usePlanner } from "./usePlanner";
+import { usePlanner } from "./usePlanner";
 import { useTaskActions } from "./useTaskActions";
 import { Rail } from "./Rail";
 import { DayView } from "./DayView";
@@ -13,7 +13,7 @@ import { ListView } from "./ListView";
 import { WeekView } from "./WeekView";
 import { GoalsView } from "./GoalsView";
 import { Onboarding } from "./Onboarding";
-import { ComingSoon } from "./ComingSoon";
+import { Settings } from "./Settings";
 import { QuickAdd } from "./QuickAdd";
 import { CommandPalette } from "./CommandPalette";
 import { TaskPanel } from "./TaskPanel";
@@ -40,7 +40,7 @@ const emptyAreas: Area[] = [];
 export function AppShell() {
   const params = useSearchParams(),
     router = useRouter(),
-    clock = useClock();
+    pathname = usePathname();
   const rawDate = params.get("date");
   const validDate =
     rawDate &&
@@ -48,10 +48,16 @@ export function AppShell() {
     addDays(rawDate, 0) === rawDate
       ? rawDate
       : null;
-  const date = validDate ?? clock?.today ?? null;
-  const rawView = params.get("view") ?? "day",
+  const rawView =
+      pathname === "/app/welcome"
+        ? "onboarding"
+        : pathname === "/app/settings"
+          ? "settings"
+          : (params.get("view") ?? "day"),
     view = (views.includes(rawView) ? rawView : "day") as View;
-  const planner = usePlanner(date),
+  const planner = usePlanner(validDate),
+    clock = planner.clock,
+    date = validDate ?? clock?.today ?? null,
     { isAuthenticated } = useConvexAuth();
   const [overlay, setOverlay] = useState<"add" | "palette" | "help" | null>(
       null,
@@ -59,6 +65,27 @@ export function AppShell() {
     [initialText, setInitialText] = useState(""),
     [section, setSection] = useState<PanelSection>();
   const [modality, setModality] = useState("keyboard");
+  const [hint, setHint] = useState(false);
+  useEffect(() => {
+    if (pathname !== "/app") return;
+    const timer = setTimeout(() => {
+      if (sessionStorage.getItem("kriyan-setup-hint") === "1") {
+        sessionStorage.removeItem("kriyan-setup-hint");
+        setHint(true);
+      }
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [pathname]);
+  useEffect(() => {
+    if (
+      planner.profile &&
+      !planner.profile.onboardingComplete &&
+      pathname !== "/app/welcome"
+    )
+      router.replace("/app/welcome");
+    if (planner.profile?.onboardingComplete && pathname === "/app/welcome")
+      router.replace("/app");
+  }, [planner.profile, pathname, router]);
   const navigateUrl = useCallback(
     (patch: Record<string, string | null>) => {
       const next = new URLSearchParams(window.location.search);
@@ -66,7 +93,15 @@ export function AppShell() {
         if (value === null) next.delete(key);
         else next.set(key, value);
       }
-      router.push(`/app?${next.toString()}`, { scroll: false });
+      const view = next.get("view");
+      const target =
+        view === "settings"
+          ? "/app/settings"
+          : view === "onboarding"
+            ? "/app/welcome"
+            : "/app";
+      if (target !== "/app") next.delete("view");
+      router.push(`${target}?${next.toString()}`, { scroll: false });
     },
     [router],
   );
@@ -102,7 +137,7 @@ export function AppShell() {
       setSection(section);
       navigateUrl({
         task: task._id,
-        ...(task.date ? { date: task.date, view: "day" } : {}),
+        ...(task.date ? { date: task.date } : {}),
       });
     },
     [navigateUrl],
@@ -116,12 +151,16 @@ export function AppShell() {
   );
   const add = useCallback(
     (text = "") => {
+      if (planner.areas !== undefined && !areas.length) {
+        navigateUrl({ view: "settings", task: null });
+        return;
+      }
       setInitialText(text);
       setOverlay("add");
       if (new URLSearchParams(window.location.search).has("task"))
         navigateUrl({ task: null });
     },
-    [navigateUrl],
+    [navigateUrl, areas.length, planner.areas],
   );
   const palette = useCallback(() => {
     setOverlay("palette");
@@ -177,6 +216,8 @@ export function AppShell() {
       if (
         event.defaultPrevented ||
         overlay ||
+        view === "onboarding" ||
+        view === "settings" ||
         selectedId ||
         event.ctrlKey ||
         event.metaKey ||
@@ -221,6 +262,7 @@ export function AppShell() {
     goToday,
     navigate,
     changeDate,
+    view,
   ]);
   const submit = (result: QuickAddResult) => {
     const area = areas.find((area) => area._id === result.areaId),
@@ -240,7 +282,60 @@ export function AppShell() {
     areas.find((area) => area._id === filter) ??
     areas.find((area) => area.color === "green") ??
     areas[0];
-  const goDayView = () => navigate("day");
+  const finish = () => {
+    sessionStorage.setItem("kriyan-setup-hint", "1");
+    router.replace("/app");
+  };
+  const viewProps =
+    date && clock
+      ? {
+          tasks,
+          areas,
+          projects,
+          goals,
+          date,
+          today: clock.today,
+          filter,
+          setFilter,
+          open,
+          toggle: actions.toggle,
+          add: () => add(),
+          navigate: changeDate,
+          loading: planner.loading,
+        }
+      : null;
+  if (
+    view === "onboarding" ||
+    (planner.profile && !planner.profile.onboardingComplete)
+  ) {
+    return (
+      <div
+        className={s.app}
+        data-input={modality}
+        data-skeleton={planner.showSkeleton}
+        data-welcome="true"
+      >
+        {planner.loading || !clock ? (
+          <main className={s.page}>
+            <p role="status">{planner.error || "Loading setup."}</p>
+            {planner.error && (
+              <button className={s.f} onClick={planner.retry}>
+                Retry loading
+              </button>
+            )}
+          </main>
+        ) : (
+          <Onboarding
+            areas={areas}
+            projects={projects}
+            events={planner.events ?? []}
+            today={clock.today}
+            finish={finish}
+          />
+        )}
+      </div>
+    );
+  }
   return (
     <div
       className={s.app}
@@ -255,6 +350,15 @@ export function AppShell() {
         help={help}
       />
       <div className={s.content} aria-busy={planner.loading}>
+        {hint && (
+          <div className={s.status} role="status">
+            Drag a task from the tray onto the timeline to schedule it. Press N
+            to add a task.
+            <button className={s.f} onClick={() => setHint(false)}>
+              Dismiss hint
+            </button>
+          </div>
+        )}
         {!planner.connected && !planner.loading && (
           <div className={s.status} role="status">
             Offline, changes will sync when you reconnect. Keep this tab open.
@@ -305,15 +409,36 @@ export function AppShell() {
               loading={planner.loading}
             />
           ) : view === "list" ? (
-            <ListView goDay={goDayView} />
+            viewProps && <ListView {...viewProps} />
           ) : view === "week" ? (
-            <WeekView goDay={goDayView} />
+            viewProps && (
+              <WeekView
+                {...viewProps}
+                week={planner.week}
+                capacity={planner.profile?.dailyCapacityMinutes ?? 360}
+                goDay={goDay}
+                goGoals={() => navigate("goals")}
+              />
+            )
           ) : view === "goals" ? (
-            <GoalsView goDay={goDayView} />
-          ) : view === "onboarding" ? (
-            <Onboarding goDay={goDayView} />
+            viewProps && <GoalsView {...viewProps} />
+          ) : planner.profile && !planner.loading ? (
+            <Settings
+              areas={areas}
+              projects={projects}
+              events={planner.events ?? []}
+              habits={planner.habits ?? []}
+              profile={planner.profile}
+              today={clock.today}
+              reset={() => {
+                planner.retry();
+                router.replace("/app/welcome");
+              }}
+            />
           ) : (
-            <ComingSoon title="Settings" goDay={goDayView} />
+            <main className={s.page}>
+              <p role="status">Loading settings.</p>
+            </main>
           )
         ) : (
           <main className={s.page}>

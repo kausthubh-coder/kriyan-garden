@@ -11,3 +11,7 @@ coverage/
 .agents/playwright-mcp/
 .agents/logs/
 .agents/screenshots/
+apps/web/e2e/.auth/
+apps/web/test-results/
+apps/web/playwright-report/
+.agents/playwright-browsers/

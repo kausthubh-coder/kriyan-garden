@@ -10,7 +10,7 @@ export default clerkMiddleware(async (auth, request) => {
     return NextResponse.redirect(new URL(`${pathname}${request.nextUrl.search}`, KRIYAN_APP_ORIGIN), 307);
   }
 
-  if (hostname?.endsWith(".vercel.app") && pathname === "/") {
+  if ((hostname === "app.kriyan.app" || hostname?.endsWith(".vercel.app")) && pathname === "/") {
     return NextResponse.redirect(new URL("/app", request.url), 307);
   }
 

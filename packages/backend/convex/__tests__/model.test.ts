@@ -11,6 +11,35 @@ function setup() {
 }
 afterEach(() => { vi.unstubAllEnvs(); vi.useRealTimers(); });
 
+test("sample data is relative to client today, isolated, complete and idempotent", async () => {
+  const { t, a, b } = setup();
+  await expect(t.mutation(api.profiles.seedSample, { today: "2026-09-29" })).rejects.toThrow("Not authenticated");
+  await a.mutation(api.profiles.seedSample, { today: "2026-09-29" });
+  expect(await a.query(api.profiles.get, {})).toMatchObject({ onboardingComplete: true });
+  const rows = await a.query(api.tasks.list, {});
+  expect(rows).toHaveLength(25);
+  expect(rows.find(row => row.title === "Send the September invoice to Hartley")).toMatchObject({ date: "2026-09-29", time: "16:00", durationMinutes: null });
+  expect(rows.find(row => row.title === "Calculus problem sheet 5")).toMatchObject({ date: "2026-09-30" });
+  expect(rows.find(row => row.title === "Gym, legs")?.status).toBe("completed");
+  expect(await a.query(api.projects.list, {})).toHaveLength(7);
+  expect(await a.query(api.goals.list, {})).toHaveLength(3);
+  expect(await a.query(api.events.list, {})).toHaveLength(7);
+  await a.mutation(api.profiles.seedSample, { today: "2026-09-30" });
+  expect(await a.query(api.tasks.list, {})).toEqual(rows);
+  expect(await b.query(api.tasks.list, {})).toEqual([]);
+  expect(await b.query(api.areas.list, {})).toEqual([]);
+  await expect(b.mutation(api.profiles.seedSample, { today: "2026-02-30" })).rejects.toThrow("Invalid date");
+});
+test("sample refuses to overwrite real onboarding records and transaction rolls back", async () => {
+  const { a } = setup();
+  await a.mutation(api.profiles.ensure, {});
+  const task = await a.mutation(api.tasks.create, { title: "My task" });
+  await expect(a.mutation(api.profiles.seedSample, { today: "2026-09-29" })).rejects.toThrow("already has records");
+  expect(await a.query(api.tasks.list, {})).toEqual([task]);
+  expect(await a.query(api.projects.list, {})).toEqual([]);
+  expect(await a.query(api.profiles.get, {})).toMatchObject({ onboardingComplete: false });
+});
+
 test("owner isolation for area, project, goal, task, event, habit, milestone and logs", async () => {
   const { a, b } = setup();
   const area = await a.mutation(api.areas.create, { name: "School" });

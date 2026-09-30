@@ -3,6 +3,16 @@ import { query, mutation } from "./_generated/server";
 import * as V from "./validators";
 import * as model from "./model/profiles";
 import { requireOwnerId } from "./model/shared";
+import { seedSample as seed } from "./model/sample";
+
+export const seedSample = mutation({
+  args: { today: v.string() },
+  returns: V.profile,
+  handler: async (ctx, args) => {
+    const ownerId = await requireOwnerId(ctx);
+    return seed(ctx, ownerId, args);
+  },
+});
 
 export const get = query({
   args: {},

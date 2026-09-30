@@ -64,6 +64,15 @@ export function Rail({
       >
         <Icon name="help" />
       </button>
+      <button
+        className={s.settingsLink}
+        aria-label="Settings"
+        aria-current={view === "settings" ? "page" : undefined}
+        onClick={() => navigate("settings")}
+      >
+        <Icon name="settings" />
+        <span>Settings</span>
+      </button>
     </nav>
   );
 }

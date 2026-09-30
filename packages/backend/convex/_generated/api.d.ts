@@ -22,6 +22,7 @@ import type * as model_goals from "../model/goals.js";
 import type * as model_habits from "../model/habits.js";
 import type * as model_profiles from "../model/profiles.js";
 import type * as model_projects from "../model/projects.js";
+import type * as model_sample from "../model/sample.js";
 import type * as model_shared from "../model/shared.js";
 import type * as model_tasks from "../model/tasks.js";
 import type * as model_week from "../model/week.js";
@@ -55,6 +56,7 @@ declare const fullApi: ApiFromModules<{
   "model/habits": typeof model_habits;
   "model/profiles": typeof model_profiles;
   "model/projects": typeof model_projects;
+  "model/sample": typeof model_sample;
   "model/shared": typeof model_shared;
   "model/tasks": typeof model_tasks;
   "model/week": typeof model_week;

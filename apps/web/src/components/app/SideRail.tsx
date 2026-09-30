@@ -2,6 +2,7 @@ import {
   addDays,
   deadlineCapacity,
   formatMinutes,
+  goalProgress,
   weekStart,
 } from "@kriyan/core";
 import {
@@ -29,6 +30,7 @@ export function SideRail({
   goGoals,
   open,
   loading,
+  compact = false,
 }: {
   week?: Week;
   tasks: Task[];
@@ -42,6 +44,7 @@ export function SideRail({
   goGoals: () => void;
   open: (task: Task) => void;
   loading: boolean;
+  compact?: boolean;
 }) {
   const start = weekStart(date),
     shown = (areaId: string | null) => filter === "all" || areaId === filter;
@@ -62,9 +65,22 @@ export function SideRail({
     (goal) => goal.status === "active" && shown(goal.areaId),
   );
   return (
-    <aside className={s.side} aria-label="Week load, deadlines and goals">
+    <aside
+      className={s.side}
+      aria-label={
+        compact ? "Week load and deadlines" : "Week load, deadlines and goals"
+      }
+    >
       <div>
-        <h2 className={s.h}>Week of {longDate(start)}</h2>
+        <h2 className={s.h}>
+          {compact ? (
+            <>
+              Load<em>Hours with a length, by area</em>
+            </>
+          ) : (
+            <>Week of {longDate(start)}</>
+          )}
+        </h2>
         {loading ? (
           <div className={s.skeleton} />
         ) : (
@@ -186,7 +202,7 @@ export function SideRail({
           <div className={s.empty}>No deadlines in this area.</div>
         )}
       </div>
-      <div>
+      <div hidden={compact}>
         <h2 className={s.h}>
           Goals<em>{activeGoals.length} active</em>
         </h2>
@@ -195,21 +211,7 @@ export function SideRail({
         ) : activeGoals.length ? (
           activeGoals.map((goal) => {
             const metric = goal.metric;
-            const total =
-              metric.kind === "number"
-                ? metric.target
-                : metric.kind === "tasks"
-                  ? goal.linkedTasks.total
-                  : goal.milestones.length;
-            const done =
-              metric.kind === "number"
-                ? metric.current
-                : metric.kind === "tasks"
-                  ? goal.linkedTasks.done
-                  : goal.milestones.filter(
-                      (milestone) => milestone.doneAt !== null,
-                    ).length;
-            const progress = total > 0 ? Math.min(done / total, 1) : 0;
+            const { done, progress } = goalProgress(goal, today);
             return (
               <button
                 key={goal._id}
