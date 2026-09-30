@@ -15,6 +15,7 @@ export function TaskEditor({ task, regions, onBack, onUpdate, onComplete }: { ta
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [title, setTitle] = useState(task.title);
   const [reminders, setReminders] = useState(task.reminders.join(", "));
+  const [duration, setDuration] = useState(task.durationMinutes ? String(task.durationMinutes) : "");
   const editorRef = useRef<HTMLDivElement>(null);
   const region = regions.find((item) => item.id === task.regionId);
 
@@ -88,12 +89,12 @@ export function TaskEditor({ task, regions, onBack, onUpdate, onComplete }: { ta
       {detailsOpen ? (
         <aside className={styles.detailsPanel} aria-label="Task details">
           <div className={styles.panelTop}><span>task details</span><button type="button" aria-label="Close details" onClick={() => setDetailsOpen(false)}><X size={17} weight="thin" /></button></div>
-          <label><span>place</span><select value={task.regionId ?? ""} onChange={(event) => void onUpdate(task.id, { regionId: event.target.value || null })}>{regions.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+          <label><span>place</span><select value={region ? region.id : ""} onChange={(event) => void onUpdate(task.id, { regionId: event.target.value || null })}><option value="">unsorted</option>{regions.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
           <label><span>due date</span><input type="date" value={task.dueDate ?? ""} onInput={(event) => { const value = event.currentTarget.value; void onUpdate(task.id, { dueDate: value || null }); }} /></label>
           <label><span>time</span><input type="time" value={task.time ?? ""} onChange={(event) => void onUpdate(task.id, { time: event.target.value || null })} /></label>
-          <label><span>duration</span><input type="number" min="1" placeholder="minutes" value={task.durationMinutes ?? ""} onChange={(event) => void onUpdate(task.id, { durationMinutes: event.target.value ? Number(event.target.value) : null })} /></label>
+          <label><span>duration</span><input inputMode="numeric" placeholder="minutes" value={duration} onChange={(event) => setDuration(event.target.value.replace(/\D/g, ""))} onBlur={() => { const next = duration ? Number(duration) : null; if (next !== task.durationMinutes) void onUpdate(task.id, { durationMinutes: next }); }} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /></label>
           <label><span>repeat</span><select value={task.repeatRule ?? ""} onChange={(event) => void onUpdate(task.id, { repeatRule: event.target.value || null })}><option value="">does not repeat</option><option value="every day">every day</option><option value="every weekday">every weekday</option><option value="every week">every week</option><option value="every Monday, Wednesday, Friday">Monday, Wednesday, Friday</option><option value="every month">every month</option><option value="every year">every year</option>{task.repeatRule && !["every day", "every weekday", "every week", "every Monday, Wednesday, Friday", "every month", "every year"].includes(task.repeatRule) ? <option value={task.repeatRule}>{task.repeatRule}</option> : null}</select></label>
-          <label><span>reminders</span><input placeholder="08:00, Friday 18:00" value={reminders} onChange={(event) => setReminders(event.target.value)} onBlur={() => void onUpdate(task.id, { reminders: reminders.split(",").map((item) => item.trim()).filter(Boolean) })} /></label>
+          <label><span>reminders</span><input placeholder="08:00, Friday 18:00" value={reminders} onChange={(event) => setReminders(event.target.value)} onBlur={() => { const next = reminders.split(",").map((item) => item.trim()).filter(Boolean); if (next.join("\n") !== task.reminders.join("\n")) void onUpdate(task.id, { reminders: next }); }} /></label>
           <p>Reminders ring through the Android app. Each time stays with every occurrence.</p>
         </aside>
       ) : null}

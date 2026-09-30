@@ -19,7 +19,7 @@ export const regionDtoValidator = v.object({
   sortOrder: v.number(),
 });
 
-export const taskDtoValidator = v.object({
+const taskSummaryFields = {
   id: v.string(),
   title: v.string(),
   regionId: v.union(v.string(), v.null()),
@@ -29,17 +29,19 @@ export const taskDtoValidator = v.object({
   durationMinutes: v.union(v.number(), v.null()),
   repeatRule: v.union(v.string(), v.null()),
   reminders: v.array(v.string()),
-  content: v.string(),
   status: taskStatusValidator,
   completedAt: v.union(v.string(), v.null()),
   sortOrder: v.number(),
   createdAt: v.string(),
   updatedAt: v.string(),
-});
+};
+
+export const taskSummaryValidator = v.object(taskSummaryFields);
+export const taskDtoValidator = v.object({ ...taskSummaryFields, content: v.string() });
 
 export const gardenDataValidator = v.object({
   regions: v.array(regionDtoValidator),
-  tasks: v.array(taskDtoValidator),
+  tasks: v.array(taskSummaryValidator),
   onboardingComplete: v.boolean(),
 });
 

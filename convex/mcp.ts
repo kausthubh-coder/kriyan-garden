@@ -2,6 +2,7 @@ import { makeFunctionReference } from "convex/server";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { action } from "./_generated/server";
+import { canonicalJson } from "./canonical";
 import {
   regionDtoValidator,
   taskDtoValidator,
@@ -34,7 +35,7 @@ async function verifyRequest(
     "HMAC",
     key,
     supplied,
-    encoder.encode(JSON.stringify([timestamp, ownerId, operation, payload])),
+    encoder.encode(canonicalJson([timestamp, ownerId, operation, payload])),
   );
   if (!valid) {
     throw new Error("Invalid MCP service request");

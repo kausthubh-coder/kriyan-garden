@@ -8,10 +8,12 @@
  * @module
  */
 
+import type * as canonical from "../canonical.js";
 import type * as garden from "../garden.js";
 import type * as helpers from "../helpers.js";
 import type * as mcp from "../mcp.js";
 import type * as mcpInternal from "../mcpInternal.js";
+import type * as operations from "../operations.js";
 import type * as validators from "../validators.js";
 
 import type {
@@ -21,10 +23,12 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  canonical: typeof canonical;
   garden: typeof garden;
   helpers: typeof helpers;
   mcp: typeof mcp;
   mcpInternal: typeof mcpInternal;
+  operations: typeof operations;
   validators: typeof validators;
 }>;
 

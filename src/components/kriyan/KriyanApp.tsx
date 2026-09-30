@@ -1,10 +1,10 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
-import { useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
-import type { Task, TaskDraft, TaskPatch } from "@/lib/types";
+import type { Region, TaskDraft, TaskPatch } from "@/lib/types";
 import { CalendarView } from "./CalendarView";
 import { DistanceView } from "./DistanceView";
 import { GardenHeader } from "./GardenHeader";
@@ -17,6 +17,22 @@ import { TaskEditor } from "./TaskEditor";
 import styles from "./kriyan.module.css";
 
 export type ViewName = "garden" | "distance" | "calendar";
+
+function errorMessage(error: unknown) {
+  // Convex wraps server failures in transport detail that is not worth showing.
+  if (!(error instanceof Error) || !error.message || error.message.includes("[CONVEX")) return "could not save";
+  return error.message;
+}
+
+function ActiveTask({ id, regions, onBack, onUpdate, onComplete }: { id: string; regions: Region[]; onBack: () => void; onUpdate: (id: string, patch: TaskPatch) => Promise<void>; onComplete: (id: string, completed: boolean) => Promise<void> }) {
+  const task = useQuery(api.garden.getTask, { id: id as Id<"tasks"> });
+  const missing = task === null;
+  useEffect(() => {
+    if (missing) onBack();
+  }, [missing, onBack]);
+  if (!task) return <main className="route-state">opening the page</main>;
+  return <TaskEditor key={task.id} task={task} regions={regions} onBack={onBack} onUpdate={onUpdate} onComplete={onComplete} />;
+}
 
 export function KriyanApp() {
   const data = useQuery(api.garden.get);
@@ -35,35 +51,50 @@ export function KriyanApp() {
   const [remindersOpen, setRemindersOpen] = useState(false);
   const [spacesOpen, setSpacesOpen] = useState(false);
   const [notice, setNotice] = useState("");
+  const noticeTimer = useRef<number | undefined>(undefined);
+  const closeTask = useCallback(() => setActiveTaskId(null), []);
   const [isPending, startTransition] = useTransition();
 
   if (data === undefined) return <main className="route-state">opening your garden</main>;
 
   const { regions, tasks } = data;
-  const activeTask = activeTaskId ? tasks.find((task) => task.id === activeTaskId) ?? null : null;
   const taskCounts = new Map<string, number>();
   for (const task of tasks) {
     if (task.regionId) taskCounts.set(task.regionId, (taskCounts.get(task.regionId) ?? 0) + 1);
   }
 
-  function flash(message: string) {
+  function flash(message: string, duration = 1100) {
+    window.clearTimeout(noticeTimer.current);
     setNotice(message);
-    window.setTimeout(() => setNotice(""), 1100);
+    noticeTimer.current = window.setTimeout(() => setNotice(""), duration);
+  }
+
+  function flashError(error: unknown) {
+    flash(errorMessage(error), 4000);
   }
 
   async function handleUpdate(id: string, patch: TaskPatch) {
-    await updateTask({
-      id: id as Id<"tasks">,
-      patch: {
-        ...patch,
-        regionId: patch.regionId === undefined ? undefined : patch.regionId as Id<"regions"> | null,
-      },
-    });
-    flash("saved");
+    try {
+      await updateTask({
+        id: id as Id<"tasks">,
+        patch: {
+          ...patch,
+          regionId: patch.regionId === undefined ? undefined : patch.regionId as Id<"regions"> | null,
+        },
+      });
+      flash("saved");
+    } catch (error) {
+      flashError(error);
+    }
   }
 
   async function handleComplete(id: string, completed: boolean) {
-    await completeTask({ id: id as Id<"tasks">, completed });
+    try {
+      await completeTask({ id: id as Id<"tasks">, completed });
+    } catch (error) {
+      flashError(error);
+      return;
+    }
     if (completed) {
       flash("lifted from the bed");
       window.setTimeout(() => setActiveTaskId(null), 650);
@@ -93,7 +124,7 @@ export function KriyanApp() {
           if (success) flash(success);
           resolve();
         } catch (error) {
-          flash(error instanceof Error ? error.message : "could not save");
+          flashError(error);
           reject(error);
         }
       });
@@ -113,8 +144,15 @@ export function KriyanApp() {
     return <PlantComposer regions={regions} initialDate={newTaskSeed.date} initialRegionId={newTaskSeed.regionId} onCancel={() => setNewTaskSeed(null)} onPlant={handlePlant} />;
   }
 
-  if (activeTask) {
-    return <TaskEditor task={activeTask as Task} regions={regions} onBack={() => setActiveTaskId(null)} onUpdate={handleUpdate} onComplete={handleComplete} />;
+  const noticeBanner = notice ? <div className={styles.notice} role="status">{notice}</div> : null;
+
+  if (activeTaskId) {
+    return (
+      <>
+        <ActiveTask id={activeTaskId} regions={regions} onBack={closeTask} onUpdate={handleUpdate} onComplete={handleComplete} />
+        {noticeBanner}
+      </>
+    );
   }
 
   return (
@@ -135,7 +173,7 @@ export function KriyanApp() {
           onReset={async () => { setSpacesOpen(false); await run(() => restartOnboarding({})); }}
         />
       ) : null}
-      {notice ? <div className={styles.notice} role="status">{notice}</div> : null}
+      {noticeBanner}
     </div>
   );
 }

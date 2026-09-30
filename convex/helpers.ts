@@ -50,6 +50,17 @@ export function taskDto(task: Doc<"tasks">) {
   };
 }
 
+export function taskSummaryDto(task: Doc<"tasks">) {
+  const { content, ...summary } = taskDto(task);
+  void content;
+  return summary;
+}
+
+export function cleanDuration(value: number | null) {
+  if (value === null || !Number.isFinite(value) || value <= 0) return null;
+  return Math.max(1, Math.min(Math.round(value), 1440));
+}
+
 export function cleanText(value: string, maximum = 180) {
   return value.trim().slice(0, maximum);
 }
