@@ -150,8 +150,8 @@ export function SideRail({
                 capacity,
                 tasks,
               ),
-              needed = task.durationMinutes ?? 60,
-              spare = free - needed;
+              needed = task.durationMinutes,
+              spare = needed === null ? null : free - needed;
             return (
               <div
                 key={task._id}
@@ -159,12 +159,12 @@ export function SideRail({
                 style={
                   {
                     "--c":
-                      spare < 0
+                      spare !== null && spare < 0
                         ? "var(--hot)"
                         : areaColor(
                             areas.find((area) => area._id === task.areaId),
                           ),
-                    "--need": free ? Math.min((needed / free) * 100, 100) : 100,
+                    "--need": needed === null ? 0 : free ? Math.min((needed / free) * 100, 100) : 100,
                   } as Variables
                 }
               >
@@ -186,14 +186,14 @@ export function SideRail({
                   <i />
                 </div>
                 <p>
-                  {formatMinutes(needed)} needed, {formatMinutes(free)} free
-                  <b className={spare < 0 ? s.bad : undefined}>
+                  {needed === null ? "Length not set" : `${formatMinutes(needed)} needed`}, {formatMinutes(free)} free
+                  {spare !== null && <b className={spare < 0 ? s.bad : undefined}>
                     {formatMinutes(Math.abs(spare))}{" "}
                     {spare < 0 ? "short" : "to spare"}
-                  </b>
+                  </b>}
                 </p>
                 {task.durationMinutes === null && (
-                  <p>Assumes 1h because no length is set.</p>
+                  <p>Add a length to compare time needed with time free.</p>
                 )}
               </div>
             );

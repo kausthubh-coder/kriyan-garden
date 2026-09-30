@@ -11,7 +11,13 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   devIndicators: false,
   headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      { source: "/demo", headers: [
+        { key: "X-Frame-Options", value: "SAMEORIGIN" },
+        { key: "Content-Security-Policy", value: "frame-ancestors 'self'" },
+      ] },
+    ];
   },
 };
 

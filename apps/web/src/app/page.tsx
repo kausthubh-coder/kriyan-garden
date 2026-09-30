@@ -1,6 +1,26 @@
-import Link from "next/link";
-import { KRIYAN_APP_ORIGIN } from "@/lib/origins";
-export default function Home() {
-  const href = process.env.NODE_ENV === "development" ? "/app" : `${KRIYAN_APP_ORIGIN}/app`;
-  return <main className="placeholder"><h1>Kriyan</h1><p>A planner for tasks and goals across School, Business and Life.</p><Link href={href}>Open planner</Link></main>;
+/* Plain links keep public navigation server-rendered, with no prefetch client. */
+/* eslint-disable @next/next/no-html-link-for-pages */
+import type { Metadata } from "next";
+import Image from "next/image";
+import { PublicNav, PublicFooter } from "@/components/public/Chrome";
+import { QuickAddStrip } from "@/components/public/QuickAddStrip";
+import { SetupTabs } from "@/components/public/SetupTabs";
+import { setupSnippets } from "@/lib/docs";
+import { appHref, KRIYAN_REPOSITORY } from "@/lib/origins";
+import s from "@/components/public/Public.module.css";
+export const metadata: Metadata = { title: { absolute: "Kriyan | Your day on one timeline" }, description: "An open-source planner for school, business and life. Tasks with a time sit on the timeline. Length is optional.", alternates: { canonical: "/" } };
+export default async function Landing() {
+  const snippets = await setupSnippets();
+  return <div className={s.site}><PublicNav /><main id="content">
+    <section className={s.hero}><h1>Your day on one timeline.</h1><p>Kriyan is an open-source planner for school, business and life. Tasks with a time sit on the timeline. Tasks without one wait beside it. Length is optional.</p><div className={s.actions}><a className={s.button} href={appHref("/app")}>Open Kriyan</a><a className={`${s.button} ${s.secondary}`} href="/download">Download for Android</a></div><iframe className={s.demo} src="/demo" loading="lazy" title="Interactive Kriyan demo with sample tasks" /><div className={s.caption}>Try it. Nothing you do here is saved.</div></section>
+    <section className={s.section}><QuickAddStrip /></section>
+    <section className={s.section} aria-label="Three questions Kriyan answers">
+      <div className={s.answer}><div className={s.visual}><Image src="/landing/day.webp" alt="Kriyan Day view with any-time tasks beside scheduled tasks and classes" width={1260} height={760} sizes="(max-width: 820px) 100vw, 650px" /></div><div><h2>When will I do it?</h2><p>Put tasks with a time on the timeline and leave the rest in the tray beside it. Add a length when it helps, or keep a simple marker at the start time.</p></div></div>
+      <div className={s.answer}><div className={s.visual}><Image src="/landing/goals.webp" alt="Real Goals view showing mobile launch and semester GPA progress with pace markers" width={1180} height={740} sizes="(max-width: 820px) 100vw, 650px" /><Image src="/landing/deadlines.webp" alt="Deadlines rail comparing time needed with time free" width={440} height={460} sizes="(max-width: 820px) 100vw, 650px" /></div><div><h2>Am I on pace?</h2><p>The pace marker shows where you should be today for each goal. The deadlines rail compares time needed with time free, so you can make room before the date arrives.</p></div></div>
+      <div className={s.answer}><div className={s.visual}><Image src="/landing/list.webp" alt="Real List view grouping remaining tasks by School, Business and Life" width={1180} height={740} sizes="(max-width: 820px) 100vw, 650px" /><Image src="/landing/week.webp" alt="Real Week view with tasks and planned hours across seven days" width={1180} height={740} sizes="(max-width: 820px) 100vw, 650px" /></div><div><h2>What is left?</h2><p>See the tasks left in each area, project or course in List. Check Week to see the load across seven days and move work to a lighter day.</p></div></div>
+    </section>
+    <section className={s.section}><h2>Plan with whatever AI you already use.</h2><p>Kriyan&apos;s MCP server lets an AI client read your planner and help you plan your day after you approve access through Clerk. Use the same tasks, areas and goals you see in the app.</p><p className={s.caption}>Setup is being finalized. These drafts come from the MCP docs and await client verification during integration.</p><SetupTabs snippets={snippets} /><pre className={s.code}><code>{'npx kriyan add "essay fri 5pm #econ"\nnpx kriyan today'}</code></pre><p>The CLI release is planned. <a href="/docs/cli">Read the CLI docs</a>.</p></section>
+    <section className={`${s.section} ${s.android}`}><div><h2>Kriyan on your phone.</h2><p>Take your tasks and goals with you. The Android app will share the same planner as the web app, with reminders when you allow notifications.</p><p>The APK is not released yet. The image shows the mobile web demo. Check GitHub for an Android build when it becomes available.</p><a className={s.button} href="/download">Download the APK</a><p className={s.caption}>Not on the Play Store. Download from GitHub and allow installs from this source.</p><a href="/docs/android">Read the Android guide</a></div><figure className={s.phone}><Image src="/landing/mobile-web.webp" alt="Mobile web demo of Kriyan, not an Android app capture" width={390} height={844} sizes="270px" /><figcaption>Mobile web demo. Android capture pending.</figcaption></figure></section>
+    <section className={s.section}><h2>Read every line.</h2><p>Kriyan is open source under the MIT licence. <a href={KRIYAN_REPOSITORY}>Browse the source on GitHub</a> or <a href="/docs/self-hosting">read the self-hosting guide</a>.</p><p>The hosted version is free. Your data is yours to export or delete at any time.</p></section>
+  </main><PublicFooter /></div>;
 }

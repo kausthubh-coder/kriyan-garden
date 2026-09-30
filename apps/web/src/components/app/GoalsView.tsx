@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
-import { useMutation } from "convex/react";
-import { api } from "@kriyan/backend/convex/_generated/api";
+import { useGoalActions } from "./dataAccess";
 import { goalProgress } from "@kriyan/core";
 import { Filters } from "./Filters";
 import { Dialog } from "./Dialog";
@@ -73,10 +72,7 @@ function GoalCard(p: ViewProps & { goal: Goal }) {
     metric = goal.metric,
     progress = goalProgress(goal, p.today),
     action = useFormAction();
-  const update = useMutation(api.goals.update),
-    createMilestone = useMutation(api.goals.createMilestone),
-    updateMilestone = useMutation(api.goals.updateMilestone),
-    removeMilestone = useMutation(api.goals.removeMilestone);
+  const { update, createMilestone, updateMilestone, removeMilestone } = useGoalActions();
   const [editing, setEditing] = useState(false);
   const linked = p.tasks
     .filter((t) => t.goalId === goal._id)

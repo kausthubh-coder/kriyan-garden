@@ -9,12 +9,17 @@
     "lint": "eslint",
     "typegen": "next typegen",
     "typecheck": "tsc --noEmit",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "test:public": "playwright test --config playwright.public.config.ts",
+    "capture:public": "node scripts/capture-public.mjs",
+    "lighthouse:public": "node scripts/lighthouse-public.mjs",
+    "test": "bun test src/lib/origins.test.ts src/components/demo/store.test.ts"
   },
   "dependencies": {
     "@clerk/mcp-tools": "^0.6.0",
     "@clerk/nextjs": "^7.8.3",
     "@kriyan/backend": "workspace:*",
+    "@kriyan/core": "workspace:*",
     "@phosphor-icons/react": "^2.1.10",
     "convex": "^1.45.0",
     "convex-helpers": "^0.1.124",
@@ -23,8 +28,9 @@
     "next": "16.3.3",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "zod": "^4.5.4",
-    "@kriyan/core": "workspace:*"
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "@clerk/backend": "3.21.0",
@@ -34,8 +40,11 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "chrome-launcher": "1.2.2",
     "eslint": "^9",
     "eslint-config-next": "16.3.3",
+    "lighthouse": "^13.5.0",
+    "sharp": "0.35.4",
     "typescript": "^5"
   }
 }

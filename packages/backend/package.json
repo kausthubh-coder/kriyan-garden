@@ -12,6 +12,8 @@
       "types": "./convex/_generated/dataModel.d.ts"
     },
     "./convex/canonical": "./convex/canonical.ts",
+    "./convex/model/assemble": "./convex/model/assemble.ts",
+    "./convex/model/nextDate": "./convex/model/nextDate.ts",
     "./convex/validators": "./convex/validators.ts"
   },
   "scripts": {
