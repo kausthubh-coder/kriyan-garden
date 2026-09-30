@@ -1,4 +1,4 @@
-import { layoutIntervals, minutesOf, timeOf } from "@kriyan/core";
+import { layoutIntervals, minutesOf, timeOf, timeValue } from "@kriyan/core";
 import { TimelineBlock, type Block } from "./TimelineBlock";
 import type { Area, Day, Goal, Project, PanelSection, Task } from "./types";
 import s from "./App.module.css";
@@ -15,6 +15,7 @@ export function Timeline({
   open,
   toggle,
   loading,
+  static: isStatic = false,
 }: {
   day?: Day;
   startHour: number;
@@ -28,6 +29,7 @@ export function Timeline({
   open: (task: Task, section?: PanelSection) => void;
   toggle: (task: Task) => void;
   loading: boolean;
+  static?: boolean;
 }) {
   const blocks: Omit<Block, "column" | "columns">[] = [
     ...(day?.timed ?? []).map((task) => ({
@@ -54,15 +56,18 @@ export function Timeline({
       aria-label="Day timeline"
       aria-busy={loading}
     >
-      {Array.from({ length: endHour - startHour + 1 }, (_, index) => (
-        <div
-          key={index}
-          className={s.hr}
-          style={{ top: `calc(${index} * var(--hh))` }}
-        >
-          <span>{String(index + startHour).padStart(2, "0")}:00</span>
-        </div>
-      ))}
+      {Array.from(
+        { length: isStatic ? Math.ceil(endHour - startHour) : Math.floor(endHour - startHour) + 1 },
+        (_, index) => (
+          <div
+            key={index}
+            className={s.hr}
+            style={{ top: `calc(${index} * var(--hh))` }}
+          >
+            <span>{timeValue(timeOf((index + startHour) * 60), null)}</span>
+          </div>
+        ),
+      )}
       {loading ? (
         <>
           <div
@@ -95,6 +100,7 @@ export function Timeline({
             today={today}
             open={open}
             toggle={toggle}
+            static={isStatic}
           />
         ))
       )}

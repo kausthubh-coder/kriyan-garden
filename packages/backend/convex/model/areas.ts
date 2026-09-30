@@ -34,3 +34,11 @@ export async function remove(ctx: MutationCtx, ownerId: string, args: { id: Id<"
   await ctx.db.delete(args.id);
   return null;
 }
+
+export async function reorder(ctx: MutationCtx, ownerId: string, args: { ids: Id<"areas">[] }) {
+  const rows = await list(ctx, ownerId);
+  if (args.ids.length !== rows.length || new Set(args.ids).size !== rows.length || args.ids.some((id) => !rows.some((row) => row._id === id)))
+    throw new Error("The areas changed. Reload and try moving the area again.");
+  for (const [sortOrder, id] of args.ids.entries()) await update(ctx, ownerId, { id, patch: { sortOrder } });
+  return null;
+}

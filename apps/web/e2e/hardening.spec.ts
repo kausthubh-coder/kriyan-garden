@@ -196,7 +196,7 @@ test("the live own-only reset clears the disposable planner and preserves a seco
     const own = await a.backend.mutation(api.tasks.create, { title: "Disposable reset record" });
     const other = await b.backend.mutation(api.tasks.create, { title: "Disposable preserved record" });
     await page.goto("/app/settings");
-    await page.getByRole("navigation", { name: "Settings sections" }).getByRole("button", { name: "Danger zone", exact: true }).click();
+    await page.goto("/app/settings/reset");
     const reset = page.getByRole("button", { name: "Reset everything", exact: true });
     await expect(reset).toBeDisabled();
     await page.getByLabel("Type RESET").fill("reset");

@@ -6,7 +6,8 @@ import {
   setupClerkTestingToken,
 } from "@clerk/testing/playwright";
 import { test as setup, expect } from "@playwright/test";
-setup("authenticate a dedicated Clerk test user", async ({ page }) => {
+setup("authenticate a dedicated Clerk test user", async ({ page }, testInfo) => {
+  setup.setTimeout(120_000);
   const secret = process.env.CLERK_SECRET_KEY,
     publishable =
       process.env.CLERK_PUBLISHABLE_KEY ??
@@ -18,6 +19,7 @@ setup("authenticate a dedicated Clerk test user", async ({ page }) => {
   process.env.CLERK_PUBLISHABLE_KEY = publishable;
   await clerkSetup();
   const client = createClerkClient({ secretKey: secret });
+  const prefix = testInfo.project.name === "settings-setup" ? "settings-" : "";
   let email = process.env.E2E_CLERK_USER_EMAIL;
   if (!email) {
     email = `kriyan-e2e-${Date.now()}+clerk_test@example.com`;
@@ -27,7 +29,7 @@ setup("authenticate a dedicated Clerk test user", async ({ page }) => {
     });
     await mkdir("e2e/.auth", { recursive: true });
     await writeFile(
-      "e2e/.auth/disposable-user.json",
+      `e2e/.auth/${prefix}disposable-user.json`,
       JSON.stringify({ id: user.id }),
     );
   }
@@ -36,8 +38,10 @@ setup("authenticate a dedicated Clerk test user", async ({ page }) => {
   await clerk.signIn({ page, emailAddress: email });
   await page.goto("/app");
   await expect(
-    page.getByRole("heading", { name: "Areas", exact: true }).first(),
+    page
+      .getByRole("heading", { name: "What do you plan for?", exact: true })
+      .first(),
   ).toBeVisible();
   await mkdir("e2e/.auth", { recursive: true });
-  await page.context().storageState({ path: "e2e/.auth/user.json" });
+  await page.context().storageState({ path: `e2e/.auth/${prefix}user.json` });
 });

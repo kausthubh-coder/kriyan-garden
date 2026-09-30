@@ -17,6 +17,10 @@ export function QuickAdd({
   initialText = "",
   close,
   submit,
+  inline = false,
+  inputText,
+  changeText,
+  emptyEnter,
 }: {
   context: QuickAddContext;
   areas: Area[];
@@ -24,34 +28,39 @@ export function QuickAdd({
   initialText?: string;
   close: () => void;
   submit: (result: QuickAddResult) => void;
+  inline?: boolean;
+  inputText?: string;
+  changeText?: (text: string) => void;
+  emptyEnter?: () => void;
 }) {
   const [input, setInput] = useState(initialText);
-  const parsed = parse(input, context),
+  const text = inputText ?? input;
+  const parsed = parse(text, context),
     area = areas.find((area) => area._id === parsed.areaId),
     project = projects.find((project) => project._id === parsed.projectId);
-  return (
-    <Dialog
-      label="Add a task"
-      className={s.qa}
-      close={close}
-      initialFocus="input"
+  const form = (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (!text.trim()) emptyEnter?.();
+        else if (parsed.title && area) submit(parsed);
+      }}
     >
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (parsed.title && area) submit(parsed);
-        }}
-      >
-        <input
-          value={input}
-          onChange={(event) => setInput(event.target.value)}
-          autoComplete="off"
-          spellCheck={false}
-          placeholder="econ outline fri 5pm #econ 45m"
-          aria-label="Task"
-        />
+      <input
+        value={text}
+        onChange={(event) =>
+          changeText
+            ? changeText(event.target.value)
+            : setInput(event.target.value)
+        }
+        autoComplete="off"
+        spellCheck={false}
+        placeholder="econ outline fri 5pm #econ 45m"
+        aria-label="Task"
+      />
+      {(!inline || text.trim()) && (
         <div className={s.chips} aria-live="polite">
-          {!input.trim() ? (
+          {!text.trim() ? (
             <>
               <span className={`${s.chip} ${s.off}`}>
                 Try: gym tomorrow 7am
@@ -87,13 +96,27 @@ export function QuickAdd({
             </>
           )}
         </div>
+      )}
+      {!inline && (
         <div className={s["qa-foot"]}>
           <span>Type a day, a time, a length or a #tag. All optional.</span>
           <button className={s.btn} disabled={!parsed.title || !area}>
             Add task
           </button>
         </div>
-      </form>
+      )}
+    </form>
+  );
+  return inline ? (
+    form
+  ) : (
+    <Dialog
+      label="Add a task"
+      className={s.qa}
+      close={close}
+      initialFocus="input"
+    >
+      {form}
     </Dialog>
   );
 }
