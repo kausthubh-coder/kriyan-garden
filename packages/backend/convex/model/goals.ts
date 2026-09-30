@@ -46,6 +46,14 @@ export async function remove(ctx: MutationCtx, ownerId: string, args: { id: Id<"
   await ctx.db.delete(args.id);
   return null;
 }
+export async function setProgress(ctx: MutationCtx, ownerId: string, args: { id: Id<"goals">; current: number }) {
+  const goal = await owned(ctx, ownerId, args.id);
+  if (goal.metric.kind !== "number") throw new Error("Invalid goal progress. Complete linked tasks or milestones for this goal.");
+  const current = finite(args.current);
+  if (current < 0) throw new Error("Invalid goal progress. Use a nonnegative number.");
+  await ctx.db.patch(goal._id, { metric: { ...goal.metric, current }, updatedAt: Date.now() });
+  return owned(ctx, ownerId, goal._id);
+}
 export async function createMilestone(ctx: MutationCtx, ownerId: string, args: Infer<typeof milestoneArgs>) {
   await owned(ctx, ownerId, args.goalId);
   const id = await ctx.db.insert("milestones", { ...stamps(ownerId), ...args, title: text(args.title, 180, true), targetDate: nullableDate(args.targetDate ?? null), doneAt: args.doneAt ?? null, sortOrder: finite(args.sortOrder ?? 0) });

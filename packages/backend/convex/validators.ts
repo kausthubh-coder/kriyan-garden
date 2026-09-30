@@ -5,12 +5,19 @@ export const nullableString = v.union(v.string(), v.null());
 export const nullableNumber = v.union(v.number(), v.null());
 export const color = v.union(v.literal("blue"), v.literal("orange"), v.literal("green"), v.literal("red"), v.literal("yellow"), v.literal("purple"), v.literal("teal"), v.literal("grey"));
 export const taskStatus = v.union(v.literal("active"), v.literal("completed"));
+export const taskFilters = {
+  status: v.optional(taskStatus), limit: v.optional(v.number()),
+  areaId: v.optional(v.id("areas")), projectId: v.optional(v.id("projects")), goalId: v.optional(v.id("goals")),
+  dateFrom: v.optional(v.string()), dateTo: v.optional(v.string()),
+  deadlineFrom: v.optional(v.string()), deadlineTo: v.optional(v.string()), text: v.optional(v.string()),
+};
 export const goalStatus = v.union(v.literal("active"), v.literal("done"), v.literal("archived"));
 export const repeat = v.union(v.null(), v.object({ every: v.number(), unit: v.union(v.literal("day"), v.literal("week"), v.literal("month"), v.literal("year")), weekdays: v.optional(v.array(v.number())) }));
 export const reminder = v.union(v.object({ type: v.literal("at_start") }), v.object({ type: v.literal("before"), minutes: v.number() }), v.object({ type: v.literal("morning_of") }), v.object({ type: v.literal("day_before") }), v.object({ type: v.literal("at_time"), time: v.string() }));
 export const metric = v.union(v.object({ kind: v.literal("tasks") }), v.object({ kind: v.literal("number"), unit: v.string(), target: v.number(), current: v.number() }), v.object({ kind: v.literal("milestones") }));
 export const common = { ownerId: v.string(), createdAt: v.number(), updatedAt: v.number() };
-export const serviceEnvelope = { ownerId: v.string(), timestamp: v.number(), nonce: v.string(), signature: v.string() };
+export const invocation = v.object({ id: v.string(), kind: v.union(v.literal("read"), v.literal("write")) });
+export const serviceEnvelope = { ownerId: v.string(), timestamp: v.number(), nonce: v.string(), signature: v.string(), invocation: v.optional(invocation) };
 export const profileFields = { onboardingComplete: v.boolean(), timezone: v.string(), dailyCapacityMinutes: v.number(), dayStartHour: v.number(), dayEndHour: v.number() };
 export const areaFields = { name: v.string(), color, sortOrder: v.number() };
 export const projectFields = { areaId: v.id("areas"), name: v.string(), kind: v.union(v.literal("project"), v.literal("course")), note: v.string(), sortOrder: v.number(), archivedAt: nullableNumber };

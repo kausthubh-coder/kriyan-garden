@@ -21,9 +21,10 @@
     "dev": "convex dev",
     "deploy": "convex deploy",
     "typecheck": "tsc --noEmit -p convex",
-    "test": "vitest run"
+    "test": "vitest run --maxWorkers=1"
   },
   "dependencies": {
+    "@convex-dev/rate-limiter": "0.4.0",
     "@kriyan/core": "workspace:*",
     "convex": "^1.45.0"
   },

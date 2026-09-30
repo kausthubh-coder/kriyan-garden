@@ -1,6 +1,6 @@
 import { nextDate } from "./nextDate";
 import { parse } from "@kriyan/core";
-import type { Infer } from "convex/values";
+import { v, type Infer } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
 import type { TaskCreate, TaskPatch } from "../validators";
@@ -17,6 +17,42 @@ export async function list(ctx: QueryCtx, ownerId: string, args: { status?: "act
     : ctx.db.query("tasks").withIndex("by_owner", (q) => q.eq("ownerId", ownerId)).take(limit);
 }
 export const get = (ctx: QueryCtx, ownerId: string, args: { id: Id<"tasks"> }) => owned(ctx, ownerId, args.id);
+const filterValidator = v.object(V.taskFilters);
+/** Service filters run before the response limit, over an owner-prefixed index. */
+export async function filteredList(ctx: QueryCtx, ownerId: string, args: Infer<typeof filterValidator>) {
+  const limit = Math.max(1, Math.min(100, Math.round(finite(args.limit ?? 100))));
+  for (const value of [args.dateFrom, args.dateTo, args.deadlineFrom, args.deadlineTo]) if (value !== undefined) date(value);
+  for (const id of [args.areaId, args.projectId, args.goalId]) if (id) await owned(ctx, ownerId, id);
+  const base = ctx.db.query("tasks");
+  const { projectId, goalId, areaId, status } = args;
+  const source = projectId ? base.withIndex("by_owner_project", q => q.eq("ownerId", ownerId).eq("projectId", projectId))
+    : goalId ? base.withIndex("by_owner_goal", q => q.eq("ownerId", ownerId).eq("goalId", goalId))
+    : areaId ? base.withIndex("by_owner_area", q => q.eq("ownerId", ownerId).eq("areaId", areaId))
+    : args.deadlineFrom || args.deadlineTo ? base.withIndex("by_owner_deadline", q => {
+        const owner = q.eq("ownerId", ownerId);
+        const from = args.deadlineFrom ? owner.gte("deadline", args.deadlineFrom) : owner.gt("deadline", null);
+        return args.deadlineTo ? from.lte("deadline", args.deadlineTo) : from;
+      })
+    : args.dateFrom || args.dateTo ? base.withIndex("by_owner_date", q => {
+        const owner = q.eq("ownerId", ownerId);
+        const from = args.dateFrom ? owner.gte("date", args.dateFrom) : owner.gt("date", null);
+        return args.dateTo ? from.lte("date", args.dateTo) : from;
+      })
+    : status ? base.withIndex("by_owner_status", q => q.eq("ownerId", ownerId).eq("status", status))
+    : base.withIndex("by_owner", q => q.eq("ownerId", ownerId));
+  const result: Doc<"tasks">[] = [];
+  let examined = 0;
+  for await (const task of source) {
+    if (++examined > 12000) throw new Error("Too many tasks to filter. Narrow the area or date range.");
+    if (args.status && task.status !== args.status || args.areaId && task.areaId !== args.areaId || args.projectId && task.projectId !== args.projectId || args.goalId && task.goalId !== args.goalId) continue;
+    if (args.dateFrom && (!task.date || task.date < args.dateFrom) || args.dateTo && (!task.date || task.date > args.dateTo)) continue;
+    if (args.deadlineFrom && (!task.deadline || task.deadline < args.deadlineFrom) || args.deadlineTo && (!task.deadline || task.deadline > args.deadlineTo)) continue;
+    if (args.text && !task.title.toLocaleLowerCase().includes(args.text.toLocaleLowerCase())) continue;
+    result.push(task);
+    if (result.length === limit) break;
+  }
+  return result;
+}
 function cleanRepeat(value: Infer<typeof V.repeat>) {
   if (!value) return null;
   if (!Number.isInteger(value.every) || value.every < 1 || value.every > 1000) throw new Error("Invalid repeat interval. Use a whole number from 1 to 1000.");
@@ -69,6 +105,9 @@ async function fields(ctx: QueryCtx, ownerId: string, args: TaskCreate | TaskPat
     sortOrder: finite(args.sortOrder ?? current?.sortOrder ?? Date.now()),
   };
   if (result.repeat && !result.date) throw new Error("A repeating task needs a date. Set its first occurrence.");
+  if (result.reminders.length > 8) throw new Error("Invalid reminder. Use at most 8 reminders.");
+  if (result.reminders.length && !result.date) throw new Error("Invalid reminder. Set a date before adding reminders.");
+  if (result.reminders.some(reminder => reminder.type === "at_start" || reminder.type === "before") && !result.time) throw new Error("Invalid reminder. Set a time for at_start or before reminders.");
   return { ...result, searchText: searchText(result.title, result.notes) };
 }
 export async function create(ctx: MutationCtx, ownerId: string, args: TaskCreate) {
@@ -83,16 +122,20 @@ export async function update(ctx: MutationCtx, ownerId: string, args: { id: Id<"
   await ctx.db.patch(args.id, { ...cleaned, updatedAt: Date.now() });
   return owned(ctx, ownerId, args.id);
 }
-export async function complete(ctx: MutationCtx, ownerId: string, args: { id: Id<"tasks"> }) {
+export async function completeWithNext(ctx: MutationCtx, ownerId: string, args: { id: Id<"tasks"> }) {
   const current = await owned(ctx, ownerId, args.id);
-  if (current.status === "completed") return current;
+  if (current.status === "completed") return { task: current, nextOccurrence: null };
   await ctx.db.patch(args.id, { status: "completed", completedAt: Date.now(), updatedAt: Date.now(), searchText: searchText(current.title, current.notes) });
+  let nextOccurrence: Doc<"tasks"> | null = null;
   if (current.repeat && current.date) {
     const { _id, _creationTime, ownerId: ignoredOwner, createdAt, updatedAt, status, completedAt, searchText: ignoredSearch, ...copy } = current;
     void [_id, _creationTime, ignoredOwner, createdAt, updatedAt, status, completedAt, ignoredSearch];
-    await create(ctx, ownerId, { ...copy, date: nextDate(current.date, current.repeat) });
+    nextOccurrence = await create(ctx, ownerId, { ...copy, date: nextDate(current.date, current.repeat) });
   }
-  return owned(ctx, ownerId, args.id);
+  return { task: await owned(ctx, ownerId, args.id), nextOccurrence };
+}
+export async function complete(ctx: MutationCtx, ownerId: string, args: { id: Id<"tasks"> }) {
+  return (await completeWithNext(ctx, ownerId, args)).task;
 }
 export async function reopen(ctx: MutationCtx, ownerId: string, args: { id: Id<"tasks"> }) {
   const current = await owned(ctx, ownerId, args.id);

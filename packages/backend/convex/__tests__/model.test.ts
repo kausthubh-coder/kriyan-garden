@@ -4,10 +4,12 @@ import { convexTest } from "convex-test";
 import { afterEach, expect, test, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
+import rateLimiter from "@convex-dev/rate-limiter/test";
 import { canonicalJson } from "../canonical";
 const modules = import.meta.glob(["../**/*.ts", "../_generated/*.js", "!./**", "!../**/*.d.ts"]);
 function setup() {
   const t = convexTest(schema, modules);
+  rateLimiter.register(t);
   return { t, a: t.withIdentity({ subject: "user-a" }), b: t.withIdentity({ subject: "user-b" }) };
 }
 afterEach(() => { vi.unstubAllEnvs(); vi.useRealTimers(); });

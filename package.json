@@ -12,7 +12,7 @@
     "build": "bun run --filter @kriyan/web build",
     "lint": "bun run --filter '*' lint",
     "typecheck": "bun run --filter @kriyan/web typegen && bun run --filter '*' typecheck",
-    "test": "bun run packages/core/scripts/quick-add-docs.ts --check && bun run --filter '*' test",
+    "test": "bun run packages/core/scripts/quick-add-docs.ts --check && bun run --sequential --filter '*' test",
     "e2e": "bun run --filter @kriyan/web e2e",
     "docs:quick-add": "bun run packages/core/scripts/quick-add-docs.ts"
   },

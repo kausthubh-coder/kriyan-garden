@@ -1,4 +1,5 @@
 import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
 import * as V from "./validators";
 
 export default defineSchema({
@@ -16,4 +17,5 @@ export default defineSchema({
   habitLogs: defineTable({ ...V.common, ...V.habitLogFields }).index("by_owner_habit", ["ownerId", "habitId"]).index("by_owner_date", ["ownerId", "date"]).index("by_owner", ["ownerId"]),
   // Global replay guards use the nonce indexes explicitly required by the brief.
   serviceNonces: defineTable({ ...V.common, ...V.nonceFields }).index("by_nonce", ["nonce"]).index("by_expires", ["expiresAt"]).index("by_owner", ["ownerId"]),
+  serviceInvocations: defineTable({ ...V.common, requestId: v.string(), kind: v.union(v.literal("read"), v.literal("write")), expiresAt: v.number() }).index("by_owner_request", ["ownerId", "requestId"]).index("by_expires", ["expiresAt"]),
 });

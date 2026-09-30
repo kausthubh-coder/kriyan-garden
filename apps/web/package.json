@@ -13,10 +13,15 @@
     "test:public": "playwright test --config playwright.public.config.ts",
     "capture:public": "node scripts/capture-public.mjs",
     "lighthouse:public": "node scripts/lighthouse-public.mjs",
-    "test": "bun test src/lib/origins.test.ts src/components/demo/store.test.ts src/components/app/goalSelection.test.ts"
+    "test:bun": "bun test src/lib/origins.test.ts src/components/demo/store.test.ts src/components/app/goalSelection.test.ts",
+    "test:services": "vitest run --maxWorkers=1",
+    "test": "bun run test:bun && bun run test:services"
   },
   "dependencies": {
-    "@clerk/mcp-tools": "^0.6.0",
+    "@clerk/backend": "3.21.0",
+    "@clerk/mcp-tools": "0.6.0",
+    "@modelcontextprotocol/server": "2.2.0",
+    "@modelcontextprotocol/sdk": "1.31.0",
     "@clerk/nextjs": "^7.8.3",
     "@kriyan/backend": "workspace:*",
     "@kriyan/core": "workspace:*",
@@ -24,7 +29,7 @@
     "convex": "^1.45.0",
     "convex-helpers": "^0.1.124",
     "dompurify": "^3.4.14",
-    "mcp-handler": "^2.1.1",
+    "mcp-handler": "2.2.0",
     "next": "16.3.3",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -33,7 +38,6 @@
     "zod": "^4.5.4"
   },
   "devDependencies": {
-    "@clerk/backend": "3.21.0",
     "@clerk/testing": "^2.2.40",
     "@next/env": "16.3.3",
     "@playwright/test": "^1.63.0",
@@ -45,6 +49,7 @@
     "eslint-config-next": "16.3.3",
     "lighthouse": "^13.5.0",
     "sharp": "0.35.4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "5.0.2"
   }
 }
