@@ -45,4 +45,8 @@ export const motion = {
   panel: 250,
   easeOut: "cubic-bezier(0.23, 1, 0.32, 1)",
 } as const;
-export const layout = { hourHeight: 56, controlHeight: 44 } as const;
+export const layout = {
+  hourHeight: 56, controlHeight: 44,
+  phonePadding: 18, phoneSheetPadding: 20, phoneSheetRadius: 24,
+  phoneTimelineGutter: 46, phoneTabWidth: 64, phoneTabHeight: 50, phoneAddSize: 52,
+} as const;

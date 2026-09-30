@@ -17,6 +17,13 @@ jobs:
       - run: bun run typecheck
       - run: bun run lint
       - run: bun run test
+      - run: bun run --filter @kriyan/mobile typecheck
+      - run: bun run --filter @kriyan/mobile lint
+      - run: bunx expo install --check
+        working-directory: apps/mobile
+      - run: bunx expo-doctor
+        working-directory: apps/mobile
+      - run: bun run --filter @kriyan/mobile bundle
       - run: bun run build
         env:
           # Fake values for build-time validation only. No live services are used.

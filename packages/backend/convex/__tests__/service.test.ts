@@ -71,14 +71,19 @@ test("task filters apply before limit, combine indexed references and exclude ot
 });
 test("repeat completion names the actual created occurrence, duplicate complete creates nothing", async () => {
   const t = setup(); const a = t.withIdentity({ subject: "user_test" });
-  await a.mutation(api.profiles.ensure, {});
-  const task = await a.mutation(api.tasks.create, { title: "Practice", date: "2026-09-29", repeat: { every: 1, unit: "day" } });
+  vi.useFakeTimers(); vi.setSystemTime(new Date("2026-09-29T12:00:00Z"));
+  await a.mutation(api.profiles.ensure, { timezone: "UTC" });
+  const task = await a.mutation(api.tasks.create, { title: "Practice", date: "2026-09-29", time: "14:00", repeat: { every: 1, unit: "day" }, reminders: [{ type: "at_start" }] });
   const args = { id: task._id };
   const first = await t.action(api.service.tasksCompleteWithNext, { ...await signed("tasks.completeWithNext", args), ...args });
   expect(first.task.status).toBe("completed");
   expect(first.nextOccurrence).toMatchObject({ title: "Practice", date: "2026-09-30", status: "active", durationMinutes: null });
   expect((await t.action(api.service.tasksCompleteWithNext, { ...await signed("tasks.completeWithNext", args), ...args })).nextOccurrence).toBeNull();
   expect(await a.query(api.tasks.list, {})).toHaveLength(2);
+  const jobs = await t.run(ctx => ctx.db.query("reminderJobs").withIndex("by_owner", q => q.eq("ownerId", "user_test")).collect());
+  expect(jobs).toHaveLength(2);
+  expect(jobs.find(job => job.taskId === task._id)).toMatchObject({ state: "cancelled" });
+  expect(jobs.find(job => job.taskId === first.nextOccurrence?._id)).toMatchObject({ state: "pending", fireAt: Date.parse("2026-09-30T14:00:00Z") });
 });
 test("progress mutation keeps the current target/unit and rejects task metrics or foreign owners", async () => {
   const t = setup(); const a = t.withIdentity({ subject: "user_test" });
@@ -95,4 +100,6 @@ test("reminders require a date and timed reminders require a time", async () => 
   const t = setup(); const a = t.withIdentity({ subject: "user_test" }); await a.mutation(api.profiles.ensure, {});
   await expect(a.mutation(api.tasks.create, { title: "Call", reminders: [{ type: "morning_of" }] })).rejects.toThrow("Set a date");
   await expect(a.mutation(api.tasks.create, { title: "Call", date: "2026-09-29", reminders: [{ type: "before", minutes: 10 }] })).rejects.toThrow("Set a time");
+  await expect(a.mutation(api.tasks.create, { title: "Call", date: "2026-09-29", reminders: [{ type: "at_start" }] })).rejects.toThrow("Set a time");
+  await expect(a.mutation(api.tasks.create, { title: "Call", date: "2026-09-29", reminders: Array.from({ length: 9 }, () => ({ type: "morning_of" as const })) })).rejects.toThrow("at most 8");
 });

@@ -14,4 +14,14 @@ coverage/
 apps/web/e2e/.auth/
 apps/web/test-results/
 apps/web/playwright-report/
+.agents/android-sdk/
+.agents/android-avd/
+.agents/cache/
+.agents/downloads/
+.agents/gradle/
+.agents/builds/
+.agents/android-cmake.init.gradle
+apps/mobile/.expo/
+apps/mobile/dist/
+apps/mobile/android/
 .agents/playwright-browsers/

@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as accountDeletion from "../accountDeletion.js";
 import type * as areas from "../areas.js";
 import type * as canonical from "../canonical.js";
 import type * as crons from "../crons.js";
@@ -16,18 +17,24 @@ import type * as events from "../events.js";
 import type * as goals from "../goals.js";
 import type * as habits from "../habits.js";
 import type * as model_areas from "../model/areas.js";
+import type * as model_assemble from "../model/assemble.js";
 import type * as model_day from "../model/day.js";
 import type * as model_events from "../model/events.js";
 import type * as model_goals from "../model/goals.js";
 import type * as model_habits from "../model/habits.js";
+import type * as model_nextDate from "../model/nextDate.js";
 import type * as model_profiles from "../model/profiles.js";
 import type * as model_projects from "../model/projects.js";
+import type * as model_reminders from "../model/reminders.js";
 import type * as model_sample from "../model/sample.js";
 import type * as model_shared from "../model/shared.js";
 import type * as model_tasks from "../model/tasks.js";
 import type * as model_week from "../model/week.js";
 import type * as profiles from "../profiles.js";
 import type * as projects from "../projects.js";
+import type * as pushClient from "../pushClient.js";
+import type * as pushTokens from "../pushTokens.js";
+import type * as reminders from "../reminders.js";
 import type * as service from "../service.js";
 import type * as serviceAuth from "../serviceAuth.js";
 import type * as serviceInternal from "../serviceInternal.js";
@@ -42,6 +49,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  accountDeletion: typeof accountDeletion;
   areas: typeof areas;
   canonical: typeof canonical;
   crons: typeof crons;
@@ -50,18 +58,24 @@ declare const fullApi: ApiFromModules<{
   goals: typeof goals;
   habits: typeof habits;
   "model/areas": typeof model_areas;
+  "model/assemble": typeof model_assemble;
   "model/day": typeof model_day;
   "model/events": typeof model_events;
   "model/goals": typeof model_goals;
   "model/habits": typeof model_habits;
+  "model/nextDate": typeof model_nextDate;
   "model/profiles": typeof model_profiles;
   "model/projects": typeof model_projects;
+  "model/reminders": typeof model_reminders;
   "model/sample": typeof model_sample;
   "model/shared": typeof model_shared;
   "model/tasks": typeof model_tasks;
   "model/week": typeof model_week;
   profiles: typeof profiles;
   projects: typeof projects;
+  pushClient: typeof pushClient;
+  pushTokens: typeof pushTokens;
+  reminders: typeof reminders;
   service: typeof service;
   serviceAuth: typeof serviceAuth;
   serviceInternal: typeof serviceInternal;
@@ -98,4 +112,5 @@ export declare const internal: FilterApi<
 
 export declare const components: {
   rateLimiter: import("@convex-dev/rate-limiter/_generated/component.js").ComponentApi<"rateLimiter">;
+  pushNotifications: import("@convex-dev/expo-push-notifications/_generated/component.js").ComponentApi<"pushNotifications">;
 };
