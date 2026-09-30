@@ -1,34 +1,34 @@
 # Kriyan
 
-Kriyan is an open-source personal task garden. It keeps one task model across a spatial Garden, a date-derived Distance view, and a Calendar. Tasks support user-created color-coded spaces, due dates, durations, advanced recurrence, multiple reminders, and a Notion-like writing surface with slash commands.
+Kriyan is an open-source planner for tasks and goals across School, Business and Life. The web app uses Clerk for identity, Convex for isolated realtime data, and a Clerk OAuth-protected MCP endpoint for AI clients. Task length is optional.
 
-The hosted app uses Clerk for identity, Convex for isolated realtime data, Next.js for the web product, and a Clerk OAuth-protected MCP endpoint for AI clients.
+## Repository layout
 
-## Stack
+```text
+apps/web/          Next.js 16 web app, public assets and MCP routes
+packages/backend/ Convex schema, functions and shared operations
+packages/core/    Pure TypeScript quick-add parser and calendar date helpers
+docs/             Implementation plan and approved design prototype
+```
 
-- Next.js 16 and React 19
-- Clerk development-mode authentication with Google OAuth
-- Convex schema, queries, mutations, search, and user isolation
-- Streamable HTTP MCP at `/mcp`
-- Bun for installation and development
+The repository uses Bun workspaces with hoisted dependencies. React and React DOM are pinned to 19.2.3. The backend package exports its generated API and data model through `@kriyan/backend/convex/_generated/api` and `@kriyan/backend/convex/_generated/dataModel`.
 
 ## Local development
 
+Use Bun 1.3.14. Run these commands from the repository root:
+
 1. Install dependencies with `bun install`.
-2. Copy `.env.example` to `.env.local` and add Clerk development keys.
-3. Run `bunx convex dev` to link and push the backend.
-4. In another PowerShell terminal, run:
+2. Copy `apps/web/.env.example` to `apps/web/.env.local` and fill in your Clerk and Convex configuration. Environment files remain ignored by Git.
+3. Start the backend: `cd packages/backend && bunx convex dev`. The first run links the folder to your Convex project and writes `CONVEX_DEPLOYMENT` to `packages/backend/.env.local`.
+4. In another terminal, start the web app with `bun run dev`.
 
-   ```powershell
-   $env:MCP_SERVICE_SECRET = (bunx convex env get MCP_SERVICE_SECRET)
-   bun run dev
-   ```
-
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000). Next.js loads the web app's environment from `apps/web/.env.local`.
 
 ## Required configuration
 
-Clerk needs a JWT template named `convex` with `aud` set to `convex`. Convex needs `CLERK_JWT_ISSUER_DOMAIN` and a random `MCP_SERVICE_SECRET`. The same MCP secret must be present only in the Next.js server environment and Convex; never expose it with a `NEXT_PUBLIC_` prefix.
+The web app needs `NEXT_PUBLIC_CONVEX_URL`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, the Clerk server key, and `MCP_SERVICE_SECRET`. Clerk needs a JWT template named `convex` with `aud` set to `convex`. The Convex deployment needs `CLERK_JWT_ISSUER_DOMAIN` and the same random `MCP_SERVICE_SECRET` used by the web server. Keep the service secret in server environments, without a `NEXT_PUBLIC_` prefix.
+
+To configure your Convex deployment, run the following from `packages/backend` with your own values:
 
 ```bash
 bunx convex env set CLERK_JWT_ISSUER_DOMAIN https://your-clerk-issuer.example
@@ -47,15 +47,22 @@ The server advertises OAuth metadata under `/.well-known/`, authenticates throug
 - `list_spaces`, `create_space`
 - `search_notes`
 
-MCP is the primary automation surface because agents get typed, discoverable tools plus per-user OAuth. A separate CLI can later be a thin MCP client rather than a second backend API.
+## Commands and verification
 
-## Verification
+Run from the repository root:
 
 ```bash
-bunx tsc --noEmit
+bun install
+bun run dev
+bun run typecheck
 bun run lint
+bun run test
 bun run build
 ```
+
+`dev` and `build` run the web workspace. `typecheck` generates Next.js route types and checks all workspaces. `lint` and `test` run each workspace that defines the corresponding script. The web app defines linting; core defines Bun tests for the parser and date helpers. To serve a production build, run `bun run --filter @kriyan/web start`.
+
+GitHub Actions runs installation with `--frozen-lockfile`, typechecking, linting, tests and the web build for pull requests and pushes to `main` or `v2`. The CI build uses fake Convex, Clerk publishable-key and MCP secret placeholders. They permit build-time validation without production credentials; use your own configuration to run the app.
 
 ## License
 
