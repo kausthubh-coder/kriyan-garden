@@ -9,17 +9,21 @@
     "lint": "eslint",
     "typegen": "next typegen",
     "typecheck": "tsc --noEmit",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "test": "vitest run"
   },
   "dependencies": {
-    "@clerk/mcp-tools": "^0.6.0",
+    "@clerk/backend": "3.21.0",
+    "@clerk/mcp-tools": "0.6.0",
+    "@modelcontextprotocol/server": "2.2.0",
+    "@modelcontextprotocol/sdk": "1.31.0",
     "@clerk/nextjs": "^7.8.3",
     "@kriyan/backend": "workspace:*",
     "@phosphor-icons/react": "^2.1.10",
     "convex": "^1.45.0",
     "convex-helpers": "^0.1.124",
     "dompurify": "^3.4.14",
-    "mcp-handler": "^2.1.1",
+    "mcp-handler": "2.2.0",
     "next": "16.3.3",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -27,7 +31,6 @@
     "@kriyan/core": "workspace:*"
   },
   "devDependencies": {
-    "@clerk/backend": "3.21.0",
     "@clerk/testing": "^2.2.40",
     "@next/env": "16.3.3",
     "@playwright/test": "^1.63.0",
@@ -36,6 +39,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.3",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "5.0.2"
   }
 }

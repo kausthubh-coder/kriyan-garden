@@ -12,14 +12,16 @@ function configuration() {
   const secret = process.env.SERVICE_SECRET || process.env.MCP_SERVICE_SECRET;
   if (!url) throw new Error("NEXT_PUBLIC_CONVEX_URL is not configured");
   if (!secret) throw new Error("SERVICE_SECRET is not configured");
-  return { convex: new ConvexHttpClient(url), secret };
+  return { convex: new ConvexHttpClient(url, { logger: false }), secret };
 }
-type Envelope = { ownerId: string; timestamp: number; nonce: string; signature: string };
-export function serviceCall<F extends FunctionReference<"action">>(ref: F, ownerId: string, operation: string, payload: Omit<FunctionArgs<F>, keyof Envelope>): Promise<FunctionReturnType<F>> {
+export type ServiceInvocation = { id: string; kind: "read" | "write" };
+type Envelope = { ownerId: string; timestamp: number; nonce: string; signature: string; invocation?: ServiceInvocation };
+export function serviceCall<F extends FunctionReference<"action">>(ref: F, ownerId: string, operation: string, payload: Omit<FunctionArgs<F>, keyof Envelope>, invocation?: ServiceInvocation): Promise<FunctionReturnType<F>> {
   const { convex, secret } = configuration();
   const timestamp = Date.now(), nonce = randomUUID();
-  const signature = createHmac("sha256", secret).update(canonicalJson([timestamp, nonce, ownerId, operation, payload])).digest("hex");
-  return convex.action(ref, { ...payload, ownerId, timestamp, nonce, signature } as FunctionArgs<F>);
+  const signedPayload = { ...payload, ...(invocation ? { invocation } : {}) };
+  const signature = createHmac("sha256", secret).update(canonicalJson([timestamp, nonce, ownerId, operation, signedPayload])).digest("hex");
+  return convex.action(ref, { ...signedPayload, ownerId, timestamp, nonce, signature } as FunctionArgs<F>);
 }
 export const serviceClient = {
   listTasks: (ownerId: string, status: "active" | "completed" | undefined, limit: number) => serviceCall(api.service.tasksList, ownerId, "tasks.list", { ...(status ? { status } : {}), limit }),

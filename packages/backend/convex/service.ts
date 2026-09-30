@@ -3,6 +3,46 @@ import { makeFunctionReference } from "convex/server";
 import { action } from "./_generated/server";
 import * as V from "./validators";
 import { envelope, verify } from "./serviceAuth";
+const goalsSetProgressRef = makeFunctionReference<"mutation", { ownerId: string; id: Infer<typeof V.goal>["_id"]; current: number }, Infer<typeof V.goal>>("serviceInternal:goalsSetProgress");
+export const goalsSetProgress = action({
+  args: { ...envelope, id: v.id("goals"), current: v.number() }, returns: V.goal,
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof V.goal>> => {
+    await verify(ctx, "goals.setProgress", { ownerId, timestamp, nonce, signature, invocation }, payload);
+    return ctx.runMutation(goalsSetProgressRef, { ownerId, ...payload });
+  },
+});
+const tasksFilteredListArgs = v.object(V.taskFilters);
+const tasksFilteredListReturn = v.array(V.task);
+const tasksFilteredListRef = makeFunctionReference<"query", { ownerId: string } & Infer<typeof tasksFilteredListArgs>, Infer<typeof tasksFilteredListReturn>>("serviceInternal:tasksFilteredList");
+export const tasksFilteredList = action({
+  args: { ...envelope, ...V.taskFilters }, returns: tasksFilteredListReturn,
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof tasksFilteredListReturn>> => {
+    await verify(ctx, "tasks.filteredList", { ownerId, timestamp, nonce, signature, invocation }, payload);
+    return ctx.runQuery(tasksFilteredListRef, { ownerId, ...payload });
+  },
+});
+
+const tasksCompleteWithNextArgs = v.object({ id: v.id("tasks") });
+const tasksCompleteWithNextReturn = v.object({ task: V.task, nextOccurrence: v.union(V.task, v.null()) });
+const tasksCompleteWithNextRef = makeFunctionReference<"mutation", { ownerId: string } & Infer<typeof tasksCompleteWithNextArgs>, Infer<typeof tasksCompleteWithNextReturn>>("serviceInternal:tasksCompleteWithNext");
+export const tasksCompleteWithNext = action({
+  args: { ...envelope, ...{ id: v.id("tasks") } }, returns: tasksCompleteWithNextReturn,
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof tasksCompleteWithNextReturn>> => {
+    await verify(ctx, "tasks.completeWithNext", { ownerId, timestamp, nonce, signature, invocation }, payload);
+    return ctx.runMutation(tasksCompleteWithNextRef, { ownerId, ...payload });
+  },
+});
+
+const plannerContextArgs = v.object({});
+const plannerContextReturn = v.object({ profile: v.union(V.profile, v.null()), areas: v.array(V.area), projects: v.array(V.project) });
+const plannerContextRef = makeFunctionReference<"query", { ownerId: string } & Infer<typeof plannerContextArgs>, Infer<typeof plannerContextReturn>>("serviceInternal:plannerContext");
+export const plannerContext = action({
+  args: { ...envelope, ...{} }, returns: plannerContextReturn,
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof plannerContextReturn>> => {
+    await verify(ctx, "planner.context", { ownerId, timestamp, nonce, signature, invocation }, payload);
+    return ctx.runQuery(plannerContextRef, { ownerId, ...payload });
+  },
+});
 
 const areasListArgs = v.object({});
 const areasListReturn = v.array(V.area);
@@ -10,8 +50,8 @@ const areasListRef = makeFunctionReference<"query", { ownerId: string } & Infer<
 export const areasList = action({
   args: { ...envelope, ...{} },
   returns: v.array(V.area),
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof areasListReturn>> => {
-    await verify(ctx, "areas.list", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof areasListReturn>> => {
+    await verify(ctx, "areas.list", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runQuery(areasListRef, { ownerId, ...payload });
   },
 });
@@ -22,8 +62,8 @@ const areasGetRef = makeFunctionReference<"query", { ownerId: string } & Infer<t
 export const areasGet = action({
   args: { ...envelope, ...{ id: v.id("areas") } },
   returns: V.area,
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof areasGetReturn>> => {
-    await verify(ctx, "areas.get", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof areasGetReturn>> => {
+    await verify(ctx, "areas.get", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runQuery(areasGetRef, { ownerId, ...payload });
   },
 });
@@ -34,8 +74,8 @@ const areasCreateRef = makeFunctionReference<"mutation", { ownerId: string } & I
 export const areasCreate = action({
   args: { ...envelope, ...V.areaCreate },
   returns: V.area,
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof areasCreateReturn>> => {
-    await verify(ctx, "areas.create", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof areasCreateReturn>> => {
+    await verify(ctx, "areas.create", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runMutation(areasCreateRef, { ownerId, ...payload });
   },
 });
@@ -46,8 +86,8 @@ const areasUpdateRef = makeFunctionReference<"mutation", { ownerId: string } & I
 export const areasUpdate = action({
   args: { ...envelope, ...{ id: v.id("areas"), patch: V.areaPatch } },
   returns: V.area,
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof areasUpdateReturn>> => {
-    await verify(ctx, "areas.update", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof areasUpdateReturn>> => {
+    await verify(ctx, "areas.update", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runMutation(areasUpdateRef, { ownerId, ...payload });
   },
 });
@@ -58,8 +98,8 @@ const areasRemoveRef = makeFunctionReference<"mutation", { ownerId: string } & I
 export const areasRemove = action({
   args: { ...envelope, ...{ id: v.id("areas") } },
   returns: v.null(),
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof areasRemoveReturn>> => {
-    await verify(ctx, "areas.remove", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof areasRemoveReturn>> => {
+    await verify(ctx, "areas.remove", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runMutation(areasRemoveRef, { ownerId, ...payload });
   },
 });
@@ -70,8 +110,8 @@ const projectsListRef = makeFunctionReference<"query", { ownerId: string } & Inf
 export const projectsList = action({
   args: { ...envelope, ...{} },
   returns: v.array(V.project),
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof projectsListReturn>> => {
-    await verify(ctx, "projects.list", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof projectsListReturn>> => {
+    await verify(ctx, "projects.list", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runQuery(projectsListRef, { ownerId, ...payload });
   },
 });
@@ -82,8 +122,8 @@ const projectsGetRef = makeFunctionReference<"query", { ownerId: string } & Infe
 export const projectsGet = action({
   args: { ...envelope, ...{ id: v.id("projects") } },
   returns: V.project,
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof projectsGetReturn>> => {
-    await verify(ctx, "projects.get", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof projectsGetReturn>> => {
+    await verify(ctx, "projects.get", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runQuery(projectsGetRef, { ownerId, ...payload });
   },
 });
@@ -94,8 +134,8 @@ const projectsCreateRef = makeFunctionReference<"mutation", { ownerId: string } 
 export const projectsCreate = action({
   args: { ...envelope, ...V.projectCreate },
   returns: V.project,
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof projectsCreateReturn>> => {
-    await verify(ctx, "projects.create", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof projectsCreateReturn>> => {
+    await verify(ctx, "projects.create", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runMutation(projectsCreateRef, { ownerId, ...payload });
   },
 });
@@ -106,8 +146,8 @@ const projectsUpdateRef = makeFunctionReference<"mutation", { ownerId: string } 
 export const projectsUpdate = action({
   args: { ...envelope, ...{ id: v.id("projects"), patch: V.projectPatch } },
   returns: V.project,
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof projectsUpdateReturn>> => {
-    await verify(ctx, "projects.update", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof projectsUpdateReturn>> => {
+    await verify(ctx, "projects.update", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runMutation(projectsUpdateRef, { ownerId, ...payload });
   },
 });
@@ -118,8 +158,8 @@ const projectsRemoveRef = makeFunctionReference<"mutation", { ownerId: string } 
 export const projectsRemove = action({
   args: { ...envelope, ...{ id: v.id("projects") } },
   returns: v.null(),
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof projectsRemoveReturn>> => {
-    await verify(ctx, "projects.remove", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof projectsRemoveReturn>> => {
+    await verify(ctx, "projects.remove", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runMutation(projectsRemoveRef, { ownerId, ...payload });
   },
 });
@@ -130,8 +170,8 @@ const goalsListRef = makeFunctionReference<"query", { ownerId: string } & Infer<
 export const goalsList = action({
   args: { ...envelope, ...{} },
   returns: v.array(V.goalWithProgress),
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof goalsListReturn>> => {
-    await verify(ctx, "goals.list", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof goalsListReturn>> => {
+    await verify(ctx, "goals.list", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runQuery(goalsListRef, { ownerId, ...payload });
   },
 });
@@ -142,8 +182,8 @@ const goalsGetRef = makeFunctionReference<"query", { ownerId: string } & Infer<t
 export const goalsGet = action({
   args: { ...envelope, ...{ id: v.id("goals") } },
   returns: V.goal,
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof goalsGetReturn>> => {
-    await verify(ctx, "goals.get", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof goalsGetReturn>> => {
+    await verify(ctx, "goals.get", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runQuery(goalsGetRef, { ownerId, ...payload });
   },
 });
@@ -154,8 +194,8 @@ const goalsCreateRef = makeFunctionReference<"mutation", { ownerId: string } & I
 export const goalsCreate = action({
   args: { ...envelope, ...V.goalCreate },
   returns: V.goal,
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof goalsCreateReturn>> => {
-    await verify(ctx, "goals.create", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof goalsCreateReturn>> => {
+    await verify(ctx, "goals.create", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runMutation(goalsCreateRef, { ownerId, ...payload });
   },
 });
@@ -166,8 +206,8 @@ const goalsUpdateRef = makeFunctionReference<"mutation", { ownerId: string } & I
 export const goalsUpdate = action({
   args: { ...envelope, ...{ id: v.id("goals"), patch: V.goalPatch } },
   returns: V.goal,
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof goalsUpdateReturn>> => {
-    await verify(ctx, "goals.update", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof goalsUpdateReturn>> => {
+    await verify(ctx, "goals.update", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runMutation(goalsUpdateRef, { ownerId, ...payload });
   },
 });
@@ -178,8 +218,8 @@ const goalsRemoveRef = makeFunctionReference<"mutation", { ownerId: string } & I
 export const goalsRemove = action({
   args: { ...envelope, ...{ id: v.id("goals") } },
   returns: v.null(),
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof goalsRemoveReturn>> => {
-    await verify(ctx, "goals.remove", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof goalsRemoveReturn>> => {
+    await verify(ctx, "goals.remove", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runMutation(goalsRemoveRef, { ownerId, ...payload });
   },
 });
@@ -190,8 +230,8 @@ const eventsListRef = makeFunctionReference<"query", { ownerId: string } & Infer
 export const eventsList = action({
   args: { ...envelope, ...{} },
   returns: v.array(V.event),
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof eventsListReturn>> => {
-    await verify(ctx, "events.list", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof eventsListReturn>> => {
+    await verify(ctx, "events.list", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runQuery(eventsListRef, { ownerId, ...payload });
   },
 });
@@ -202,8 +242,8 @@ const eventsGetRef = makeFunctionReference<"query", { ownerId: string } & Infer<
 export const eventsGet = action({
   args: { ...envelope, ...{ id: v.id("events") } },
   returns: V.event,
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof eventsGetReturn>> => {
-    await verify(ctx, "events.get", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof eventsGetReturn>> => {
+    await verify(ctx, "events.get", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runQuery(eventsGetRef, { ownerId, ...payload });
   },
 });
@@ -214,8 +254,8 @@ const eventsCreateRef = makeFunctionReference<"mutation", { ownerId: string } & 
 export const eventsCreate = action({
   args: { ...envelope, ...V.eventCreate },
   returns: V.event,
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof eventsCreateReturn>> => {
-    await verify(ctx, "events.create", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof eventsCreateReturn>> => {
+    await verify(ctx, "events.create", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runMutation(eventsCreateRef, { ownerId, ...payload });
   },
 });
@@ -226,8 +266,8 @@ const eventsUpdateRef = makeFunctionReference<"mutation", { ownerId: string } & 
 export const eventsUpdate = action({
   args: { ...envelope, ...{ id: v.id("events"), patch: V.eventPatch } },
   returns: V.event,
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof eventsUpdateReturn>> => {
-    await verify(ctx, "events.update", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof eventsUpdateReturn>> => {
+    await verify(ctx, "events.update", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runMutation(eventsUpdateRef, { ownerId, ...payload });
   },
 });
@@ -238,8 +278,8 @@ const eventsRemoveRef = makeFunctionReference<"mutation", { ownerId: string } & 
 export const eventsRemove = action({
   args: { ...envelope, ...{ id: v.id("events") } },
   returns: v.null(),
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof eventsRemoveReturn>> => {
-    await verify(ctx, "events.remove", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof eventsRemoveReturn>> => {
+    await verify(ctx, "events.remove", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runMutation(eventsRemoveRef, { ownerId, ...payload });
   },
 });
@@ -250,8 +290,8 @@ const tasksListRef = makeFunctionReference<"query", { ownerId: string } & Infer<
 export const tasksList = action({
   args: { ...envelope, ...{ status: v.optional(V.taskStatus), limit: v.optional(v.number()) } },
   returns: v.array(V.task),
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof tasksListReturn>> => {
-    await verify(ctx, "tasks.list", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof tasksListReturn>> => {
+    await verify(ctx, "tasks.list", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runQuery(tasksListRef, { ownerId, ...payload });
   },
 });
@@ -262,8 +302,8 @@ const tasksGetRef = makeFunctionReference<"query", { ownerId: string } & Infer<t
 export const tasksGet = action({
   args: { ...envelope, ...{ id: v.id("tasks") } },
   returns: V.task,
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof tasksGetReturn>> => {
-    await verify(ctx, "tasks.get", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof tasksGetReturn>> => {
+    await verify(ctx, "tasks.get", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runQuery(tasksGetRef, { ownerId, ...payload });
   },
 });
@@ -274,8 +314,8 @@ const tasksCreateRef = makeFunctionReference<"mutation", { ownerId: string } & I
 export const tasksCreate = action({
   args: { ...envelope, ...V.taskCreate },
   returns: V.task,
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof tasksCreateReturn>> => {
-    await verify(ctx, "tasks.create", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof tasksCreateReturn>> => {
+    await verify(ctx, "tasks.create", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runMutation(tasksCreateRef, { ownerId, ...payload });
   },
 });
@@ -286,8 +326,8 @@ const tasksUpdateRef = makeFunctionReference<"mutation", { ownerId: string } & I
 export const tasksUpdate = action({
   args: { ...envelope, ...{ id: v.id("tasks"), patch: V.taskPatch } },
   returns: V.task,
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof tasksUpdateReturn>> => {
-    await verify(ctx, "tasks.update", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof tasksUpdateReturn>> => {
+    await verify(ctx, "tasks.update", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runMutation(tasksUpdateRef, { ownerId, ...payload });
   },
 });
@@ -298,8 +338,8 @@ const tasksRemoveRef = makeFunctionReference<"mutation", { ownerId: string } & I
 export const tasksRemove = action({
   args: { ...envelope, ...{ id: v.id("tasks") } },
   returns: v.null(),
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof tasksRemoveReturn>> => {
-    await verify(ctx, "tasks.remove", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof tasksRemoveReturn>> => {
+    await verify(ctx, "tasks.remove", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runMutation(tasksRemoveRef, { ownerId, ...payload });
   },
 });
@@ -310,8 +350,8 @@ const habitsListRef = makeFunctionReference<"query", { ownerId: string } & Infer
 export const habitsList = action({
   args: { ...envelope, ...{} },
   returns: v.array(V.habit),
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof habitsListReturn>> => {
-    await verify(ctx, "habits.list", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof habitsListReturn>> => {
+    await verify(ctx, "habits.list", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runQuery(habitsListRef, { ownerId, ...payload });
   },
 });
@@ -322,8 +362,8 @@ const habitsGetRef = makeFunctionReference<"query", { ownerId: string } & Infer<
 export const habitsGet = action({
   args: { ...envelope, ...{ id: v.id("habits") } },
   returns: V.habit,
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof habitsGetReturn>> => {
-    await verify(ctx, "habits.get", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof habitsGetReturn>> => {
+    await verify(ctx, "habits.get", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runQuery(habitsGetRef, { ownerId, ...payload });
   },
 });
@@ -334,8 +374,8 @@ const habitsCreateRef = makeFunctionReference<"mutation", { ownerId: string } & 
 export const habitsCreate = action({
   args: { ...envelope, ...V.habitCreate },
   returns: V.habit,
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof habitsCreateReturn>> => {
-    await verify(ctx, "habits.create", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof habitsCreateReturn>> => {
+    await verify(ctx, "habits.create", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runMutation(habitsCreateRef, { ownerId, ...payload });
   },
 });
@@ -346,8 +386,8 @@ const habitsUpdateRef = makeFunctionReference<"mutation", { ownerId: string } & 
 export const habitsUpdate = action({
   args: { ...envelope, ...{ id: v.id("habits"), patch: V.habitPatch } },
   returns: V.habit,
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof habitsUpdateReturn>> => {
-    await verify(ctx, "habits.update", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof habitsUpdateReturn>> => {
+    await verify(ctx, "habits.update", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runMutation(habitsUpdateRef, { ownerId, ...payload });
   },
 });
@@ -358,8 +398,8 @@ const habitsRemoveRef = makeFunctionReference<"mutation", { ownerId: string } & 
 export const habitsRemove = action({
   args: { ...envelope, ...{ id: v.id("habits") } },
   returns: v.null(),
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof habitsRemoveReturn>> => {
-    await verify(ctx, "habits.remove", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof habitsRemoveReturn>> => {
+    await verify(ctx, "habits.remove", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runMutation(habitsRemoveRef, { ownerId, ...payload });
   },
 });
@@ -370,8 +410,8 @@ const tasksCompleteRef = makeFunctionReference<"mutation", { ownerId: string } &
 export const tasksComplete = action({
   args: { ...envelope, ...{ id: v.id("tasks") } },
   returns: V.task,
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof tasksCompleteReturn>> => {
-    await verify(ctx, "tasks.complete", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof tasksCompleteReturn>> => {
+    await verify(ctx, "tasks.complete", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runMutation(tasksCompleteRef, { ownerId, ...payload });
   },
 });
@@ -382,8 +422,8 @@ const tasksReopenRef = makeFunctionReference<"mutation", { ownerId: string } & I
 export const tasksReopen = action({
   args: { ...envelope, ...{ id: v.id("tasks") } },
   returns: V.task,
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof tasksReopenReturn>> => {
-    await verify(ctx, "tasks.reopen", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof tasksReopenReturn>> => {
+    await verify(ctx, "tasks.reopen", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runMutation(tasksReopenRef, { ownerId, ...payload });
   },
 });
@@ -394,8 +434,8 @@ const tasksQuickAddRef = makeFunctionReference<"mutation", { ownerId: string } &
 export const tasksQuickAdd = action({
   args: { ...envelope, ...{ text: v.string(), today: v.string() } },
   returns: V.task,
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof tasksQuickAddReturn>> => {
-    await verify(ctx, "tasks.quickAdd", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof tasksQuickAddReturn>> => {
+    await verify(ctx, "tasks.quickAdd", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runMutation(tasksQuickAddRef, { ownerId, ...payload });
   },
 });
@@ -406,8 +446,8 @@ const tasksSearchRef = makeFunctionReference<"query", { ownerId: string } & Infe
 export const tasksSearch = action({
   args: { ...envelope, ...{ query: v.string(), limit: v.optional(v.number()) } },
   returns: v.array(V.task),
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof tasksSearchReturn>> => {
-    await verify(ctx, "tasks.search", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof tasksSearchReturn>> => {
+    await verify(ctx, "tasks.search", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runQuery(tasksSearchRef, { ownerId, ...payload });
   },
 });
@@ -418,8 +458,8 @@ const dayGetRef = makeFunctionReference<"query", { ownerId: string } & Infer<typ
 export const dayGet = action({
   args: { ...envelope, ...{ date: v.string() } },
   returns: V.day,
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof dayGetReturn>> => {
-    await verify(ctx, "day.get", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof dayGetReturn>> => {
+    await verify(ctx, "day.get", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runQuery(dayGetRef, { ownerId, ...payload });
   },
 });
@@ -430,8 +470,8 @@ const weekGetRef = makeFunctionReference<"query", { ownerId: string } & Infer<ty
 export const weekGet = action({
   args: { ...envelope, ...{ startDate: v.string() } },
   returns: v.array(V.weekDay),
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof weekGetReturn>> => {
-    await verify(ctx, "week.get", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof weekGetReturn>> => {
+    await verify(ctx, "week.get", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runQuery(weekGetRef, { ownerId, ...payload });
   },
 });
@@ -442,8 +482,8 @@ const profilesGetRef = makeFunctionReference<"query", { ownerId: string } & Infe
 export const profilesGet = action({
   args: { ...envelope, ...{} },
   returns: v.union(V.profile, v.null()),
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof profilesGetReturn>> => {
-    await verify(ctx, "profiles.get", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof profilesGetReturn>> => {
+    await verify(ctx, "profiles.get", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runQuery(profilesGetRef, { ownerId, ...payload });
   },
 });
@@ -454,8 +494,8 @@ const profilesEnsureRef = makeFunctionReference<"mutation", { ownerId: string } 
 export const profilesEnsure = action({
   args: { ...envelope, ...{ timezone: v.optional(v.string()) } },
   returns: V.profile,
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof profilesEnsureReturn>> => {
-    await verify(ctx, "profiles.ensure", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof profilesEnsureReturn>> => {
+    await verify(ctx, "profiles.ensure", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runMutation(profilesEnsureRef, { ownerId, ...payload });
   },
 });
@@ -466,8 +506,8 @@ const profilesUpdateRef = makeFunctionReference<"mutation", { ownerId: string } 
 export const profilesUpdate = action({
   args: { ...envelope, ...{ patch: V.profilePatch } },
   returns: V.profile,
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof profilesUpdateReturn>> => {
-    await verify(ctx, "profiles.update", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof profilesUpdateReturn>> => {
+    await verify(ctx, "profiles.update", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runMutation(profilesUpdateRef, { ownerId, ...payload });
   },
 });
@@ -478,8 +518,8 @@ const profilesCompleteOnboardingRef = makeFunctionReference<"mutation", { ownerI
 export const profilesCompleteOnboarding = action({
   args: { ...envelope, ...{} },
   returns: V.profile,
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof profilesCompleteOnboardingReturn>> => {
-    await verify(ctx, "profiles.completeOnboarding", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof profilesCompleteOnboardingReturn>> => {
+    await verify(ctx, "profiles.completeOnboarding", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runMutation(profilesCompleteOnboardingRef, { ownerId, ...payload });
   },
 });
@@ -490,8 +530,8 @@ const profilesResetAllRef = makeFunctionReference<"mutation", { ownerId: string 
 export const profilesResetAll = action({
   args: { ...envelope, ...{} },
   returns: v.null(),
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof profilesResetAllReturn>> => {
-    await verify(ctx, "profiles.resetAll", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof profilesResetAllReturn>> => {
+    await verify(ctx, "profiles.resetAll", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runMutation(profilesResetAllRef, { ownerId, ...payload });
   },
 });
@@ -502,8 +542,8 @@ const goalsCreateMilestoneRef = makeFunctionReference<"mutation", { ownerId: str
 export const goalsCreateMilestone = action({
   args: { ...envelope, ...V.milestoneCreate },
   returns: V.milestone,
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof goalsCreateMilestoneReturn>> => {
-    await verify(ctx, "goals.createMilestone", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof goalsCreateMilestoneReturn>> => {
+    await verify(ctx, "goals.createMilestone", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runMutation(goalsCreateMilestoneRef, { ownerId, ...payload });
   },
 });
@@ -514,8 +554,8 @@ const goalsUpdateMilestoneRef = makeFunctionReference<"mutation", { ownerId: str
 export const goalsUpdateMilestone = action({
   args: { ...envelope, ...{ id: v.id("milestones"), patch: V.milestonePatch } },
   returns: V.milestone,
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof goalsUpdateMilestoneReturn>> => {
-    await verify(ctx, "goals.updateMilestone", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof goalsUpdateMilestoneReturn>> => {
+    await verify(ctx, "goals.updateMilestone", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runMutation(goalsUpdateMilestoneRef, { ownerId, ...payload });
   },
 });
@@ -526,8 +566,8 @@ const goalsRemoveMilestoneRef = makeFunctionReference<"mutation", { ownerId: str
 export const goalsRemoveMilestone = action({
   args: { ...envelope, ...{ id: v.id("milestones") } },
   returns: v.null(),
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof goalsRemoveMilestoneReturn>> => {
-    await verify(ctx, "goals.removeMilestone", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof goalsRemoveMilestoneReturn>> => {
+    await verify(ctx, "goals.removeMilestone", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runMutation(goalsRemoveMilestoneRef, { ownerId, ...payload });
   },
 });
@@ -538,8 +578,8 @@ const habitsListLogsRef = makeFunctionReference<"query", { ownerId: string } & I
 export const habitsListLogs = action({
   args: { ...envelope, ...{ habitId: v.id("habits") } },
   returns: v.array(V.habitLog),
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof habitsListLogsReturn>> => {
-    await verify(ctx, "habits.listLogs", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof habitsListLogsReturn>> => {
+    await verify(ctx, "habits.listLogs", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runQuery(habitsListLogsRef, { ownerId, ...payload });
   },
 });
@@ -550,8 +590,8 @@ const habitsLogRef = makeFunctionReference<"mutation", { ownerId: string } & Inf
 export const habitsLog = action({
   args: { ...envelope, ...{ habitId: v.id("habits"), date: v.string() } },
   returns: V.habitLog,
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof habitsLogReturn>> => {
-    await verify(ctx, "habits.log", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof habitsLogReturn>> => {
+    await verify(ctx, "habits.log", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runMutation(habitsLogRef, { ownerId, ...payload });
   },
 });
@@ -562,8 +602,8 @@ const habitsRemoveLogRef = makeFunctionReference<"mutation", { ownerId: string }
 export const habitsRemoveLog = action({
   args: { ...envelope, ...{ id: v.id("habitLogs") } },
   returns: v.null(),
-  handler: async (ctx, { ownerId, timestamp, nonce, signature, ...payload }): Promise<Infer<typeof habitsRemoveLogReturn>> => {
-    await verify(ctx, "habits.removeLog", { ownerId, timestamp, nonce, signature }, payload);
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof habitsRemoveLogReturn>> => {
+    await verify(ctx, "habits.removeLog", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runMutation(habitsRemoveLogRef, { ownerId, ...payload });
   },
 });
