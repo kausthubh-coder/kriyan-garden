@@ -25,6 +25,7 @@
   --space-16: 16px;
   --space-24: 24px;
   --space-32: 32px;
+  --space-44: 44px;
   --space-48: 48px;
   --radius-8: 8px;
   --radius-9: 9px;
@@ -41,19 +42,26 @@
   --text-14: 14px;
   --text-14-5: 14.5px;
   --text-15: 15px;
+  --text-15-5: 15.5px;
   --text-16: 16px;
   --text-17: 17px;
   --text-18: 18px;
   --text-19: 19px;
+  --text-20: 20px;
+  --text-21: 21px;
   --text-22: 22px;
   --text-24: 24px;
+  --text-26: 26px;
   --text-30: 30px;
   --text-32: 32px;
   --text-40: 40px;
   --text-44: 44px;
   --text-64: 64px;
   --hh: 56px;
-  --control-height: 44px;
+  --phone-hh: 62px;
+  --ctl: 32px;
+  --ctl-lg: 36px;
+  --control-height: var(--ctl);
   --press: 160ms;
   --transition: 200ms;
   --panel-duration: 250ms;
@@ -64,4 +72,7 @@
   --radius-control: var(--radius-8);
   --text-body: var(--text-15);
   --text-title: var(--text-24);
+}
+@media (pointer: coarse) {
+  :root { --ctl: 44px; --ctl-lg: 44px; }
 }

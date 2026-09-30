@@ -1,3 +1,4 @@
+import { weekdayName, longDate, shortDate } from "@kriyan/core";
 import {
   addDays,
   deadlineCapacity,
@@ -7,9 +8,6 @@ import {
 } from "@kriyan/core";
 import {
   areaColor,
-  dayName,
-  longDate,
-  shortDate,
   type Area,
   type Goal,
   type Task,
@@ -101,7 +99,7 @@ export function SideRail({
                     key={dayDate}
                     onClick={() => goDay(dayDate)}
                     className={dayDate === date ? s.t : ""}
-                    aria-label={`${dayName(dayDate)[0]} ${loadLabel}, ${dayName(dayDate)}${total > capacity ? ", over capacity" : ""}`}
+                    aria-label={`${weekdayName(dayDate)[0]} ${loadLabel}, ${weekdayName(dayDate)}${total > capacity ? ", over capacity" : ""}`}
                   >
                     <i style={{ height }}>
                       {areas
@@ -116,14 +114,16 @@ export function SideRail({
                           />
                         ))}
                     </i>
-                    {dayName(dayDate)[0]} <small>{loadLabel}</small>
+                    {weekdayName(dayDate)[0]} <small>{loadLabel}</small>
                   </button>
                 );
               })}
             </div>
             {worst ? (
               <p className={s.cap}>
-                <b className={s.bad}>{dayName(worst.date)} is over capacity</b>{" "}
+                <b className={s.bad}>
+                  {weekdayName(worst.date)} is over capacity
+                </b>{" "}
                 by {formatMinutes(worst.plannedMinutes - capacity)}. Move
                 something to a lighter day.
               </p>
@@ -164,7 +164,12 @@ export function SideRail({
                         : areaColor(
                             areas.find((area) => area._id === task.areaId),
                           ),
-                    "--need": needed === null ? 0 : free ? Math.min((needed / free) * 100, 100) : 100,
+                    "--need":
+                      needed === null
+                        ? 0
+                        : free
+                          ? Math.min((needed / free) * 100, 100)
+                          : 100,
                   } as Variables
                 }
               >
@@ -186,11 +191,16 @@ export function SideRail({
                   <i />
                 </div>
                 <p>
-                  {needed === null ? "Length not set" : `${formatMinutes(needed)} needed`}, {formatMinutes(free)} free
-                  {spare !== null && <b className={spare < 0 ? s.bad : undefined}>
-                    {formatMinutes(Math.abs(spare))}{" "}
-                    {spare < 0 ? "short" : "to spare"}
-                  </b>}
+                  {needed === null
+                    ? "Length not set"
+                    : `${formatMinutes(needed)} needed`}
+                  , {formatMinutes(free)} free
+                  {spare !== null && (
+                    <b className={spare < 0 ? s.bad : undefined}>
+                      {formatMinutes(Math.abs(spare))}{" "}
+                      {spare < 0 ? "short" : "to spare"}
+                    </b>
+                  )}
                 </p>
                 {task.durationMinutes === null && (
                   <p>Add a length to compare time needed with time free.</p>

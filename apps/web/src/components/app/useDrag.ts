@@ -28,6 +28,9 @@ export function useDrag(
 ) {
   const drag = useRef<Drag | null>(null);
   const suppress = useRef(false);
+  const hourHeight = (grid: HTMLElement) =>
+    Number.parseFloat(getComputedStyle(grid).getPropertyValue("--hh")) ||
+    layout.hourHeight;
   useEffect(() => {
     const toMinute = (y: number, grid: HTMLElement) =>
       Math.max(
@@ -36,7 +39,7 @@ export function useDrag(
           endHour * 60,
           Math.round(
             (startHour * 60 +
-              ((y - grid.getBoundingClientRect().top) / layout.hourHeight) *
+              ((y - grid.getBoundingClientRect().top) / hourHeight(grid)) *
                 60) /
               15,
           ) * 15,
@@ -69,7 +72,7 @@ export function useDrag(
           toMinute(event.clientY, current.grid) -
             minutesOf(current.task.time ?? "00:00"),
         );
-        current.element.style.height = `${Math.max((current.duration / 60) * layout.hourHeight - 3, 30)}px`;
+        current.element.style.height = `${Math.max((current.duration / 60) * hourHeight(current.grid) - 3, 30)}px`;
         current.element.classList.remove(s.pt);
       } else if (current.mode === "move") {
         current.minute = Math.min(
@@ -77,7 +80,7 @@ export function useDrag(
           endHour * 60 - (current.task.durationMinutes ?? 15),
         );
         current.minute = Math.max(startHour * 60, current.minute);
-        current.element.style.top = `${((current.minute - startHour * 60) / 60) * layout.hourHeight + 1}px`;
+        current.element.style.top = `${((current.minute - startHour * 60) / 60) * hourHeight(current.grid) + 1}px`;
       } else {
         const rect = current.grid.getBoundingClientRect();
         const dayRect =
@@ -97,8 +100,8 @@ export function useDrag(
         }
         if (current.marker) {
           current.marker.hidden = !inside;
-          current.marker.style.top = `${(((current.minute ?? 0) - startHour * 60) / 60) * layout.hourHeight + 1}px`;
-          current.marker.style.height = `${Math.max(((current.task.durationMinutes ?? 30) / 60) * layout.hourHeight - 3, 30)}px`;
+          current.marker.style.top = `${(((current.minute ?? 0) - startHour * 60) / 60) * hourHeight(current.grid) + 1}px`;
+          current.marker.style.height = `${Math.max(((current.task.durationMinutes ?? 30) / 60) * hourHeight(current.grid) - 3, 30)}px`;
           current.marker.textContent = timeOf(current.minute ?? 0);
         }
       }

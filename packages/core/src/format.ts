@@ -48,6 +48,12 @@ export function shortDate(date: string): string {
   return `${weekdayName(date).slice(0, 3)} ${day} ${(MONTHS[month] ?? "").slice(0, 3)}`;
 }
 
+/** Creation date in the viewer's local timezone: "29 Sep". */
+export function addedDate(timestamp: number): string {
+  const date = new Date(timestamp);
+  return `${date.getDate()} ${(MONTHS[date.getMonth()] ?? "").slice(0, 3)}`;
+}
+
 /** "Today", "Tomorrow", "Yesterday", otherwise "Wed 30 Sep". */
 export function relativeDay(date: string, today: string): string {
   if (date === today) return "Today";

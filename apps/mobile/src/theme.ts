@@ -27,6 +27,7 @@ export const theme = {
     16,
     24,
     32,
+    44,
     48
   ],
   "radii": [
@@ -47,12 +48,16 @@ export const theme = {
     14,
     14.5,
     15,
+    15.5,
     16,
     17,
     18,
     19,
+    20,
+    21,
     22,
     24,
+    26,
     30,
     32,
     40,
@@ -67,6 +72,7 @@ export const theme = {
   },
   "layout": {
     "hourHeight": 56,
+    "phoneHourHeight": 62,
     "controlHeight": 44,
     "phonePadding": 18,
     "phoneSheetPadding": 20,

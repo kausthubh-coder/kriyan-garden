@@ -1,15 +1,10 @@
+import { weekdayName, longDate } from "@kriyan/core";
 import { addDays, formatMinutes, weekStart } from "@kriyan/core";
 import { Filters } from "./Filters";
 import { SideRail } from "./SideRail";
 import { taskKeys } from "./Tray";
 import { ViewHeader, ViewSkeleton, type ViewProps } from "./ViewParts";
-import {
-  areaColor,
-  dayName,
-  longDate,
-  type Variables,
-  type Week,
-} from "./types";
+import { areaColor, type Variables, type Week } from "./types";
 import s from "./App.module.css";
 export function WeekView(
   p: ViewProps & {
@@ -64,9 +59,9 @@ export function WeekView(
               >
                 <button
                   onClick={() => p.goDay(date)}
-                  aria-label={`Open ${dayName(date)}, ${longDate(date)}`}
+                  aria-label={`Open ${weekdayName(date)}, ${longDate(date)}`}
                 >
-                  {dayName(date).slice(0, 3)}
+                  {weekdayName(date).slice(0, 3)}
                   <em>{Number(date.slice(-2))}</em>
                   <span
                     className={
@@ -76,9 +71,7 @@ export function WeekView(
                     {day?.plannedMinutes
                       ? formatMinutes(day.plannedMinutes)
                       : ""}
-                    {(day?.plannedMinutes ?? 0) > p.capacity
-                      ? ", over capacity"
-                      : ""}
+                    {(day?.plannedMinutes ?? 0) > p.capacity ? ", over" : ""}
                   </span>
                 </button>
                 {entries.map(({ key, task, event }) =>
@@ -131,7 +124,6 @@ export function WeekView(
                     )
                   ),
                 )}
-                {!entries.length && <div className={s.empty}>Free</div>}
               </section>
             );
           })}

@@ -94,6 +94,7 @@ test("setting a 45 minute length enlarges the block and shows 07:45", async ({
   const before = await block.boundingBox();
   await block.click();
   const panel = page.getByRole("dialog", { name: "Task details" });
+  await panel.locator('[data-property="length"]').click();
   await panel.getByRole("button", { name: "45m", exact: true }).click();
   await panel.getByRole("button", { name: "Close task details" }).click();
   await expect(block.locator("time")).toHaveText("07:00 to 07:45");

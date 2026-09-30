@@ -1,6 +1,6 @@
 import type { FunctionReturnType } from "convex/server";
 import type { CSSProperties } from "react";
-import { addDays, namedAreaColors } from "@kriyan/core";
+import { namedAreaColors } from "@kriyan/core";
 import type { Doc } from "@kriyan/backend/convex/_generated/dataModel";
 import { api } from "@kriyan/backend/convex/_generated/api";
 
@@ -22,32 +22,6 @@ export type PanelSection = "time" | "length" | undefined;
 export function areaColor(area?: Area) {
   return namedAreaColors[area?.color ?? "grey"];
 }
-export const localToday = () => {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-};
-const dateObject = (date: string) => new Date(`${date}T12:00:00`);
-export const dayName = (date: string) =>
-  dateObject(date).toLocaleDateString("en", { weekday: "long" });
-export const longDate = (date: string) =>
-  dateObject(date).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "long",
-  });
-export const shortDate = (date: string) =>
-  dateObject(date).toLocaleDateString("en-GB", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  });
-export const relativeDate = (date: string, today: string) =>
-  date === today
-    ? "Today"
-    : date === addDays(today, 1)
-      ? "Tomorrow"
-      : date === addDays(today, -1)
-        ? "Yesterday"
-        : shortDate(date);
 export const projectName = (task: Task, projects: Project[], areas: Area[]) =>
   projects.find((project) => project._id === task.projectId)?.name ??
   areas.find((area) => area._id === task.areaId)?.name ??

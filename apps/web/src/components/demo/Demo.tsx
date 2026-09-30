@@ -10,26 +10,65 @@ import s from "./Demo.module.css";
 
 export function Demo() {
   const clock = useClock();
-  return <div className={s.demo}>
-    <div className={s.bar}><span>This is a demo with sample data. Nothing is saved.</span><a href={appHref("/app")}>Open Kriyan</a><a href={appHref("/sign-up")}>Sign up</a></div>
-    {clock ? <MemoryPlanner today={clock.today} /> : <p className={s.loading} role="status">Loading the sample day.</p>}
-  </div>;
+  return (
+    <div className={s.demo}>
+      <div className={s.bar}>
+        <span>Demo with sample data. Nothing is saved.</span>
+        <a href={appHref("/sign-up")}>Sign up</a>
+      </div>
+      {clock ? (
+        <MemoryPlanner today={clock.today} />
+      ) : (
+        <p className={s.loading} role="status">
+          Loading the sample day.
+        </p>
+      )}
+    </div>
+  );
 }
 function MemoryPlanner({ today }: { today: string }) {
   const [store] = useState(() => createDemoStore(today));
   const [access] = useState<PlannerDataAccess>(() => ({
     usePlanner(date) {
-      const state = useSyncExternalStore(store.subscribe, store.snapshot, store.snapshot), clock = useClock();
+      const state = useSyncExternalStore(
+          store.subscribe,
+          store.snapshot,
+          store.snapshot,
+        ),
+        clock = useClock();
       return {
-        ...state, goals: state.goals.map((g) => ({ ...g, milestones: [...g.milestones].sort((a, b) => a.sortOrder - b.sortOrder), linkedTasks: { total: state.tasks.filter((t) => t.goalId === g._id).length, done: state.tasks.filter((t) => t.goalId === g._id && t.status === "completed").length } })),
-        clock: clock ? { ...clock, minutes: 11 * 60 + 45 } : null, habits: [], day: store.day(date ?? today), week: store.week(date ?? today), connected: true,
-        loading: false, showSkeleton: false, error: "", retry: () => {},
+        ...state,
+        goals: state.goals.map((g) => ({
+          ...g,
+          milestones: [...g.milestones].sort(
+            (a, b) => a.sortOrder - b.sortOrder,
+          ),
+          linkedTasks: {
+            total: state.tasks.filter((t) => t.goalId === g._id).length,
+            done: state.tasks.filter(
+              (t) => t.goalId === g._id && t.status === "completed",
+            ).length,
+          },
+        })),
+        clock: clock ? { ...clock, minutes: 11 * 60 + 45 } : null,
+        habits: [],
+        day: store.day(date ?? today),
+        week: store.week(date ?? today),
+        connected: true,
+        loading: false,
+        showSkeleton: false,
+        error: "",
+        retry: () => {},
       };
     },
     useTasks: () => store.tasks,
     useGoals: () => store.goals,
     useSelectedTask(key) {
-      const state = useSyncExternalStore(store.subscribe, store.snapshot, store.snapshot);
+      const state = useSyncExternalStore(
+        store.subscribe,
+        store.snapshot,
+        store.snapshot,
+      );
       return selectTask(key, state.tasks);
     },
     useSelectedGoal(key) {
@@ -37,5 +76,13 @@ function MemoryPlanner({ today }: { today: string }) {
       return store.selectedGoal(key);
     },
   }));
-  return <PlannerDataContext.Provider value={access}><div className={s.planner}><Suspense fallback={<p role="status">Loading the sample day.</p>}><AppShell demo /></Suspense></div></PlannerDataContext.Provider>;
+  return (
+    <PlannerDataContext.Provider value={access}>
+      <div className={s.planner}>
+        <Suspense fallback={<p role="status">Loading the sample day.</p>}>
+          <AppShell demo />
+        </Suspense>
+      </div>
+    </PlannerDataContext.Provider>
+  );
 }

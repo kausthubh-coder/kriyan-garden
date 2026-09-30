@@ -22,12 +22,15 @@ export const clerkAppearance: ComponentProps<
     cardBox: { boxShadow: "none", maxWidth: "100%" },
     card: { background: "var(--s1)", border: "1px solid var(--line)" },
     formButtonPrimary: {
-      minHeight: "var(--control-height)",
+      minHeight: "var(--ctl-lg)",
       textTransform: "none",
     },
     formFieldInput: { minHeight: "var(--control-height)" },
     socialButtonsBlockButton: { minHeight: "var(--control-height)" },
     footer: { background: "var(--s1)", backgroundImage: "none" },
+    footerAction: { display: "flex", alignItems: "center", gap: "var(--space-4)" },
+    footerActionText: { lineHeight: "1.45" },
+    footerActionLink: { display: "inline", minHeight: "0", minWidth: "0", lineHeight: "1.45", padding: "0" },
     userProfileRoot: { width: "100%", maxWidth: "100%" },
     badge: {
       color: "var(--ink-2)", background: "var(--s2)", opacity: 1,

@@ -1,9 +1,9 @@
 "use client";
+import { relativeDay } from "@kriyan/core";
 import { useEffect, useRef, useState } from "react";
 import { Dialog } from "./Dialog";
 import {
   areaColor,
-  relativeDate,
   type Area,
   type Task,
   type View,
@@ -65,7 +65,7 @@ export function CommandPalette({
         .map((task) => ({
           label: task.title,
           color: areaColor(areas.find((area) => area._id === task.areaId)),
-          shortcut: task.date ? relativeDate(task.date, today) : "No date",
+          shortcut: task.date ? relativeDay(task.date, today) : "No date",
           run: () => open(task),
         }))
     : [];

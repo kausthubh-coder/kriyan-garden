@@ -1,4 +1,5 @@
 "use client";
+import { relativeDay } from "@kriyan/core";
 import { useState } from "react";
 import {
   parse,
@@ -7,13 +8,7 @@ import {
   type QuickAddResult,
 } from "@kriyan/core";
 import { Dialog } from "./Dialog";
-import {
-  areaColor,
-  relativeDate,
-  type Area,
-  type Project,
-  type Variables,
-} from "./types";
+import { areaColor, type Area, type Project, type Variables } from "./types";
 import s from "./App.module.css";
 export function QuickAdd({
   context,
@@ -76,7 +71,7 @@ export function QuickAdd({
               </span>
               <span className={s.chip}>
                 {parsed.date
-                  ? relativeDate(parsed.date, context.today)
+                  ? relativeDay(parsed.date, context.today)
                   : "No date yet"}
               </span>
               <span className={`${s.chip} ${parsed.time ? "" : s.off}`}>

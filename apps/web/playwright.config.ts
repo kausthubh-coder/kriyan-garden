@@ -19,6 +19,11 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   projects: [
+    {
+      name: "polish",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: /polish\.spec\.ts/,
+    },
     { name: "setup", testMatch: /auth\.setup\.ts/, teardown: "cleanup" },
     {
       name: "chromium",

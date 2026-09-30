@@ -1,4 +1,5 @@
 "use client";
+import { relativeDay } from "@kriyan/core";
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { addDays, type QuickAddResult } from "@kriyan/core";
@@ -20,7 +21,6 @@ import { taskSelectionArgs } from "./taskSelection";
 import { Toast } from "./Toast";
 import { HelpSheet } from "./HelpSheet";
 import {
-  relativeDate,
   type Area,
   type Task,
   type Goal,
@@ -55,7 +55,12 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
         : pathname === "/app/settings"
           ? "settings"
           : (params.get("view") ?? "day"),
-    view = (views.includes(rawView) && !(demo && ["settings", "onboarding"].includes(rawView)) ? rawView : "day") as View;
+    view = (
+      views.includes(rawView) &&
+      !(demo && ["settings", "onboarding"].includes(rawView))
+        ? rawView
+        : "day"
+    ) as View;
   const planner = usePlannerData(validDate),
     clock = planner.clock,
     date = validDate ?? clock?.today ?? null;
@@ -78,7 +83,8 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
   }, [pathname]);
   useEffect(() => {
     if (
-      !demo && planner.profile &&
+      !demo &&
+      planner.profile &&
       !planner.profile.onboardingComplete &&
       pathname !== "/app/welcome"
     )
@@ -94,8 +100,9 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
         else next.set(key, value);
       }
       const view = next.get("view");
-      const target =
-        demo ? "/demo" : view === "settings"
+      const target = demo
+        ? "/demo"
+        : view === "settings"
           ? "/app/settings"
           : view === "onboarding"
             ? "/app/welcome"
@@ -130,7 +137,10 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
   const selectedGoalId = params.get("goal");
   const selectedGoalRow = useSelectedGoal(selectedGoalId, planner.goals);
   const listedGoal = goals.find((goal) => goal._id === selectedGoalId);
-  const selectedGoal = selectedGoalRow && listedGoal ? { ...listedGoal, ...selectedGoalRow } : undefined;
+  const selectedGoal =
+    selectedGoalRow && listedGoal
+      ? { ...listedGoal, ...selectedGoalRow }
+      : undefined;
   const selectedId = params.get("task");
   const selected = useSelectedTask(selectedId);
   const open = useCallback(
@@ -221,8 +231,9 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
   );
   useEffect(() => {
     const pointer = () => setModality("pointer");
+    const keyboard = () => setModality("keyboard");
     const key = (event: KeyboardEvent) => {
-      setModality("keyboard");
+      if (event.defaultPrevented) return;
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
         if (overlay === "palette") close();
@@ -230,6 +241,8 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
         return;
       }
       if (event.key === "Escape") {
+        // Native dialogs own Escape, including when a disabled control lost focus.
+        if (document.querySelector("dialog[open]")) return;
         if (overlay || selectedId || selectedGoalId) {
           event.preventDefault();
           close();
@@ -272,9 +285,11 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
       }
     };
     document.addEventListener("pointerdown", pointer, true);
+    document.addEventListener("keydown", keyboard, true);
     document.addEventListener("keydown", key);
     return () => {
       document.removeEventListener("pointerdown", pointer, true);
+      document.removeEventListener("keydown", keyboard, true);
       document.removeEventListener("keydown", key);
     };
   }, [
@@ -301,7 +316,7 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
         projectId: project?._id ?? null,
         date: result.time && !result.date ? date : result.date,
       },
-      `Added: ${result.date ? `${relativeDate(result.date, clock.today)}${result.time ? ` at ${result.time}` : ", any time"}` : "No date yet"}`,
+      `Added: ${result.date ? `${relativeDay(result.date, clock.today)}${result.time ? ` at ${result.time}` : ", any time"}` : "No date yet"}`,
     );
   };
   const defaultArea =
@@ -442,7 +457,6 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
               open={open}
               toggle={actions.toggle}
               add={() => add()}
-              palette={palette}
               navigate={changeDate}
               goDay={goDay}
               goGoals={() => navigate("goals")}
@@ -450,7 +464,15 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
               loading={planner.loading}
             />
           ) : view === "list" ? (
-            viewProps && <ListView {...viewProps} />
+            viewProps && (
+              <ListView
+                {...viewProps}
+                week={planner.week}
+                capacity={planner.profile?.dailyCapacityMinutes ?? 360}
+                goDay={goDay}
+                goGoals={() => navigate("goals")}
+              />
+            )
           ) : view === "week" ? (
             viewProps && (
               <WeekView
@@ -522,34 +544,38 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
         />
       )}
       {overlay === "help" && <HelpSheet close={close} />}
-      {taskSelectionArgs(selectedId) !== "skip" && !overlay && clock && date && (
-        <TaskSelectionPanel
-          key={selectedId}
-          task={selected}
-          areas={areas}
-          projects={projects}
-          goals={goals}
-          today={clock.today}
-          date={date}
-          section={section}
-          close={close}
-          toggle={actions.toggle}
-          remove={actions.deleteTask}
-          update={actions.edit}
-          toast={
-            <Toast
-              message={actions.toast}
-              dismiss={actions.dismiss}
-              undo={actions.undo}
-            />
-          }
-        />
-      )}
+      {taskSelectionArgs(selectedId) !== "skip" &&
+        !overlay &&
+        clock &&
+        date && (
+          <TaskSelectionPanel
+            key={selectedId}
+            task={selected}
+            areas={areas}
+            projects={projects}
+            goals={goals}
+            today={clock.today}
+            date={date}
+            section={section}
+            close={close}
+            toggle={actions.toggle}
+            remove={actions.deleteTask}
+            update={actions.edit}
+            toast={
+              <Toast
+                message={actions.toast}
+                dismiss={actions.dismiss}
+                undo={actions.undo}
+              />
+            }
+          />
+        )}
       {selectedGoal && !overlay && (
         <GoalPanel
           key={selectedGoal._id}
           goal={selectedGoal}
           areas={areas}
+          today={clock?.today ?? date ?? selectedGoal.startDate}
           close={close}
           remove={goalActions.deleteGoal}
         />

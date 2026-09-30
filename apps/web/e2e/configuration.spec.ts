@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { addDays } from "@kriyan/core";
+import { addDays, shortDate } from "@kriyan/core";
 import { api } from "@kriyan/backend/convex/_generated/api";
 import type { Id } from "@kriyan/backend/convex/_generated/dataModel";
 import { backendFor } from "./backend";
@@ -34,7 +34,9 @@ test("goals save number progress, milestones and task progress", async ({
     return page.locator("section").filter({ hasText: title });
   }
   const number = await create("Read ten books", "number");
-  await expect(number.getByText("2 books", { exact: true })).toBeVisible();
+  await expect(
+    number.locator("button > span").filter({ hasText: /^2books$/ }),
+  ).toBeVisible();
   await expect(number.locator("input, select")).toHaveCount(0);
   const trigger = number.getByRole("button", {
     name: "Read ten books",
@@ -42,34 +44,46 @@ test("goals save number progress, milestones and task progress", async ({
   });
   await trigger.click();
   const details = page.getByRole("dialog", { name: "Goal details" });
-  await expect(details.getByLabel("Goal title")).toBeFocused();
+  await expect(details.getByLabel("Goal title", { exact: true })).toBeFocused();
   await expect(page).toHaveURL(/goal=/);
-  await details.getByLabel("Current value").fill("3");
-  await details.getByLabel("Target date").fill("");
-  await details.getByLabel("Start date").fill(addDays(target, -10));
+  const property = (id: string) => details.locator(`[data-property="${id}"]`);
+  await property("current").click();
+  await details.getByLabel("Current value", { exact: true }).fill("3");
+  await property("current").focus();
+  await expect(property("current")).toContainText("3");
+  await property("targetDate").click();
+  await details.getByRole("button", { name: "None", exact: true }).click();
+  await expect(property("targetDate")).toContainText("No date yet");
+  await property("startDate").click();
+  await details.getByRole("button", { name: "Pick a day" }).click();
   await details
-    .getByRole("combobox", { name: "Area", exact: true })
-    .selectOption({ label: "School" });
+    .getByLabel("Start date", { exact: true })
+    .fill(addDays(target, -10));
+  await expect(property("startDate")).not.toContainText("Today,");
+  await property("area").click();
   await details
-    .getByRole("combobox", { name: "Status", exact: true })
-    .selectOption("archived");
+    .getByRole("group", { name: "Area editor" })
+    .getByRole("button", { name: "School", exact: true })
+    .click();
+  await expect(property("area")).toContainText("School");
+  await property("status").click();
+  await details.getByRole("button", { name: "Archived", exact: true }).click();
+  await expect(property("status")).toContainText("Archived");
   await details
     .getByRole("textbox", { name: "Note", exact: true })
     .fill("Read before breakfast.");
-  await details.getByRole("button", { name: "Save goal" }).click();
+  await property("status").focus();
   await expect(details.getByRole("status")).toContainText("Changes saved.");
   await page.reload();
-  await expect(details.getByLabel("Current value")).toHaveValue("3");
+  await expect(property("current")).toContainText("3");
   await expect(
     details.getByRole("textbox", { name: "Note", exact: true }),
   ).toHaveValue("Read before breakfast.");
-  await expect(details.getByLabel("Start date")).toHaveValue(
-    addDays(target, -10),
+  await expect(property("startDate")).toContainText(
+    shortDate(addDays(target, -10)),
   );
-  await expect(details.getByLabel("Target date")).toHaveValue("");
-  await expect(
-    details.getByRole("combobox", { name: "Status", exact: true }),
-  ).toHaveValue("archived");
+  await expect(property("targetDate")).toContainText("No date yet");
+  await expect(property("status")).toContainText("Archived");
   await page.keyboard.press("Escape");
   await expect(details).not.toBeVisible();
   // A reload has no live trigger to restore; reopening does.
@@ -77,10 +91,14 @@ test("goals save number progress, milestones and task progress", async ({
   await expect(details).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(trigger).toBeFocused();
-  await expect(number.getByText(/No target date/)).toHaveCount(1);
-  await expect(number.getByText("3 books", { exact: true })).toBeVisible();
+  await expect(number.getByText(/no target date/i)).toHaveCount(1);
+  await expect(
+    number.locator("button > span").filter({ hasText: /^3books$/ }),
+  ).toBeVisible();
   const milestones = await create("Finish the launch plan", "milestones");
-  await milestones.getByRole("button", { name: /^Open goal details:/ }).click();
+  await milestones
+    .getByRole("button", { name: "Finish the launch plan", exact: true })
+    .click();
   for (const title of ["Write the plan", "Review the plan"]) {
     await details.getByLabel("New milestone", { exact: true }).fill(title);
     await details.getByRole("button", { name: "Add milestone" }).click();
@@ -95,14 +113,16 @@ test("goals save number progress, milestones and task progress", async ({
     .click();
   await page.keyboard.press("Escape");
   await expect(
-    milestones.getByText("1 of 2 done.", { exact: false }),
+    milestones.getByText("1 of 2 milestones done.", { exact: false }),
   ).toBeVisible();
   await expect(milestones.locator("s")).toHaveText("Write the plan");
   await expect(milestones.getByRole("progressbar")).toHaveAttribute(
     "aria-valuenow",
     "50",
   );
-  await milestones.getByRole("button", { name: /^Open goal details:/ }).click();
+  await milestones
+    .getByRole("button", { name: "Finish the launch plan", exact: true })
+    .click();
   const milestoneForm = details.locator("form").filter({
     has: page.getByRole("checkbox", {
       name: "Complete milestone: Review the plan",
@@ -142,11 +162,24 @@ test("goals save number progress, milestones and task progress", async ({
   await expect(palette.getByRole("button", { name: /^Gym/ })).toBeVisible();
   await page.keyboard.press("Enter");
   const panel = page.getByRole("dialog", { name: "Task details" });
+  await panel.locator('[data-property="area"]').click();
   await panel
-    .getByLabel("Goal", { exact: true })
-    .selectOption({ label: "Finish the course" });
-  await expect(panel.getByLabel("Goal", { exact: true })).toHaveValue(/.+/);
-  const goalId = await panel.getByLabel("Goal", { exact: true }).inputValue();
+    .getByRole("group", { name: "Area editor" })
+    .getByRole("button", { name: "School", exact: true })
+    .click();
+  await expect(panel.locator('[data-property="area"]')).toContainText("School");
+  await panel.locator('[data-property="goal"]').click();
+  await panel
+    .getByRole("group", { name: "Goal editor" })
+    .getByRole("button", { name: "Finish the course", exact: true })
+    .click();
+  await expect(panel.locator('[data-property="goal"]')).toContainText(
+    "Finish the course",
+  );
+  const goalId = (
+    await (await backendFor(page)).query(api.goals.list, {})
+  ).find((goal) => goal.title === "Finish the course")?._id;
+  if (!goalId) throw new Error("Linked goal fixture is missing.");
   await panel
     .getByRole("checkbox", { name: "Mark as done: Gym", exact: true })
     .click();
@@ -348,7 +381,9 @@ test("dialogs and panels close with Escape and restore focus at both sizes", asy
     const details = page.getByRole("dialog", { name: "Goal details" });
     await expect(details).toBeVisible();
     if (width > 820)
-      await expect(details.getByLabel("Goal title")).toBeFocused();
+      await expect(
+        details.getByLabel("Goal title", { exact: true }),
+      ).toBeFocused();
     else await expect(details).toBeFocused();
     await page.screenshot({
       path: `../../.agents/screenshots/03c/goal-panel-${width}.png`,
@@ -431,7 +466,9 @@ test("delete a goal and undo restores its milestones and task links", async ({
   const card = page.locator("section").filter({
     has: page.getByRole("button", { name: "Finish the course", exact: true }),
   });
-  await card.getByRole("button", { name: /^Open goal details:/ }).click();
+  await card
+    .getByRole("button", { name: "Finish the course", exact: true })
+    .click();
   const panel = page.getByRole("dialog", { name: "Goal details" });
   const original = (await backend.query(api.goals.list, {})).find(
     (goal) => goal.title === "Finish the course",

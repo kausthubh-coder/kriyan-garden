@@ -1,15 +1,13 @@
 "use client";
 import { useEffect, useRef } from "react";
-import { formatMinutes, layout, plannedMinutes } from "@kriyan/core";
+import { daySummary, layout, plannedMinutes } from "@kriyan/core";
 import { Tray } from "./Tray";
 import { Timeline } from "./Timeline";
 import { SideRail } from "./SideRail";
 import { DaySkeleton } from "./DaySkeleton";
-import { Icon } from "./Icon";
+import { DateHeader } from "./ViewParts";
 import { useDrag } from "./useDrag";
 import {
-  dayName,
-  longDate,
   type Area,
   type Day,
   type Goal,
@@ -37,7 +35,6 @@ export function DayView({
   open,
   toggle,
   add,
-  palette,
   navigate,
   goDay,
   goGoals,
@@ -59,7 +56,6 @@ export function DayView({
   open: (task: Task, section?: PanelSection) => void;
   toggle: (task: Task) => void;
   add: () => void;
-  palette: () => void;
   navigate: (offset: number) => void;
   goDay: (date: string) => void;
   goGoals: () => void;
@@ -112,47 +108,31 @@ export function DayView({
         loading={loading}
       />
       <main ref={scroll} className={s.day} data-day-scroll="true">
-        <header className={s.dh}>
-          <h1>{dayName(date)}</h1>
-          <p>{longDate(date)}</p>
-          <p className={s.sum}>
-            {!day || loading ? (
-              "Loading your day."
-            ) : all.length ? (
-              <>
-                <b>
-                  {active.length} {active.length === 1 ? "task" : "tasks"} left
-                </b>
-                {planned ? `, ${formatMinutes(planned)} planned` : ""}
-                {noLength ? `, ${noLength} with no length` : ""}.
-              </>
-            ) : (
-              "Nothing planned."
-            )}
-          </p>
-          <div className={s.right}>
-            <button
-              className={`${s.f} ${s.ic}`}
-              aria-label="Previous day"
-              onClick={() => navigate(-1)}
-            >
-              <Icon name="prev" />
-            </button>
-            <button className={s.f} onClick={() => navigate(0)}>
-              Today
-            </button>
-            <button
-              className={`${s.f} ${s.ic}`}
-              aria-label="Next day"
-              onClick={() => navigate(1)}
-            >
-              <Icon name="next" />
-            </button>
-            <button className={`${s.f} ${s["only-d"]}`} onClick={palette}>
-              Ctrl K
-            </button>
-          </div>
-        </header>
+        <DateHeader
+          date={date}
+          today={today}
+          navigate={navigate}
+          summary={
+            !day || loading
+              ? "Loading your day."
+              : daySummary({
+                  left: active.length,
+                  total: all.length,
+                  plannedMinutes: planned,
+                  withoutLength: noLength,
+                })
+          }
+          phoneSummary={
+            !day || loading
+              ? "Loading your day."
+              : daySummary({
+                  left: active.length,
+                  total: all.length,
+                  plannedMinutes: planned,
+                  withoutLength: 0,
+                })
+          }
+        />
         <Timeline
           day={filtered}
           startHour={startHour}

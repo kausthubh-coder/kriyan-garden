@@ -150,7 +150,10 @@ test("owned deep links outside the planner list retain the editor and unsaved dr
   expect(screen.getByRole("textbox", { name: "Task title" })).toBe(title);
   expect(title).toHaveProperty("value", "Unsaved title");
   expect(notes).toHaveProperty("value", "Unsaved notes");
-  expect(screen.getByLabelText("Deadline")).toHaveProperty("value", "2026-10-01");
+  expect(screen.getByRole("button", { name: /^Deadline / }).textContent).toContain("Thu 1 Oct");
+  const length = screen.getByRole("button", { name: /^Length / });
+  expect(length.textContent).toContain("None");
+  fireEvent.click(length);
   expect(screen.getByRole("button", { name: "None" }).getAttribute("aria-pressed")).toBe("true");
 });
 
@@ -163,7 +166,7 @@ test("deletion from another client changes the open task to unavailable and Esca
   await act(() => f.store.tasks.remove({ id: f.task._id }));
   expect(screen.getByRole("alert").textContent).toContain("This task is unavailable");
   expect(screen.getByText("Planner available")).toBeTruthy();
-  fireEvent.keyDown(document, { key: "Escape" });
+  fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
   expect(screen.queryByRole("dialog")).toBeNull();
   expect(new URLSearchParams(window.location.search).has("task")).toBe(false);
   expect(document.activeElement).toBe(opener);

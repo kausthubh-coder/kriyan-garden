@@ -1,6 +1,8 @@
 "use client";
+import { shortDate } from "@kriyan/core";
 import { useState } from "react";
-import { goalProgress } from "@kriyan/core";
+import { countText, goalProgress } from "@kriyan/core";
+import { Icon } from "./Icon";
 import { Filters } from "./Filters";
 import { Dialog } from "./Dialog";
 import { GoalForm } from "./GoalForm";
@@ -11,7 +13,7 @@ import {
   sortTasks,
   type ViewProps,
 } from "./ViewParts";
-import { areaColor, longDate, type Goal, type Variables } from "./types";
+import { areaColor, type Goal, type Variables } from "./types";
 import s from "./App.module.css";
 type GoalsProps = ViewProps & { openGoal: (goal: Goal) => void };
 export function GoalsView(p: GoalsProps) {
@@ -20,19 +22,22 @@ export function GoalsView(p: GoalsProps) {
     (g) => p.filter === "all" || g.areaId === p.filter,
   );
   return (
-    <main className={s.page}>
+    <main className={`${s.page} ${s.goalsPage}`}>
       <ViewHeader
         title="Goals"
         subtitle={`${goals.filter((g) => g.status === "active").length} active`}
+        actions={
+          <button
+            className={`${s.btn} ${s.ghosty}`}
+            onClick={() => setAdding(true)}
+            disabled={!p.areas.length}
+          >
+            <Icon name="plus" />
+            Add goal
+          </button>
+        }
       />
       <Filters areas={p.areas} filter={p.filter} onChange={p.setFilter} />
-      <button
-        className={s.btn}
-        onClick={() => setAdding(true)}
-        disabled={!p.areas.length}
-      >
-        Add goal
-      </button>
       {p.loading ? (
         <ViewSkeleton kind="goals" />
       ) : goals.length ? (
@@ -89,48 +94,39 @@ function GoalCard(p: GoalsProps & { goal: Goal }) {
         } as Variables
       }
     >
-      <div className={s.gt}>
-        <button
-          className={s.goalValue}
-          onClick={() => p.openGoal(goal)}
-          aria-label={`Open goal progress: ${goal.title}`}
-        >
+      <button
+        className={s.goalHeader}
+        onClick={() => p.openGoal(goal)}
+        aria-label={goal.title}
+      >
+        <span className={s.goalValue}>
           <b>
             {metric.kind === "number"
-              ? `${metric.current}${metric.unit === "%" ? "" : " "}${metric.unit}`
-              : `${Math.round(progress.progress * 100)}%`}
+              ? metric.current
+              : Math.round(progress.progress * 100)}
           </b>
-        </button>
-        <div>
-          <button className={s.goalTitle} onClick={() => p.openGoal(goal)}>
-            {goal.title}
-          </button>
+          <small>{metric.kind === "number" ? metric.unit : "%"}</small>
+        </span>
+        <span className={s.goalName}>
+          {goal.title}
           <small>
-            {p.areas.find((a) => a._id === goal.areaId)?.name}.{" "}
-            {metric.kind === "number"
-              ? `Target ${metric.target}${metric.unit === "%" ? "" : " "}${metric.unit}. `
-              : `${progress.done} of ${progress.total} done. `}
+            <i className={s.dot} />
+            {p.areas.find((a) => a._id === goal.areaId)?.name},{" "}
             {goal.targetDate
-              ? `Due ${longDate(goal.targetDate)}`
-              : "No target date"}
+              ? `due ${shortDate(goal.targetDate)}`
+              : "no target date"}
           </small>
-        </div>
-        {goal.targetDate && (
-          <span
-            className={
-              progress.status === "Behind pace" || progress.status === "Late"
-                ? s.bad
-                : undefined
-            }
-          >
-            {goal.status === "active"
-              ? progress.status
-              : goal.status === "done"
-                ? "Done"
-                : "Archived"}
-          </span>
-        )}
-      </div>
+        </span>
+        <span
+          className={`${s.goalStatus} ${progress.status === "Behind pace" || progress.status === "Late" ? s.bad : ""}`}
+        >
+          {goal.status === "active"
+            ? progress.status
+            : goal.status === "done"
+              ? "Done"
+              : "Archived"}
+        </span>
+      </button>
       <div
         className={s.pace}
         role="progressbar"
@@ -144,30 +140,28 @@ function GoalCard(p: GoalsProps & { goal: Goal }) {
       </div>
       <p>
         {progress.expected !== null
-          ? "The marker shows where you should be today."
+          ? `You should be at ${Math.round(progress.expected * 100)}% today.`
           : "Set a target date to show your pace."}{" "}
-        {goal.linkedTasks.done} of {goal.linkedTasks.total} linked tasks done.
+        {goal.milestones.length
+          ? `${goal.milestones.filter((milestone) => milestone.doneAt !== null).length} of ${countText(goal.milestones.length, "milestone")} done.`
+          : metric.kind === "number"
+            ? `Target ${metric.target}${metric.unit ? `${metric.unit === "%" ? "" : " "}${metric.unit}` : ""}.`
+            : `${progress.done} of ${countText(progress.total, metric.kind === "milestones" ? "milestone" : "linked task")} done.`}
       </p>
       {goal.milestones.length > 0 && (
         <ul className={s.milestoneList} aria-label="Milestones">
           {goal.milestones.map((m) => (
-            <li key={m._id}>
-              <span>{m.doneAt !== null ? "Done" : "To do"}</span>{" "}
+            <li key={m._id} className={m.doneAt !== null ? s.done : undefined}>
               {m.doneAt !== null ? <s>{m.title}</s> : m.title}
-              {m.targetDate && <small>Due {longDate(m.targetDate)}</small>}
+              <span className={s.sr}>
+                {m.doneAt !== null ? "Done" : "To do"}
+              </span>
             </li>
           ))}
         </ul>
       )}
-      <button
-        className={s.f}
-        onClick={() => p.openGoal(goal)}
-        aria-label={`Open goal details: ${goal.title}`}
-      >
-        Details
-      </button>
       {linked.map((task) => (
-        <TaskRow {...p} task={task} withDate key={task._id} />
+        <TaskRow {...p} task={task} withDate linked key={task._id} />
       ))}
       {!linked.length && (
         <p>No linked tasks yet. Open a task and choose this goal.</p>

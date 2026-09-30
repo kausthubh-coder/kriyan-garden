@@ -1,11 +1,10 @@
+import { weekdayName, relativeDay } from "@kriyan/core";
 import { formatMinutes } from "@kriyan/core";
 import { Check } from "./Check";
 import { Filters } from "./Filters";
 import {
   areaColor,
-  dayName,
   projectName,
-  relativeDate,
   type Area,
   type Project,
   type Task,
@@ -91,7 +90,7 @@ export function Tray({
       </span>
       <small>
         {task.deadline && task.status === "active" && (
-          <i>Due {relativeDate(task.deadline, today)}</i>
+          <i>Due {relativeDay(task.deadline, today)}</i>
         )}
         {projectName(task, projects, areas)}
       </small>
@@ -102,7 +101,9 @@ export function Tray({
       <Filters areas={areas} filter={filter} onChange={setFilter} />
       <section>
         <h2 className={s.h}>
-          {date === today ? "Any time today" : `Any time on ${dayName(date)}`}
+          {date === today
+            ? "Any time today"
+            : `Any time on ${weekdayName(date)}`}
           <em>
             {anytime.filter((task) => task.status === "active").length} left
           </em>

@@ -1,4 +1,3 @@
-import { layout } from "@kriyan/core";
 import s from "./App.module.css";
 
 /** An independent layer keeps the timeline still while unknown task counts load. */
@@ -35,13 +34,13 @@ export function DaySkeleton({
         </header>
         <div
           className={s.grid}
-          style={{ height: (endHour - startHour) * layout.hourHeight }}
+          style={{ height: `calc(${endHour - startHour} * var(--hh))` }}
         >
           <div
             className={s.skeleton}
             style={{
               position: "absolute",
-              top: layout.hourHeight * 3,
+              top: "calc(3 * var(--hh))",
               width: "100%",
             }}
           />
@@ -49,7 +48,7 @@ export function DaySkeleton({
             className={s.skeleton}
             style={{
               position: "absolute",
-              top: layout.hourHeight * 6,
+              top: "calc(6 * var(--hh))",
               width: "100%",
             }}
           />

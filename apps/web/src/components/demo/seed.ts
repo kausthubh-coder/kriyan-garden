@@ -3,7 +3,8 @@ import type { Doc, Id } from "@kriyan/backend/convex/_generated/dataModel";
 import type { Area, Goal, Profile, Project, Task } from "../app/types";
 export const id = <T extends "tasks" | "areas" | "projects" | "goals" | "events" | "profiles" | "milestones">(value: string) => value as Id<T>;
 export function seed(today: string) {
-  const common = { ownerId: "public-demo", createdAt: 0, updatedAt: 0, _creationTime: 0 };
+  const createdAt = new Date(`${addDays(today, -1)}T12:00:00`).getTime();
+  const common = { ownerId: "public-demo", createdAt, updatedAt: createdAt, _creationTime: createdAt };
   const areas: Area[] = [
     { ...common, _id: id<"areas">("school"), name: "School", color: "blue", sortOrder: 0 },
     { ...common, _id: id<"areas">("biz"), name: "Business", color: "orange", sortOrder: 1 },

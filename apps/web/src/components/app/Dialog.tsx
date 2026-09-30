@@ -6,12 +6,16 @@ export function Dialog({
   close,
   children,
   initialFocus,
+  escape,
+  focusOnTouch = false,
 }: {
   label: string;
   className: string;
   close: () => void;
   children: ReactNode;
   initialFocus?: string;
+  escape?: () => void;
+  focusOnTouch?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -23,7 +27,7 @@ export function Dialog({
         "keyboard";
     dialog?.setAttribute("autofocus", "");
     dialog?.showModal();
-    if (window.matchMedia("(min-width: 821px)").matches) {
+    if (focusOnTouch || window.matchMedia("(min-width: 821px)").matches) {
       dialog
         ?.querySelector<HTMLElement>(
           initialFocus ??
@@ -39,7 +43,7 @@ export function Dialog({
       if (previous instanceof HTMLElement && previous.isConnected)
         previous.focus();
     };
-  }, [initialFocus]);
+  }, [initialFocus, focusOnTouch]);
   return (
     <dialog
       ref={ref}
@@ -48,7 +52,14 @@ export function Dialog({
       tabIndex={-1}
       onCancel={(event) => {
         event.preventDefault();
-        close();
+        (escape ?? close)();
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Escape" && !event.defaultPrevented) {
+          event.preventDefault();
+          event.stopPropagation();
+          (escape ?? close)();
+        }
       }}
       onClick={(event) => {
         if (event.target !== event.currentTarget) return;

@@ -1,10 +1,10 @@
+import { relativeDay } from "@kriyan/core";
 import { timeOf, layout } from "@kriyan/core";
 import { Check } from "./Check";
 import { taskKeys } from "./Tray";
 import {
   areaColor,
   projectName,
-  relativeDate,
   type Area,
   type Goal,
   type Project,
@@ -56,8 +56,10 @@ export function TimelineBlock({
   const style: Variables = {
     "--c": areaColor(area),
     "--bc": areaColor(area),
-    top: ((visibleStart - startHour * 60) / 60) * layout.hourHeight + 1,
-    height,
+    top: `calc(${(visibleStart - startHour * 60) / 60} * var(--hh) + 1px)`,
+    height: duration
+      ? `max(calc(${(visibleEnd - visibleStart) / 60} * var(--hh) - 3px), 30px)`
+      : 30,
     left: `calc(${(column / columns) * 100}% + ${column ? 2 : 0}px)`,
     width: `calc(${100 / columns}% - ${columns > 1 ? 4 : 0}px)`,
   };
@@ -84,7 +86,7 @@ export function TimelineBlock({
   const goal = goals.find((goal) => goal._id === task.goalId);
   const sub =
     task.deadline && task.status === "active"
-      ? `Due ${relativeDate(task.deadline, today)}`
+      ? `Due ${relativeDay(task.deadline, today)}`
       : goal
         ? `Goal: ${goal.title}`
         : projectName(task, projects, areas);

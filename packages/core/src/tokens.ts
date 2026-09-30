@@ -34,11 +34,12 @@ export const socialImageTokens = {
   background: "#121110", ink: "#f3f2ee", wordmarkSize: 96, lineSize: 44,
   padding: 96, gap: 32,
 } as const;
-export const spacing = [4, 8, 12, 16, 24, 32, 48] as const;
+export const spacing = [4, 8, 12, 16, 24, 32, 44, 48] as const;
 export const radii = [8, 9, 10, 11, 12, 14, 16] as const;
 export const typeSizes = [
-  11.5, 12, 12.5, 13, 13.5, 14, 14.5, 15, 16, 17, 18, 19, 22, 24, 30, 32, 40, 44, 64,
+  11.5, 12, 12.5, 13, 13.5, 14, 14.5, 15, 15.5, 16, 17, 18, 19, 20, 21, 22, 24, 26, 30, 32, 40, 44, 64,
 ] as const;
+export const controls = { compact: 32, primary: 36, touch: 44 } as const;
 export const motion = {
   press: 160,
   transition: 200,
@@ -46,7 +47,7 @@ export const motion = {
   easeOut: "cubic-bezier(0.23, 1, 0.32, 1)",
 } as const;
 export const layout = {
-  hourHeight: 56, controlHeight: 44,
+  hourHeight: 56, phoneHourHeight: 62, controlHeight: 44,
   phonePadding: 18, phoneSheetPadding: 20, phoneSheetRadius: 24,
   phoneTimelineGutter: 46, phoneTabWidth: 64, phoneTabHeight: 50, phoneAddSize: 52,
 } as const;

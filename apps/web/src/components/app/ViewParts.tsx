@@ -1,13 +1,12 @@
+import { weekdayName, longDate, relativeDay } from "@kriyan/core";
 import { formatMinutes } from "@kriyan/core";
+import type { ReactNode } from "react";
 import { Check } from "./Check";
 import { taskKeys } from "./Tray";
 import { Icon } from "./Icon";
 import {
   areaColor,
-  dayName,
-  longDate,
   projectName,
-  relativeDate,
   type Area,
   type Goal,
   type Project,
@@ -42,37 +41,60 @@ export function ViewHeader({
   navigate,
   summary,
   unit = "day",
+  actions,
+  phoneDate,
+  phoneSummary,
 }: {
   title: string;
   subtitle?: string;
   navigate?: (offset: number) => void;
   summary?: string;
   unit?: "day" | "week";
+  actions?: ReactNode;
+  phoneDate?: string;
+  phoneSummary?: string;
 }) {
   return (
     <header className={s.dh}>
       <h1>{title}</h1>
-      {subtitle && <p>{subtitle}</p>}
-      {summary && <p className={s.sum}>{summary}</p>}
-      {navigate && (
+      {subtitle && (
+        <p className={phoneDate ? s.headerDate : undefined}>{subtitle}</p>
+      )}
+      {summary && (
+        <p className={s.sum}>
+          {phoneDate && <span className={s.phoneDate}>{phoneDate}. </span>}
+          <span className={phoneSummary ? s.desktopSummary : undefined}>
+            {summary}
+          </span>
+          {phoneSummary && (
+            <span className={s.phoneSummary}>{phoneSummary}</span>
+          )}
+        </p>
+      )}
+      {(navigate || actions) && (
         <div className={s.right}>
-          <button
-            className={`${s.f} ${s.ic}`}
-            aria-label={`Previous ${unit}`}
-            onClick={() => navigate(-1)}
-          >
-            <Icon name="prev" />
-          </button>
-          <button className={s.f} onClick={() => navigate(0)}>
-            Today
-          </button>
-          <button
-            className={`${s.f} ${s.ic}`}
-            aria-label={`Next ${unit}`}
-            onClick={() => navigate(1)}
-          >
-            <Icon name="next" />
-          </button>
+          {navigate && (
+            <div className={s.segmented}>
+              <button
+                className={`${s.f} ${s.ic}`}
+                aria-label={`Previous ${unit}`}
+                onClick={() => navigate(-1)}
+              >
+                <Icon name="prev" />
+              </button>
+              <button className={s.f} onClick={() => navigate(0)}>
+                Today
+              </button>
+              <button
+                className={`${s.f} ${s.ic}`}
+                aria-label={`Next ${unit}`}
+                onClick={() => navigate(1)}
+              >
+                <Icon name="next" />
+              </button>
+            </div>
+          )}
+          {actions}
         </div>
       )}
     </header>
@@ -80,16 +102,21 @@ export function ViewHeader({
 }
 export function DateHeader({
   date,
-  today,
   navigate,
   summary,
-}: Pick<ViewProps, "date" | "today" | "navigate"> & { summary?: string }) {
+  phoneSummary,
+}: Pick<ViewProps, "date" | "today" | "navigate"> & {
+  summary?: string;
+  phoneSummary?: string;
+}) {
   return (
     <ViewHeader
-      title={date === today ? "Today" : dayName(date)}
+      title={weekdayName(date)}
       subtitle={longDate(date)}
       navigate={navigate}
       summary={summary}
+      phoneDate={longDate(date)}
+      phoneSummary={phoneSummary}
     />
   );
 }
@@ -119,10 +146,11 @@ export function TaskRow({
   open,
   toggle,
   withDate = false,
+  linked = false,
 }: Pick<
   ViewProps,
   "areas" | "projects" | "goals" | "today" | "open" | "toggle"
-> & { task: Task; withDate?: boolean }) {
+> & { task: Task; withDate?: boolean; linked?: boolean }) {
   const goal = goals.find((g) => g._id === task.goalId);
   return (
     <div
@@ -142,15 +170,17 @@ export function TaskRow({
       >
         <span className={s.t}>{task.title}</span>
         <span className={s.meta}>
-          {task.deadline && task.status === "active" && (
+          {!linked && task.deadline && task.status === "active" && (
             <span className={s.due}>
-              Due {relativeDate(task.deadline, today)}
+              Due {relativeDay(task.deadline, today)}
             </span>
           )}
-          {goal && <span className={s.gl}>{goal.title}</span>}
-          <span>{projectName(task, projects, areas)}</span>
-          {withDate && task.date && (
-            <span>{relativeDate(task.date, today)}</span>
+          {!linked && goal && <span className={s.gl}>{goal.title}</span>}
+          {!linked && <span>{projectName(task, projects, areas)}</span>}
+          {withDate && (
+            <span>
+              {task.date ? relativeDay(task.date, today) : "No date yet"}
+            </span>
           )}
           {task.time && <span className={s.tm}>{task.time}</span>}
           {task.durationMinutes !== null && (

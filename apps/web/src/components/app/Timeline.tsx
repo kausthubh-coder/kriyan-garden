@@ -1,4 +1,4 @@
-import { layout, layoutIntervals, minutesOf, timeOf } from "@kriyan/core";
+import { layoutIntervals, minutesOf, timeOf } from "@kriyan/core";
 import { TimelineBlock, type Block } from "./TimelineBlock";
 import type { Area, Day, Goal, Project, PanelSection, Task } from "./types";
 import s from "./App.module.css";
@@ -50,7 +50,7 @@ export function Timeline({
     <div
       data-timeline="true"
       className={s.grid}
-      style={{ height: (endHour - startHour) * layout.hourHeight }}
+      style={{ height: `calc(${endHour - startHour} * var(--hh))` }}
       aria-label="Day timeline"
       aria-busy={loading}
     >
@@ -58,7 +58,7 @@ export function Timeline({
         <div
           key={index}
           className={s.hr}
-          style={{ top: index * layout.hourHeight }}
+          style={{ top: `calc(${index} * var(--hh))` }}
         >
           <span>{String(index + startHour).padStart(2, "0")}:00</span>
         </div>
@@ -69,7 +69,7 @@ export function Timeline({
             className={s.skeleton}
             style={{
               position: "absolute",
-              top: layout.hourHeight * 3,
+              top: "calc(3 * var(--hh))",
               width: "100%",
             }}
           />
@@ -77,7 +77,7 @@ export function Timeline({
             className={s.skeleton}
             style={{
               position: "absolute",
-              top: layout.hourHeight * 6,
+              top: "calc(6 * var(--hh))",
               width: "100%",
             }}
           />
@@ -101,7 +101,7 @@ export function Timeline({
       {date === today && now >= startHour * 60 && now <= endHour * 60 && (
         <div
           className={s.now}
-          style={{ top: ((now - startHour * 60) / 60) * layout.hourHeight }}
+          style={{ top: `calc(${(now - startHour * 60) / 60} * var(--hh))` }}
         >
           <span>{timeOf(now)}</span>
         </div>

@@ -5,6 +5,7 @@ import {
   typeSizes,
   motion,
   layout,
+  controls,
 } from "../src/tokens";
 import { nativeThemeSource } from "./nativeTokens";
 
@@ -17,7 +18,10 @@ const declarations = [
     (value) => `--text-${String(value).replace(".", "-")}: ${value}px;`,
   ),
   `--hh: ${layout.hourHeight}px;`,
-  `--control-height: ${layout.controlHeight}px;`,
+  `--phone-hh: ${layout.phoneHourHeight}px;`,
+  `--ctl: ${controls.compact}px;`,
+  `--ctl-lg: ${controls.primary}px;`,
+  "--control-height: var(--ctl);",
   `--press: ${motion.press}ms;`,
   `--transition: ${motion.transition}ms;`,
   `--panel-duration: ${motion.panel}ms;`,
@@ -30,7 +34,7 @@ const declarations = [
   "--text-body: var(--text-15);",
   "--text-title: var(--text-24);",
 ];
-const css = `/* Generated from packages/core/src/tokens.ts. Do not edit. */\n:root {\n  ${declarations.join("\n  ")}\n}\n`;
+const css = `/* Generated from packages/core/src/tokens.ts. Do not edit. */\n:root {\n  ${declarations.join("\n  ")}\n}\n@media (pointer: coarse) {\n  :root { --ctl: ${controls.touch}px; --ctl-lg: ${controls.touch}px; }\n}\n`;
 for (const path of [
   "../src/tokens.css",
   "../../../apps/web/src/app/tokens.css",
