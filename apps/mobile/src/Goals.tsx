@@ -2,8 +2,19 @@ import { useState } from "react";
 import { View } from "react-native";
 import { useMutation } from "convex/react";
 import { api } from "@kriyan/backend/convex/_generated/api";
-import { goalProgress } from "@kriyan/core";
-import { Button, Choices, Field, Sheet, Surface, T, s } from "./ui";
+import { goalProgress, shortDate, relativeDay } from "@kriyan/core";
+import {
+  Button,
+  Choices,
+  Dot,
+  Field,
+  Sheet,
+  Surface,
+  TaskRow,
+  T,
+  s,
+  ui,
+} from "./ui";
 import { GoalForm, useAction } from "./Editors";
 import { DateField } from "./DateField";
 import { areaColor, type Area, type Goal, type Task } from "./types";
@@ -14,19 +25,25 @@ export function Goals({
   today,
   tasks,
   openTask,
+  adding,
+  closeAdd,
+  toggle,
+  schedule,
 }: {
   goals: Goal[];
   areas: Area[];
   today: string;
   tasks: Task[];
   openTask: (task: Task) => void;
+  adding: boolean;
+  closeAdd: () => void;
+  toggle: (task: Task) => Promise<unknown>;
+  schedule: (task: Task) => void;
 }) {
-  const [selected, setSelected] = useState<string | null>(null),
-    [adding, setAdding] = useState(false);
+  const [selected, setSelected] = useState<string | null>(null);
   const goal = goals.find((g) => g._id === selected);
   return (
     <View style={s.field}>
-      <Button label="Add goal" primary onPress={() => setAdding(true)} />
       {!goals.length && (
         <T quiet>No goals yet. Add a goal to track what matters.</T>
       )}
@@ -34,19 +51,67 @@ export function Goals({
         const progress = goalProgress(goal, today),
           color = areaColor(areas.find((a) => a._id === goal.areaId));
         return (
-          <Surface
+          <View
             key={goal._id}
-            label={`Open goal ${goal.title}`}
-            onPress={() => setSelected(goal._id)}
-            style={s.card}
+            style={{
+              paddingTop: theme.spacing[4],
+              paddingBottom: theme.spacing[1],
+              borderTopWidth: 1,
+              borderColor: theme.colors.line,
+            }}
           >
-            <T style={s.subtitle}>{goal.title}</T>
-            <T quiet>
-              {areas.find((a) => a._id === goal.areaId)?.name}
-              {goal.targetDate
-                ? `, due ${goal.targetDate}`
-                : ", no target date"}
-            </T>
+            <Surface
+              label={`Open goal ${goal.title}`}
+              onPress={() => setSelected(goal._id)}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: theme.spacing[2],
+                flexWrap: "wrap",
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "baseline",
+                  gap: theme.spacing[0],
+                }}
+              >
+                <T
+                  style={{
+                    color,
+                    fontFamily: "Schibsted700",
+                    fontSize: ui.type.value,
+                    lineHeight: ui.type.value * 1.1,
+                  }}
+                >
+                  {goal.metric.kind === "number"
+                    ? goal.metric.current
+                    : Math.round(progress.progress * 100)}
+                </T>
+                <T style={{ color, fontFamily: "Schibsted600" }}>
+                  {goal.metric.kind === "number" ? goal.metric.unit : "%"}
+                </T>
+              </View>
+              <View style={{ flex: 1, minWidth: ui.layout.phoneTabWidth * 2 }}>
+                <T style={{ fontFamily: "Schibsted600" }}>{goal.title}</T>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: ui.spacing[1],
+                  }}
+                >
+                  <Dot color={color} />
+                  <T quiet style={{ flex: 1 }}>
+                    {areas.find((a) => a._id === goal.areaId)?.name}
+                    {goal.targetDate
+                      ? `, due ${shortDate(goal.targetDate)}`
+                      : ", no target date"}
+                  </T>
+                </View>
+              </View>
+            </Surface>
             <View
               style={{
                 height: theme.spacing[1],
@@ -82,13 +147,28 @@ export function Goals({
                 />
               )}
             </View>
-            <T>
-              {Math.round(progress.progress * 100)}%,{" "}
-              {goal.status === "active"
-                ? progress.status
-                : goal.status === "done"
-                  ? "Done"
-                  : "Archived"}
+            <T quiet>
+              <T
+                style={{
+                  fontSize: ui.type.meta,
+                  fontFamily: "Schibsted600",
+                  color:
+                    progress.status === "Behind pace" ||
+                    progress.status === "Late"
+                      ? theme.colors.hot
+                      : theme.colors["ink-2"],
+                }}
+              >
+                {goal.status === "active"
+                  ? progress.status
+                  : goal.status === "done"
+                    ? "Done"
+                    : "Archived"}
+                .
+              </T>
+              {progress.expected === null
+                ? " Add a target date to see your pace."
+                : ` You should be at ${Math.round(progress.expected * 100)}% today.`}
             </T>
             {goal.milestones.slice(0, 3).map((m) => (
               <T key={m._id} quiet>
@@ -96,16 +176,32 @@ export function Goals({
                 {m.doneAt ? ", done" : ""}
               </T>
             ))}
-          </Surface>
+            {tasks
+              .filter((t) => t.goalId === goal._id)
+              .sort((a, b) =>
+                (a.date ?? "9999").localeCompare(b.date ?? "9999"),
+              )
+              .slice(0, 2)
+              .map((task) => (
+                <TaskRow
+                  key={task._id}
+                  task={task}
+                  area={areas.find((a) => a._id === task.areaId)}
+                  project={
+                    task.date ? relativeDay(task.date, today) : "No date yet"
+                  }
+                  today={today}
+                  open={() => openTask(task)}
+                  toggle={() => toggle(task)}
+                  schedule={() => schedule(task)}
+                />
+              ))}
+          </View>
         );
       })}
       {adding && (
-        <Sheet title="Add goal" close={() => setAdding(false)}>
-          <GoalForm
-            areas={areas}
-            today={today}
-            saved={() => setAdding(false)}
-          />
+        <Sheet title="Add goal" close={closeAdd}>
+          <GoalForm areas={areas} today={today} saved={closeAdd} />
         </Sheet>
       )}
       {goal && (

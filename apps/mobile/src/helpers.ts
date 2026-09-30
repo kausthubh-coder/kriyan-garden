@@ -1,4 +1,4 @@
-import { layout, timeOf } from "@kriyan/core";
+import { layout, longDate, timeOf, weekdayName } from "@kriyan/core";
 
 export function snapTime(
   y: number,
@@ -21,10 +21,5 @@ export function snapLength(y: number) {
     Math.min(1440, Math.round((y * 60) / layout.hourHeight / 15) * 15),
   );
 }
-export const dayLabel = (date: string) =>
-  new Date(`${date}T12:00:00`).toLocaleDateString("en-GB", { weekday: "long" });
-export const dateLabel = (date: string) =>
-  new Date(`${date}T12:00:00`).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "long",
-  });
+export const dayLabel = weekdayName;
+export const dateLabel = longDate;

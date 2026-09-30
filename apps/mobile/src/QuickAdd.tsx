@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@kriyan/backend/convex/_generated/api";
-import { parse, formatMinutes } from "@kriyan/core";
-import { Button, Field, Sheet, T, s } from "./ui";
-import { View } from "react-native";
+import { parse, lengthValue, relativeDay } from "@kriyan/core";
+import { PrimaryButton, Tag, Sheet, T, s, ui } from "./ui";
+import { TextInput, View } from "react-native";
 import { areaColor, type Area, type Project } from "./types";
 export function QuickAdd({
   initialText,
@@ -38,39 +38,55 @@ export function QuickAdd({
   const area = areas.find((a) => a._id === result.areaId),
     project = projects.find((p) => p._id === result.projectId);
   return (
-    <Sheet title="Add a task" close={close}>
-      <Field
-        label="Task"
+    <Sheet title="Add task" close={close} hideHeading>
+      <TextInput
+        accessibilityLabel="Task"
+        maxFontSizeMultiplier={1.3}
         autoFocus
         value={text}
         onChangeText={setText}
         placeholder="econ outline fri 5pm #econ 45m"
         editable={!busy}
+        placeholderTextColor={ui.colors["ink-3"]}
+        selectionColor={ui.colors.ink}
+        style={{
+          minHeight: ui.control.row,
+          color: ui.colors.ink,
+          fontFamily: "Schibsted500",
+          fontSize: ui.typeSizes[10],
+          padding: 0,
+        }}
       />
       <View style={s.wrap}>
         {text.trim() ? (
           <>
-            <T style={{ color: areaColor(area) }}>
-              {area?.name ?? "Choose an area"}
-              {project ? `, ${project.name}` : ""}
-            </T>
-            <T quiet>{result.date ?? "No date yet"}</T>
-            <T quiet>{result.time ?? "Any time"}</T>
-            <T quiet>
-              {result.durationMinutes === null
-                ? "No length"
-                : formatMinutes(result.durationMinutes)}
-            </T>
+            <Tag
+              label={area?.name ?? "Choose an area"}
+              color={areaColor(area)}
+            />
+            {project && <Tag label={project.name} />}
+            <Tag
+              label={
+                result.date ? relativeDay(result.date, today) : "No date yet"
+              }
+            />
+            <Tag label={result.time ?? "Any time"} />
+            <Tag
+              label={
+                result.durationMinutes === null
+                  ? "No length"
+                  : lengthValue(result.durationMinutes)
+              }
+              outline={result.durationMinutes === null}
+            />
           </>
         ) : (
           <T quiet>Try: gym tomorrow 7am</T>
         )}
       </View>
-      <T quiet>Type a day, a time, a length or a #tag. All optional.</T>
       {error && <T accessibilityRole="alert">{error}</T>}
-      <Button
+      <PrimaryButton
         label="Add task"
-        primary
         disabled={!result.title || !area || busy}
         onPress={() => {
           if (!area) return;
