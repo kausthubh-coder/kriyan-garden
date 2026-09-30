@@ -29,5 +29,23 @@ export const clerkAppearance: ComponentProps<
     socialButtonsBlockButton: { minHeight: "var(--control-height)" },
     footer: { background: "var(--s1)", backgroundImage: "none" },
     userProfileRoot: { width: "100%", maxWidth: "100%" },
+    badge: {
+      color: "var(--ink-2)", background: "var(--s2)", opacity: 1,
+    },
+    rootBox: {
+      "& button, & a, & input": {
+        minHeight: "var(--control-height)", minWidth: "var(--control-height)",
+      },
+      "& a": { display: "inline-flex", alignItems: "center" },
+      "& button:hover, & a:hover": { opacity: .9 },
+      "& button:active, & a:active": { opacity: .8 },
+      "& button:focus-visible, & a:focus-visible, & input:focus-visible": {
+        outline: "2px solid var(--ink)", outlineOffset: "2px",
+      },
+      "& button:disabled, & input:disabled": { opacity: .6, cursor: "default" },
+      // Clerk runtime components should not animate keyboard actions or ignore
+      // reduced motion. These controls need no motion to communicate state.
+      "& *, & *::before, & *::after": { animation: "none", transition: "none" },
+    },
   },
 };

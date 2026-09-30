@@ -1,6 +1,5 @@
 "use client";
 import { useState } from "react";
-import { UserProfile } from "@clerk/nextjs";
 import { useMutation } from "convex/react";
 import { api } from "@kriyan/backend/convex/_generated/api";
 import type { Doc } from "@kriyan/backend/convex/_generated/dataModel";
@@ -11,7 +10,7 @@ import {
   HabitsEditor,
 } from "./PlannerEditors";
 import { useFormAction } from "./useFormAction";
-import { clerkAppearance } from "@/lib/clerkAppearance";
+import { AccountSettings } from "./AccountSettings";
 import { ViewHeader } from "./ViewParts";
 import type { Area, Project, Profile } from "./types";
 import s from "./App.module.css";
@@ -159,11 +158,11 @@ export function Settings({
               <p className={s.quiet}>
                 Manage your sign-in details and account security.
               </p>
-              <UserProfile
-                appearance={clerkAppearance}
-                routing="hash"
-                fallback={<p role="status">Loading account settings.</p>}
-              />
+              <p className={s.quiet}>
+                You can clear your planner data in Danger zone before deleting
+                your account.
+              </p>
+              <AccountSettings />
             </section>
           )}
           {section === "Danger zone" && (
