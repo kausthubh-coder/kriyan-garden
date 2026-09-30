@@ -5,6 +5,7 @@ import {
   Animated,
   Easing,
   Modal,
+  KeyboardAvoidingView,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,12 +15,28 @@ import {
   type TextInputProps,
   type TextProps,
   type ViewStyle,
+  type AccessibilityState,
+  type AccessibilityRole,
 } from "react-native";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
-import { theme } from "./theme";
+import { theme } from "../theme";
+import { ui } from "./tokens";
+import { Chip } from "./primitives";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+export * from "./primitives";
+export { TaskRow, TaskCard } from "./TaskRow";
+export { ui } from "./tokens";
 const c = theme.colors;
-const bezier = theme.motion.easeOut.replace(/^cubic-bezier\(|\)$/g, "").split(",").map(Number);
-const pressEasing = Easing.bezier(bezier[0] ?? 0, bezier[1] ?? 0, bezier[2] ?? 1, bezier[3] ?? 1);
+const bezier = theme.motion.easeOut
+  .replace(/^cubic-bezier\(|\)$/g, "")
+  .split(",")
+  .map(Number);
+const pressEasing = Easing.bezier(
+  bezier[0] ?? 0,
+  bezier[1] ?? 0,
+  bezier[2] ?? 1,
+  bezier[3] ?? 1,
+);
 export function useReducedMotion() {
   const [reduced, setReduced] = useState(true);
   useEffect(() => {
@@ -42,6 +59,7 @@ export function T({
   return (
     <Text
       {...props}
+      maxFontSizeMultiplier={1.3}
       style={[s.text, quiet && s.quiet, title && s.title, style]}
     >
       {children}
@@ -57,6 +75,8 @@ export function Button({
   icon,
   color,
   style,
+  textOnly = false,
+  showLabel = false,
 }: {
   label: string;
   onPress: () => void;
@@ -66,6 +86,8 @@ export function Button({
   icon?: IconName;
   color?: string;
   style?: ViewStyle;
+  textOnly?: boolean;
+  showLabel?: boolean;
 }) {
   const [hover, setHover] = useState(false),
     [focus, setFocus] = useState(false);
@@ -73,8 +95,16 @@ export function Button({
   const [press] = useState(() => new Animated.Value(0));
   const feedback = (down: boolean) => {
     press.stopAnimation();
-    if (reduced) { press.setValue(0); return; }
-    Animated.timing(press, { toValue: down ? 1 : 0, duration: theme.motion.press, easing: pressEasing, useNativeDriver: true }).start();
+    if (reduced) {
+      press.setValue(0);
+      return;
+    }
+    Animated.timing(press, {
+      toValue: down ? 1 : 0,
+      duration: theme.motion.press,
+      easing: pressEasing,
+      useNativeDriver: true,
+    }).start();
   };
   return (
     <Pressable
@@ -92,6 +122,10 @@ export function Button({
       onTouchCancel={() => feedback(false)}
       style={({ pressed }) => [
         s.button,
+        textOnly && {
+          borderColor: "transparent",
+          backgroundColor: "transparent",
+        },
         (primary || selected) && s.primary,
         hover && !(primary || selected) && { backgroundColor: c.s3 },
         focus && { borderColor: c.ink, borderWidth: 2 },
@@ -100,22 +134,37 @@ export function Button({
         style,
       ]}
     >
-      <Animated.View style={{ transform: [{ scale: press.interpolate({ inputRange: [0, 1], outputRange: [1, 0.97] }) }] }}>
-      {icon ? (
-        <Icon
-          name={icon}
-          color={primary || selected ? c.on : (color ?? c.ink)}
-        />
-      ) : (
-        <T
-          style={{
-            color: primary || selected ? c.on : (color ?? c["ink-2"]),
-            fontFamily: "Schibsted500",
-          }}
-        >
-          {label}
-        </T>
-      )}
+      <Animated.View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: ui.spacing[1],
+          transform: [
+            {
+              scale: press.interpolate({
+                inputRange: [0, 1],
+                outputRange: [1, 0.97],
+              }),
+            },
+          ],
+        }}
+      >
+        {icon && (
+          <Icon
+            name={icon}
+            color={primary || selected ? c.on : (color ?? c.ink)}
+          />
+        )}
+        {(!icon || showLabel) && (
+          <T
+            style={{
+              color: primary || selected ? c.on : (color ?? c["ink-2"]),
+              fontFamily: "Schibsted500",
+            }}
+          >
+            {label}
+          </T>
+        )}
       </Animated.View>
     </Pressable>
   );
@@ -126,20 +175,24 @@ export function Surface({
   children,
   style,
   disabled = false,
+  state,
+  role = "button",
 }: {
   label: string;
   onPress: () => void;
   children: ReactNode;
   style?: ViewStyle;
   disabled?: boolean;
+  state?: AccessibilityState;
+  role?: AccessibilityRole;
 }) {
   const [focus, setFocus] = useState(false),
     [hover, setHover] = useState(false);
   return (
     <Pressable
-      accessibilityRole="button"
+      accessibilityRole={role}
       accessibilityLabel={label}
-      accessibilityState={{ disabled }}
+      accessibilityState={{ disabled, ...state }}
       disabled={disabled}
       onPress={onPress}
       onFocus={() => setFocus(true)}
@@ -149,11 +202,12 @@ export function Surface({
       style={({ pressed }) => [
         {
           minHeight: theme.layout.controlHeight,
-          borderWidth: 1,
+          borderWidth: 0,
           borderColor: focus ? c.ink : "transparent",
           opacity: disabled ? 0.45 : pressed ? 0.8 : 1,
         },
         style,
+        focus && { borderWidth: 1, borderColor: c.ink },
         hover && { opacity: 0.85 },
       ]}
     >
@@ -167,6 +221,7 @@ export function Field({ label, ...props }: TextInputProps & { label: string }) {
     <View style={s.field}>
       <T quiet>{label}</T>
       <TextInput
+        maxFontSizeMultiplier={1.3}
         accessibilityLabel={label}
         placeholderTextColor={c["ink-3"]}
         selectionColor={c.ink}
@@ -193,11 +248,16 @@ export function Sheet({
   title,
   close,
   children,
+  heading,
+  hideHeading = false,
 }: {
   title: string;
   close: () => void;
   children: ReactNode;
+  heading?: ReactNode;
+  hideHeading?: boolean;
 }) {
+  const insets = useSafeAreaInsets();
   return (
     <Modal
       transparent
@@ -205,21 +265,31 @@ export function Sheet({
       onRequestClose={close}
       statusBarTranslucent
     >
-      <View style={s.scrim}>
+      <KeyboardAvoidingView behavior="padding" style={s.scrim}>
         <Pressable
           accessibilityLabel="Close sheet"
           onPress={close}
           style={StyleSheet.absoluteFill}
         />
-        <View accessibilityViewIsModal style={s.sheet}>
-          <View style={s.heading}>
-            <T style={s.subtitle}>{title}</T>
-            <Button
-              label={`Close ${title.toLowerCase()}`}
-              icon="close"
-              onPress={close}
-            />
-          </View>
+        <View
+          accessibilityViewIsModal
+          style={[
+            s.sheet,
+            { paddingBottom: Math.max(insets.bottom, theme.spacing[3]) },
+          ]}
+        >
+          <View style={s.grab} />
+          {!hideHeading && (
+            <View style={s.heading}>
+              {heading ?? <T style={s.subtitle}>{title}</T>}
+              <Button
+                label={`Close ${title.toLowerCase()}`}
+                textOnly
+                icon="close"
+                onPress={close}
+              />
+            </View>
+          )}
           <ScrollView
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={s.sheetContent}
@@ -227,7 +297,7 @@ export function Sheet({
             {children}
           </ScrollView>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -266,7 +336,7 @@ export function Choices<TValue extends string>({
       <T quiet>{label}</T>
       <View style={s.wrap}>
         {choices.map((choice) => (
-          <Button
+          <Chip
             key={choice.value}
             label={choice.label}
             color={choice.color}
@@ -301,13 +371,12 @@ export function Icon({
     day: "M5 4v16M5 7h9a2 2 0 0 1 2 2v1a2 2 0 0 1-2 2H5M5 14h12a2 2 0 0 1 2 2v1a2 2 0 0 1-2 2H5",
     list: "M9 6h11M9 12h11M9 18h11",
     week: "M4 10h16M9 3v4M15 3v4",
-    goals: "M12 8v4l3 2",
+    goals: "",
     plus: "M12 5v14M5 12h14",
     close: "M6 6l12 12M18 6L6 18",
     prev: "M15 5l-7 7 7 7",
     next: "M9 5l7 7-7 7",
-    settings:
-      "M12 3v3M12 18v3M3 12h3M18 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2",
+    settings: "M9 3h6l1 3 3 1 2 5-2 5-3 1-1 3H9l-1-3-3-1-2-5 2-5 3-1 1-3Z",
     check: "M5 12l4 4L19 6",
     resize: "M12 3v18M8 7l4-4 4 4M8 17l4 4 4-4",
   };
@@ -323,8 +392,13 @@ export function Icon({
       strokeLinejoin="round"
     >
       <Path d={paths[name]} />
-      {name === "goals" && <Circle cx={12} cy={12} r={8} />}
-      {name === "settings" && <Circle cx={12} cy={12} r={5} />}
+      {name === "goals" && (
+        <>
+          <Circle cx={12} cy={12} r={8} />
+          <Circle cx={12} cy={12} r={3.5} />
+        </>
+      )}
+      {name === "settings" && <Circle cx={12} cy={12} r={3} />}
       {name === "week" && <Rect x={4} y={5} width={16} height={15} rx={2} />}
       {name === "list" &&
         [6, 12, 18].map((y) => <Circle key={y} cx={4.5} cy={y} r={1} />)}
@@ -338,13 +412,17 @@ export const s = StyleSheet.create({
     fontSize: theme.typeSizes[8],
     lineHeight: 23,
   },
-  quiet: { color: c["ink-3"], fontSize: theme.typeSizes[5] },
+  quiet: {
+    color: c["ink-3"],
+    fontSize: ui.type.meta,
+    lineHeight: ui.type.meta * 1.4,
+  },
   title: {
     fontFamily: "Schibsted700",
-    fontSize: theme.typeSizes[14],
-    lineHeight: 36,
+    fontSize: ui.type.title,
+    lineHeight: ui.type.title * 1.2,
   },
-  subtitle: { fontFamily: "Schibsted600", fontSize: theme.typeSizes[10] },
+  subtitle: { fontFamily: "Schibsted600", fontSize: ui.type.section },
   button: {
     minWidth: theme.layout.controlHeight,
     minHeight: theme.layout.controlHeight,
@@ -396,12 +474,20 @@ export const s = StyleSheet.create({
   page: {
     padding: theme.layout.phonePadding,
     paddingBottom: theme.spacing[5],
-    gap: theme.spacing[3],
+    gap: theme.spacing[1],
   },
   card: {
     backgroundColor: c.s2,
     borderRadius: theme.radii[3],
     padding: theme.spacing[2],
     marginVertical: theme.spacing[0],
+  },
+  grab: {
+    width: theme.spacing[5] + theme.spacing[0],
+    height: theme.spacing[0],
+    borderRadius: theme.spacing[0] / 2,
+    backgroundColor: c.s3,
+    alignSelf: "center",
+    marginBottom: theme.spacing[1],
   },
 });

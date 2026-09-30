@@ -1,8 +1,23 @@
-import { useState } from "react";
+import { useImperativeHandle, useState, type Ref } from "react";
 import { View } from "react-native";
 import { useMutation } from "convex/react";
 import { api } from "@kriyan/backend/convex/_generated/api";
-import { Button, Choices, Field, T, s } from "./ui";
+import {
+  Button,
+  Choices,
+  Field,
+  Header,
+  ListRow,
+  PrimaryButton,
+  QuietButton,
+  Sheet,
+  Swatches,
+  TextButton,
+  T,
+  s,
+  ui,
+} from "./ui";
+import { countText } from "@kriyan/core";
 import { DateField } from "./DateField";
 import { areaColor, type Area, type Project, type Event } from "./types";
 export function useAction() {
@@ -19,7 +34,8 @@ export function useAction() {
       return true;
     } catch (failure) {
       setError(
-        failure instanceof Error && failure.message.startsWith("Choose an area before")
+        failure instanceof Error &&
+          /^(Choose an area before|Enter a goal title)/.test(failure.message)
           ? failure.message
           : "The change could not be saved. Check the fields and your connection, then try again.",
       );
@@ -42,99 +58,157 @@ function Result({ action }: { action: ReturnType<typeof useAction> }) {
     </>
   );
 }
-export function AreasEditor({ areas }: { areas: Area[] }) {
+export function AreasEditor({
+  areas,
+  projects = [],
+  onboarding = false,
+  back,
+}: {
+  areas: Area[];
+  projects?: Project[];
+  onboarding?: boolean;
+  back?: () => void;
+}) {
   const create = useMutation(api.areas.create),
     update = useMutation(api.areas.update),
     remove = useMutation(api.areas.remove),
     action = useAction();
   const [selected, setSelected] = useState<Area | null>(null),
+    [editing, setEditing] = useState(false),
     [name, setName] = useState(""),
     [color, setColor] = useState<Area["color"]>("grey");
-  const clear = () => {
-    setSelected(null);
-    setName("");
-    setColor("grey");
+  const edit = (area: Area | null) => {
+    setSelected(area);
+    setName(area?.name ?? "");
+    setColor(area?.color ?? "grey");
+    setEditing(true);
   };
   return (
     <View style={s.field}>
-      <T style={s.subtitle}>Areas</T>
-      {areas.length === 0 && (
-        <T quiet>No areas yet. Add an area to plan tasks.</T>
-      )}
-      {areas.map((area) => (
-        <Button
-          key={area._id}
-          label={`Edit ${area.name}`}
-          color={areaColor(area)}
-          onPress={() => {
-            setSelected(area);
-            setName(area.name);
-            setColor(area.color);
-          }}
+      {back && (
+        <Header
+          title="Areas"
+          back={back}
+          right={
+            <QuietButton
+              label="Add area"
+              icon="plus"
+              showLabel
+              onPress={() => edit(null)}
+            />
+          }
         />
-      ))}
-      <Field label="Area name" value={name} onChangeText={setName} />
-      <Choices
-        label="Area colour"
-        value={color}
-        choices={[
-          {
-            value: "blue",
-            label: "School blue",
-            color: areaColor({ color: "blue" }),
-          },
-          {
-            value: "orange",
-            label: "Business orange",
-            color: areaColor({ color: "orange" }),
-          },
-          {
-            value: "green",
-            label: "Life green",
-            color: areaColor({ color: "green" }),
-          },
-          { value: "grey", label: "Neutral" },
-        ]}
-        change={setColor}
-      />
-      <Button
-        label={selected ? "Save area" : "Add area"}
-        primary
-        disabled={action.busy || !name.trim()}
-        onPress={() =>
-          void action.run(async () => {
-            if (selected)
-              await update({ id: selected._id, patch: { name, color } });
-            else await create({ name, color });
-            clear();
-          })
-        }
-      />
-      {selected && (
-        <>
-          <Button
-            label="Delete area"
-            disabled={action.busy}
-            onPress={() =>
-              void action.run(async () => {
-                await remove({ id: selected._id });
-                clear();
-              })
+      )}
+      {!onboarding && !back && (
+        <View style={{ alignItems: "flex-end" }}>
+          <QuietButton label="Add area" onPress={() => edit(null)} />
+        </View>
+      )}
+      {!areas.length && <T quiet>No areas yet. Add an area to plan tasks.</T>}
+      {areas.map((area) => {
+        const entries = projects.filter(
+            (project) => project.areaId === area._id && !project.archivedAt,
+          ),
+          courses = entries.filter(
+            (project) => project.kind === "course",
+          ).length;
+        return onboarding ? (
+          <View key={area._id} style={s.heading}>
+            <View style={{ flex: 1 }}>
+              <ListRow
+                label={area.name}
+                disclosure={false}
+                color={areaColor(area)}
+                onPress={() => edit(area)}
+              />
+            </View>
+            <TextButton
+              label={`Remove ${area.name}`}
+              icon="close"
+              disabled={action.busy}
+              onPress={() => void action.run(() => remove({ id: area._id }))}
+            />
+          </View>
+        ) : (
+          <ListRow
+            key={area._id}
+            label={area.name}
+            color={areaColor(area)}
+            value={
+              courses
+                ? countText(courses, "course")
+                : countText(entries.length, "project")
             }
+            onPress={() => edit(area)}
           />
-          <Button label="Cancel edit" onPress={clear} />
-        </>
+        );
+      })}
+      {onboarding && (
+        <TextButton
+          label="Add another area"
+          icon="plus"
+          showLabel
+          style={{ alignItems: "flex-start" }}
+          onPress={() => edit(null)}
+        />
       )}
       <Result action={action} />
+      {editing && (
+        <Sheet
+          title={selected ? "Edit area" : "Add area"}
+          close={() => {
+            if (!action.busy) setEditing(false);
+          }}
+        >
+          <Field
+            label="Name"
+            value={name}
+            onChangeText={setName}
+            editable={!action.busy}
+          />
+          <T quiet>Colour</T>
+          <Swatches value={color} change={setColor} disabled={action.busy} />
+          <View style={[s.heading, { marginTop: ui.spacing[4] }]}>
+            {selected && (
+              <TextButton
+                label="Delete area"
+                danger
+                disabled={action.busy}
+                onPress={() =>
+                  void action.run(async () => {
+                    await remove({ id: selected._id });
+                    setEditing(false);
+                  })
+                }
+              />
+            )}
+            <PrimaryButton
+              label="Save area"
+              disabled={action.busy || !name.trim()}
+              onPress={() =>
+                void action.run(async () => {
+                  if (selected)
+                    await update({ id: selected._id, patch: { name, color } });
+                  else await create({ name, color });
+                  setEditing(false);
+                })
+              }
+            />
+          </View>
+          <Result action={action} />
+        </Sheet>
+      )}
     </View>
   );
 }
 export function ProjectsEditor({
   areas,
   projects,
+  onboarding = false,
 }: {
   areas: Area[];
   projects: Project[];
+  onboarding?: boolean;
 }) {
   const create = useMutation(api.projects.create),
     update = useMutation(api.projects.update),
@@ -201,7 +275,7 @@ export function ProjectsEditor({
       />
       <Button
         label={selected ? "Save project" : "Add project"}
-        primary
+        primary={!onboarding}
         disabled={action.busy || !name.trim()}
         onPress={() =>
           void action.run(async () => {
@@ -255,10 +329,12 @@ export function EventsEditor({
   areas,
   events,
   today,
+  onboarding = false,
 }: {
   areas: Area[];
   events: Event[];
   today: string;
+  onboarding?: boolean;
 }) {
   const create = useMutation(api.events.create),
     update = useMutation(api.events.update),
@@ -357,7 +433,7 @@ export function EventsEditor({
       />
       <Button
         label={selected ? "Save class" : "Add class"}
-        primary
+        primary={!onboarding}
         disabled={action.busy || !title.trim() || !weekdays.length}
         onPress={() =>
           void action.run(async () => {
@@ -395,14 +471,19 @@ export function EventsEditor({
     </View>
   );
 }
+export type GoalFormHandle = { save: () => Promise<boolean> };
 export function GoalForm({
   areas,
   today,
   saved,
+  onboarding = false,
+  formRef,
 }: {
   areas: Area[];
   today: string;
   saved?: () => void;
+  onboarding?: boolean;
+  formRef?: Ref<GoalFormHandle>;
 }) {
   const create = useMutation(api.goals.create),
     action = useAction();
@@ -413,6 +494,27 @@ export function GoalForm({
     [target, setTarget] = useState("10"),
     [unit, setUnit] = useState(""),
     [note, setNote] = useState("");
+  const saveGoal = () =>
+    action.run(async () => {
+      if (!title.trim()) throw new Error("Enter a goal title, then continue.");
+      const area = areas.find((a) => a._id === areaId);
+      if (!area) throw new Error("Choose an area before adding a goal.");
+      const metric =
+        kind === "number"
+          ? { kind, target: Number(target), unit, current: 0 }
+          : { kind };
+      await create({
+        title,
+        areaId: area._id,
+        startDate: today,
+        targetDate,
+        metric,
+        note,
+      });
+      setTitle("");
+      saved?.();
+    });
+  useImperativeHandle(formRef, () => ({ save: saveGoal }));
   return (
     <View style={s.field}>
       <Field label="Goal title" value={title} onChangeText={setTitle} />
@@ -458,31 +560,14 @@ export function GoalForm({
         </>
       )}
       <Field label="Goal notes" value={note} onChangeText={setNote} multiline />
-      <Button
-        label="Add goal"
-        primary
-        disabled={action.busy || !title.trim()}
-        onPress={() =>
-          void action.run(async () => {
-            const area = areas.find((a) => a._id === areaId);
-            if (!area) throw new Error("Choose an area before adding a goal.");
-            const metric =
-              kind === "number"
-                ? { kind, target: Number(target), unit, current: 0 }
-                : { kind };
-            await create({
-              title,
-              areaId: area._id,
-              startDate: today,
-              targetDate,
-              metric,
-              note,
-            });
-            setTitle("");
-            saved?.();
-          })
-        }
-      />
+      {!onboarding && (
+        <Button
+          label="Add goal"
+          primary
+          disabled={action.busy || !title.trim()}
+          onPress={() => void saveGoal()}
+        />
+      )}
       <Result action={action} />
     </View>
   );

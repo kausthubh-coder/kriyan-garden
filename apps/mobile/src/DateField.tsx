@@ -1,7 +1,7 @@
 import { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
 import { View } from "react-native";
-import { Button, T, s } from "./ui";
-import { timeOf } from "@kriyan/core";
+import { Button, s } from "./ui";
+import { localClock, shortDate, timeOf } from "@kriyan/core";
 export function DateField({
   label,
   value,
@@ -15,15 +15,12 @@ export function DateField({
 }) {
   return (
     <View style={s.field}>
-      <T quiet>{label}</T>
       <Button
-        label={`${label}: ${value ?? (mode === "date" ? "Pick a day" : "Pick a time")}`}
+        label={`${label}${value ? `: ${mode === "date" ? shortDate(value) : value}` : ""}`}
         onPress={() => {
           const initial =
             mode === "date"
-              ? new Date(
-                  `${value ?? new Date().toLocaleDateString("en-CA")}T12:00:00`,
-                )
+              ? new Date(`${value ?? localClock(new Date()).today}T12:00:00`)
               : new Date(`2000-01-01T${value ?? "09:00"}:00`);
           DateTimePickerAndroid.open({
             value: initial,

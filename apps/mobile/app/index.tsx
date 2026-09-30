@@ -7,7 +7,15 @@ import * as QuickActions from "expo-quick-actions";
 import { useShareIntentContext } from "expo-share-intent";
 import * as Haptics from "expo-haptics";
 import { api } from "@kriyan/backend/convex/_generated/api";
-import { addDays, formatMinutes, plannedMinutes } from "@kriyan/core";
+import {
+  addDays,
+  countText,
+  daySummary,
+  formatMinutes,
+  longDate,
+  plannedMinutes,
+  weekdayName,
+} from "@kriyan/core";
 import type { TaskCreate, TaskPatch } from "@kriyan/backend/convex/validators";
 import type { Id } from "@kriyan/backend/convex/_generated/dataModel";
 import { Auth } from "../src/Auth";
@@ -15,7 +23,12 @@ import { usePlanner } from "../src/usePlanner";
 import { useNotifications } from "../src/notifications";
 import {
   Button,
-  Choices,
+  Chip,
+  Header,
+  QuietButton,
+  SectionHeading,
+  SegmentedNav,
+  TextButton,
   Sheet,
   Status,
   Surface,
@@ -25,10 +38,10 @@ import {
   type IconName,
 } from "../src/ui";
 import { theme } from "../src/theme";
-import { dayLabel, dateLabel } from "../src/helpers";
+
 import { QuickAdd } from "../src/QuickAdd";
 import { TaskSheet } from "../src/TaskSheet";
-import { DateField } from "../src/DateField";
+import { Week } from "../src/Week";
 import { TaskRow } from "../src/TaskRow";
 import { DayTimeline } from "../src/Timeline";
 import { Onboarding } from "../src/Onboarding";
@@ -60,9 +73,14 @@ function Planner() {
     [taskId, setTaskId] = useState<string | null>(null),
     [scheduling, setScheduling] = useState<Task | null>(null),
     [settings, setSettings] = useState(false),
+    [addingGoal, setAddingGoal] = useState(false),
     [dragging, setDragging] = useState(false),
     [error, setError] = useState(""),
-    [undo, setUndo] = useState<{ values: TaskCreate; completed: boolean; restoredId?: Id<"tasks"> } | null>(null),
+    [undo, setUndo] = useState<{
+      values: TaskCreate;
+      completed: boolean;
+      restoredId?: Id<"tasks">;
+    } | null>(null),
     [undoBusy, setUndoBusy] = useState(false);
   const data = usePlanner(selectedDate),
     { profile, areas, projects, goals, tasks, events, day, week, date, clock } =
@@ -87,7 +105,12 @@ function Planner() {
     void QuickActions.isSupported().then((supported) => {
       if (supported)
         void QuickActions.setItems([
-          { id: "add", title: "Add task", params: { href: "/?add=1" } },
+          {
+            id: "add",
+            title: "Add task",
+            icon: "shortcut_add",
+            params: { href: "/?add=1" },
+          },
         ]);
     });
     const listener = QuickActions.addListener((action) => {
@@ -164,9 +187,14 @@ function Planner() {
     ),
     dated = shown.filter((task) => task.date === date),
     active = dated.filter((task) => task.status === "active");
-  const summary = dated.length
-    ? `${active.length} tasks left${plannedMinutes(dated) ? `, ${formatMinutes(plannedMinutes(dated))} planned` : ""}${active.some((t) => t.durationMinutes === null) ? `, ${active.filter((t) => t.durationMinutes === null).length} with no length` : ""}.`
-    : "Nothing planned.";
+  const summary = daySummary({
+    left: active.length,
+    total: dated.length,
+    plannedMinutes: plannedMinutes(dated),
+    // Keep the compact header to the reference's count and planned time.
+    // No-length tasks retain their outlined markers and property value.
+    withoutLength: 0,
+  });
   const currentTaskId = taskId ?? params.taskId;
   const selected = tasks.find((task) => task._id === currentTaskId);
   const row = (task: Task) => (
@@ -174,9 +202,14 @@ function Planner() {
       key={task._id}
       task={task}
       area={areas.find((a) => a._id === task.areaId)}
+      project={projects.find((p) => p._id === task.projectId)?.name}
+      today={clock.today}
       open={() => setTaskId(task._id)}
       toggle={() => toggle(task)}
-      schedule={() => setScheduling(task)}
+      schedule={() => {
+        setTaskId(task._id);
+        setScheduling(task);
+      }}
     />
   );
   const switchTab = (view: Tab) => {
@@ -190,58 +223,70 @@ function Planner() {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={s.page}
       >
-        <View style={s.heading}>
-          <View style={{ flex: 1 }}>
-            <T title>
-              {tab === "day" || tab === "list"
-                ? dayLabel(date)
+        <Header
+          title={
+            tab === "day"
+              ? weekdayName(date)
+              : tab === "list"
+                ? date === clock.today
+                  ? "Today"
+                  : weekdayName(date)
                 : tab === "week"
-                  ? "This week"
-                  : "Goals"}
-            </T>
-            <T quiet>
-              {tab === "goals"
-                ? `${goals.filter((g) => g.status === "active").length} active`
-                : dateLabel(date)}
-            </T>
-          </View>
-          <Button
-            label="Open settings"
-            icon="settings"
-            onPress={() => setSettings(true)}
-          />
-        </View>
-        {tab !== "goals" && (
-          <>
-            <T quiet>{summary}</T>
-            <View style={s.wrap}>
-              <Button
-                label="Previous day"
-                icon="prev"
-                onPress={() => setSelectedDate(addDays(date, -1))}
+                  ? "Week"
+                  : "Goals"
+          }
+          right={
+            tab === "goals" ? (
+              <QuietButton
+                label="Add goal"
+                icon="plus"
+                showLabel
+                onPress={() => setAddingGoal(true)}
               />
-              <Button label="Today" onPress={() => setSelectedDate(null)} />
-              <Button
-                label="Next day"
-                icon="next"
-                onPress={() => setSelectedDate(addDays(date, 1))}
-              />
-            </View>
-          </>
-        )}
-        <Choices
-          label="Areas"
-          value={filter}
-          choices={[
-            { value: "all", label: "All" },
-            ...areas.map((a) => ({
-              value: a._id,
-              label: a.name,
-              color: areaColor(a),
-            })),
-          ]}
-          change={setFilter}
+            ) : (
+              <View style={{ flexDirection: "row" }}>
+                <SegmentedNav
+                  unit={tab === "week" ? "week" : "day"}
+                  previous={() =>
+                    setSelectedDate(addDays(date, tab === "week" ? -7 : -1))
+                  }
+                  today={() => setSelectedDate(null)}
+                  next={() =>
+                    setSelectedDate(addDays(date, tab === "week" ? 7 : 1))
+                  }
+                />
+                <TextButton
+                  label="Settings"
+                  icon="settings"
+                  onPress={() => setSettings(true)}
+                />
+              </View>
+            )
+          }
+          summary={
+            tab === "goals"
+              ? undefined
+              : tab === "week"
+                ? `${longDate(week[0]?.date ?? date)} to ${longDate(week[6]?.date ?? date)}. ${formatMinutes(week.reduce((sum, day) => sum + day.plannedMinutes, 0))} planned.`
+                : `${longDate(date)}. ${summary}`
+          }
         />
+        <View style={s.wrap}>
+          <Chip
+            label="All"
+            selected={filter === "all"}
+            onPress={() => setFilter("all")}
+          />
+          {areas.map((area) => (
+            <Chip
+              key={area._id}
+              label={area.name}
+              color={areaColor(area)}
+              selected={filter === area._id}
+              onPress={() => setFilter(area._id)}
+            />
+          ))}
+        </View>
         {!data.connected && (
           <T quiet accessibilityLiveRegion="polite">
             Offline, changes will sync
@@ -268,6 +313,12 @@ function Planner() {
               ),
             }}
             areas={areas}
+            projects={projects}
+            toggle={toggle}
+            schedule={(task) => {
+              setTaskId(task._id);
+              setScheduling(task);
+            }}
             profile={profile}
             today={clock.today}
             now={clock.minutes}
@@ -278,7 +329,6 @@ function Planner() {
         )}
         {tab === "list" && (
           <>
-            <Button label="Add task" onPress={() => setAdding(true)} />
             {!dated.length && (
               <Status message="Nothing planned for this day. Add a task to begin." />
             )}
@@ -288,14 +338,11 @@ function Planner() {
                 const entries = dated.filter((t) => t.areaId === area._id);
                 return entries.length ? (
                   <View key={area._id}>
-                    <T
-                      style={{
-                        fontFamily: "Schibsted600",
-                        color: areaColor(area),
-                      }}
-                    >
-                      {area.name}
-                    </T>
+                    <SectionHeading
+                      title={area.name}
+                      color={areaColor(area)}
+                      value={`${countText(entries.filter((t) => t.status === "active").length, "task")} left${plannedMinutes(entries) ? `, ${formatMinutes(plannedMinutes(entries))}` : ""}`}
+                    />
                     {entries.map(row)}
                   </View>
                 ) : null;
@@ -312,81 +359,18 @@ function Planner() {
           </>
         )}
         {tab === "week" && (
-          <>
-            <View
-              style={[s.wrap, { flexWrap: "nowrap", gap: theme.spacing[0] }]}
-            >
-              {week.map((d) => (
-                <Surface
-                  key={d.date}
-                  label={`Select ${dayLabel(d.date)}, ${d.date}`}
-                  onPress={() => setSelectedDate(d.date)}
-                  style={{
-                    flex: 1,
-                    paddingVertical: theme.spacing[1],
-                    backgroundColor:
-                      d.date === date ? theme.colors.s2 : theme.colors.bg,
-                    borderRadius: theme.radii[0],
-                  }}
-                >
-                  <T
-                    quiet
-                    style={{
-                      textAlign: "center",
-                      fontSize: theme.typeSizes[1],
-                    }}
-                  >
-                    {dayLabel(d.date).slice(0, 3)}
-                  </T>
-                  <T style={{ textAlign: "center" }}>
-                    {Number(d.date.slice(-2))}
-                  </T>
-                  <View
-                    style={{
-                      height: theme.spacing[1],
-                      backgroundColor: theme.colors.s3,
-                    }}
-                  >
-                    {areas.map((area, index) => (
-                      <View
-                        key={area._id}
-                        style={{
-                          position: "absolute",
-                          height: "100%",
-                          left: `${(areas.slice(0, index).reduce((sum, a) => sum + (d.plannedMinutesByArea[a._id] ?? 0), 0) / Math.max(d.plannedMinutes, profile.dailyCapacityMinutes)) * 100}%`,
-                          width: `${((d.plannedMinutesByArea[area._id] ?? 0) / Math.max(d.plannedMinutes, profile.dailyCapacityMinutes)) * 100}%`,
-                          backgroundColor: areaColor(area),
-                        }}
-                      />
-                    ))}
-                  </View>
-                  <T quiet style={{ fontSize: theme.typeSizes[0] }}>
-                    {formatMinutes(d.plannedMinutes)}
-                    {d.plannedMinutes > profile.dailyCapacityMinutes
-                      ? ", over"
-                      : ""}
-                  </T>
-                </Surface>
-              ))}
-            </View>
-            <T style={s.subtitle}>{dayLabel(date)}</T>
-            {dated.length ? (
-              dated.map(row)
-            ) : (
-              <T quiet>Nothing planned for this day.</T>
-            )}
-            <T style={s.subtitle}>Deadlines</T>
-            {shown.filter((t) => t.deadline && t.status === "active").length ? (
-              shown
-                .filter((t) => t.deadline && t.status === "active")
-                .sort((a, b) =>
-                  (a.deadline ?? "").localeCompare(b.deadline ?? ""),
-                )
-                .map(row)
-            ) : (
-              <T quiet>No upcoming deadlines.</T>
-            )}
-          </>
+          <Week
+            week={week}
+            date={date}
+            today={clock.today}
+            profile={profile}
+            areas={areas}
+            tasks={tasks}
+            shown={shown}
+            select={setSelectedDate}
+            row={row}
+            open={(task) => setTaskId(task._id)}
+          />
         )}
         {tab === "goals" && (
           <Goals
@@ -395,6 +379,13 @@ function Planner() {
             today={clock.today}
             tasks={tasks}
             openTask={(task) => setTaskId(task._id)}
+            adding={addingGoal}
+            closeAdd={() => setAddingGoal(false)}
+            toggle={toggle}
+            schedule={(task) => {
+              setTaskId(task._id);
+              setScheduling(task);
+            }}
           />
         )}
       </ScrollView>
@@ -412,11 +403,26 @@ function Planner() {
             onPress={() => {
               setUndoBusy(true);
               void (async () => {
-                const id = undo.restoredId ?? (await create({ ...undo.values, ...(undo.completed ? { repeat: null, reminders: [] } : {}) }))._id;
+                const id =
+                  undo.restoredId ??
+                  (
+                    await create({
+                      ...undo.values,
+                      ...(undo.completed
+                        ? { repeat: null, reminders: [] }
+                        : {}),
+                    })
+                  )._id;
                 setUndo({ ...undo, restoredId: id });
                 if (undo.completed) {
                   await complete({ id });
-                  await update({ id, patch: { repeat: undo.values.repeat ?? null, reminders: undo.values.reminders ?? [] } });
+                  await update({
+                    id,
+                    patch: {
+                      repeat: undo.values.repeat ?? null,
+                      reminders: undo.values.reminders ?? [],
+                    },
+                  });
                 }
                 setUndo(null);
               })()
@@ -438,7 +444,11 @@ function Planner() {
               label="Add a task"
               icon="plus"
               primary
-              style={{ borderRadius: theme.layout.phoneAddSize / 2, width: theme.layout.phoneAddSize, height: theme.layout.phoneAddSize }}
+              style={{
+                borderRadius: theme.layout.phoneAddSize / 2,
+                width: theme.layout.phoneAddSize,
+                height: theme.layout.phoneAddSize,
+              }}
               onPress={() => {
                 setInitialText("");
                 setAdding(true);
@@ -447,6 +457,8 @@ function Planner() {
           ) : (
             <Surface
               key={view}
+              role="tab"
+              state={{ selected: tab === view }}
               label={view[0].toUpperCase() + view.slice(1)}
               onPress={() => switchTab(view)}
               style={styles.tab}
@@ -458,6 +470,7 @@ function Planner() {
               <T
                 style={{
                   fontSize: theme.typeSizes[0],
+                  lineHeight: theme.typeSizes[0] * 1.3,
                   color:
                     tab === view ? theme.colors.ink : theme.colors["ink-3"],
                 }}
@@ -470,7 +483,11 @@ function Planner() {
       </View>
       {(adding || hasShareIntent || params.add === "1") && (
         <QuickAdd
-          initialText={hasShareIntent ? shareIntent.text ?? shareIntent.webUrl ?? "" : initialText}
+          initialText={
+            hasShareIntent
+              ? (shareIntent.text ?? shareIntent.webUrl ?? "")
+              : initialText
+          }
           today={clock.today}
           date={date}
           areas={areas}
@@ -485,7 +502,8 @@ function Planner() {
       )}
       {selected && (
         <TaskSheet
-          key={selected._id}
+          key={`${selected._id}-${scheduling ? "day" : "task"}`}
+          initialProperty={scheduling ? "Day" : null}
           task={selected}
           areas={areas}
           projects={projects}
@@ -493,6 +511,7 @@ function Planner() {
           today={clock.today}
           close={() => {
             setTaskId(null);
+            setScheduling(null);
             router.setParams({ taskId: undefined });
           }}
           save={(patch) => update({ id: selected._id, patch })}
@@ -520,73 +539,39 @@ function Planner() {
             setUndo({
               completed: selected.status === "completed",
               values: {
-              title,
-              areaId,
-              projectId,
-              goalId,
-              date,
-              time,
-              durationMinutes,
-              deadline,
-              repeat,
-              reminders,
-              notes,
-              sortOrder,
+                title,
+                areaId,
+                projectId,
+                goalId,
+                date,
+                time,
+                durationMinutes,
+                deadline,
+                repeat,
+                reminders,
+                notes,
+                sortOrder,
               },
             });
           }}
         />
       )}
       {currentTaskId && !selected && (
-        <Sheet title="Task unavailable" close={() => { setTaskId(null); router.setParams({ taskId: undefined }); }}>
+        <Sheet
+          title="Task unavailable"
+          close={() => {
+            setTaskId(null);
+            router.setParams({ taskId: undefined });
+          }}
+        >
           <T>This task is no longer available. It may have been deleted.</T>
         </Sheet>
       )}
-      {scheduling && (
-        <Sheet title="Schedule task" close={() => setScheduling(null)}>
-          <Button
-            label="Today"
-            onPress={() =>
-              void write(scheduling, { date: clock.today }).then((result) => {
-                if (result) setScheduling(null);
-              })
-            }
-          />
-          <Button
-            label="Tomorrow"
-            onPress={() =>
-              void write(scheduling, { date: addDays(clock.today, 1) }).then(
-                (result) => {
-                  if (result) setScheduling(null);
-                },
-              )
-            }
-          />
-          <DateField
-            label="Pick a day"
-            value={scheduling.date}
-            change={(value) =>
-              void write(scheduling, { date: value }).then((result) => {
-                if (result) setScheduling(null);
-              })
-            }
-          />
-          <Button
-            label="Any time"
-            onPress={() =>
-              void write(scheduling, {
-                date: scheduling.date ?? clock.today,
-                time: null,
-              }).then((result) => {
-                if (result) setScheduling(null);
-              })
-            }
-          />
-          {error && <T accessibilityRole="alert">{error}</T>}
-        </Sheet>
-      )}
       {!notifications.prompted && (
-        <Sheet title="Task reminders" close={() => void notifications.markPrompted()}>
+        <Sheet
+          title="Task reminders"
+          close={() => void notifications.markPrompted()}
+        >
           <T>
             Allow notifications so task reminders reach this phone, including
             tasks added on the web.
@@ -594,9 +579,7 @@ function Planner() {
           <Button
             label="Enable notifications"
             primary
-            onPress={() =>
-              void notifications.enable()
-            }
+            onPress={() => void notifications.enable()}
           />
           <Button
             label="Skip notifications"
@@ -621,6 +604,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     width: theme.layout.phoneTabWidth,
-    height: theme.layout.phoneTabHeight,
+    minHeight: theme.layout.phoneTabHeight,
   },
 });

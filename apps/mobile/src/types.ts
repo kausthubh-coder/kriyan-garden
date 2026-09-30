@@ -16,4 +16,12 @@ export const areaColor = (area?: Pick<Area, "color">) =>
       ? theme.colors.biz
       : area?.color === "green"
         ? theme.colors.life
-        : theme.colors["ink-2"];
+        : area?.color === "red"
+          ? theme.colors["area-red"]
+          : area?.color === "yellow"
+            ? theme.colors["area-yellow"]
+            : area?.color === "purple"
+              ? theme.colors["area-purple"]
+              : area?.color === "teal"
+                ? theme.colors["area-teal"]
+                : theme.colors["ink-2"];
