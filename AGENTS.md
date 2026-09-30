@@ -16,6 +16,7 @@ Kriyan is an open-source (MIT) planner for todos and goals across three areas of
 
 - `docs/PLAN.md` is the implementation plan. Follow its architecture, data model and auth design.
 - `docs/design/proposals/prototype/` is the approved design as a working HTML prototype (`index.html`, `app.css`, `app.js`). It is the source of truth for layout, colour, type, spacing, copy and interaction. Port it; do not reinterpret it.
+- `docs/design/reference/` holds newer reference designs for specific screens (`web.html`, `android.html`, `landing.html`, sharing `ref.css`). Where a reference covers a screen, it overrides the prototype. Open them in a browser before writing code. `docs/design/reference/audit/` holds screenshots of what the references replace.
 - Task briefs live in `.agents/briefs/`. Do exactly what the brief asks and nothing outside its scope.
 
 ## Product rules
@@ -32,8 +33,10 @@ Kriyan is an open-source (MIT) planner for todos and goals across three areas of
 - Colour only ever means an area (School blue, Business orange, Life green) or a status (hot red for late or over). Primary buttons are neutral ink.
 - Never: gradients, glow, glassmorphism, coloured side stripes on cards, nested cards, uppercase eyebrow labels, emoji as icons, bounce or elastic easing.
 - Motion: press feedback 160ms, transitions 150 to 250ms, ease-out `cubic-bezier(0.23, 1, 0.32, 1)`. Animate only `transform` and `opacity`. No animation on keyboard-triggered actions. Respect `prefers-reduced-motion`.
-- Touch targets are at least 44px. Text contrast is at least 4.5:1. Status is never shown by colour alone.
+- On touch devices (`pointer: coarse`, and always in the Android app) every target is at least 44px. On desktop with a fine pointer, controls are 32 to 36px tall. Text contrast is at least 4.5:1. Status is never shown by colour alone.
 - Every control has hover, focus-visible, active and disabled states. Every view has loading, empty and error states.
+- Dates shown to people read like "Thu 1 Oct" or "Today"; times read like "14:30". Never show a raw ISO date or the browser's native date format as a value.
+- Area filters and area labels are a coloured dot plus a neutral text label. Never colour the text itself.
 - Copy: sentence case, buttons are verb plus object ("Add task"), no em dashes, no middle-dot separators, errors say what happened and what to do.
 
 ## Engineering rules
