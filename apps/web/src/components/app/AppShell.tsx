@@ -15,7 +15,8 @@ import { QuickAdd } from "./QuickAdd";
 import { CommandPalette } from "./CommandPalette";
 import { GoalPanel } from "./GoalPanel";
 import { useGoalActions } from "./useGoalActions";
-import { TaskPanel } from "./TaskPanel";
+import { TaskSelectionPanel } from "./TaskSelectionPanel";
+import { taskSelectionArgs } from "./taskSelection";
 import { Toast } from "./Toast";
 import { HelpSheet } from "./HelpSheet";
 import {
@@ -521,9 +522,9 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
         />
       )}
       {overlay === "help" && <HelpSheet close={close} />}
-      {selected && !overlay && clock && date && (
-        <TaskPanel
-          key={selected._id}
+      {taskSelectionArgs(selectedId) !== "skip" && !overlay && clock && date && (
+        <TaskSelectionPanel
+          key={selectedId}
           task={selected}
           areas={areas}
           projects={projects}

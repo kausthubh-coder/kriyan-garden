@@ -2,9 +2,9 @@
 import { createContext, useContext, useMemo } from "react";
 import { useConvex, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { api } from "@kriyan/backend/convex/_generated/api";
-import type { Id } from "@kriyan/backend/convex/_generated/dataModel";
 import { useConvexPlanner } from "./usePlanner";
 import { selectGoal } from "./goalSelection";
+import { taskSelectionArgs } from "./taskSelection";
 import { optimisticCreate, optimisticPatch, optimisticStatus, cacheTask } from "./optimistic";
 
 function useConvexTasks() {
@@ -32,7 +32,7 @@ function useConvexGoals() {
 }
 function useConvexSelectedTask(id: string | null) {
   const { isAuthenticated } = useConvexAuth();
-  return useQuery(api.tasks.get, id && isAuthenticated && !id.startsWith("optimistic-") ? { id: id as Id<"tasks"> } : "skip");
+  return useQuery(api.tasks.lookup, taskSelectionArgs(id, isAuthenticated));
 }
 // Implementations are selected by the provider and stay fixed for its lifetime.
 export interface PlannerDataAccess {

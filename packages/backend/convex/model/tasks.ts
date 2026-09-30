@@ -17,6 +17,13 @@ export async function list(ctx: QueryCtx, ownerId: string, args: { status?: "act
     : ctx.db.query("tasks").withIndex("by_owner", (q) => q.eq("ownerId", ownerId)).take(limit);
 }
 export const get = (ctx: QueryCtx, ownerId: string, args: { id: Id<"tasks"> }) => owned(ctx, ownerId, args.id);
+/** URL selections are optional UI state, unlike the strict record API. */
+export async function lookup(ctx: QueryCtx, ownerId: string, args: { key: string }) {
+  const id = ctx.db.normalizeId("tasks", args.key);
+  if (!id) return null;
+  const row = await ctx.db.get(id);
+  return row?.ownerId === ownerId ? row : null;
+}
 const filterValidator = v.object(V.taskFilters);
 /** Service filters run before the response limit, over an owner-prefixed index. */
 export async function filteredList(ctx: QueryCtx, ownerId: string, args: Infer<typeof filterValidator>) {

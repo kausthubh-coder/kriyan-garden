@@ -4,6 +4,7 @@ import { AppShell } from "../app/AppShell";
 import { PlannerDataContext, type PlannerDataAccess } from "../app/dataAccess";
 import { useClock } from "../app/usePlanner";
 import { createDemoStore } from "./store";
+import { selectTask } from "../app/taskSelection";
 import { appHref } from "@/lib/origins";
 import s from "./Demo.module.css";
 
@@ -29,7 +30,7 @@ function MemoryPlanner({ today }: { today: string }) {
     useGoals: () => store.goals,
     useSelectedTask(key) {
       const state = useSyncExternalStore(store.subscribe, store.snapshot, store.snapshot);
-      return state.tasks.find((task) => task._id === key) ?? undefined;
+      return selectTask(key, state.tasks);
     },
     useSelectedGoal(key) {
       useSyncExternalStore(store.subscribe, store.snapshot, store.snapshot);

@@ -20,6 +20,14 @@ export const get = query({
     return model.get(ctx, ownerId, args);
   },
 });
+export const lookup = query({
+  args: { key: v.string() },
+  returns: v.union(V.task, v.null()),
+  handler: async (ctx, args) => {
+    const ownerId = await requireOwnerId(ctx);
+    return model.lookup(ctx, ownerId, args);
+  },
+});
 export const create = mutation({
   args: V.taskCreate,
   returns: V.task,

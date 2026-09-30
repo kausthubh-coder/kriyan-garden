@@ -6,6 +6,9 @@ import { plannedMinutes } from "@kriyan/core";
 import type { Day, Task } from "./types";
 
 export function findTask(store: OptimisticLocalStore, id: Id<"tasks">) {
+  for (const { value } of store.getAllQueries(api.tasks.lookup)) {
+    if (value?._id === id) return value;
+  }
   const direct = store.getQuery(api.tasks.get, { id });
   if (direct) return direct;
   for (const { value } of store.getAllQueries(api.tasks.list)) {
@@ -87,6 +90,8 @@ export function cacheTask(
       );
   if (store.getQuery(api.tasks.get, { id }) && next)
     store.setQuery(api.tasks.get, { id }, next);
+  for (const { args, value } of store.getAllQueries(api.tasks.lookup))
+    if (value?._id === id) store.setQuery(api.tasks.lookup, args, next);
 }
 export function optimisticPatch(
   store: OptimisticLocalStore,
