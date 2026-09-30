@@ -7,3 +7,42 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+# Kriyan project rules
+
+Kriyan is an open-source (MIT) planner for todos and goals across three areas of life: School, Business and Life. It ships as a web app, an Android app, an MCP server and a CLI, all on one Convex backend with Clerk for identity.
+
+## Read first
+
+- `docs/PLAN.md` is the implementation plan. Follow its architecture, data model and auth design.
+- `docs/design/proposals/prototype/` is the approved design as a working HTML prototype (`index.html`, `app.css`, `app.js`). It is the source of truth for layout, colour, type, spacing, copy and interaction. Port it; do not reinterpret it.
+- Task briefs live in `.agents/briefs/`. Do exactly what the brief asks and nothing outside its scope.
+
+## Product rules
+
+- Dark theme only. Do not build a light theme.
+- No garden language anywhere: no "garden", "plant", "stone", "seed", "bed", "grow". Use plain words: task, area, project, course, goal, day, week.
+- The length of a task is optional. Never require a duration, and never invent one.
+- Android only for mobile. Do not add iOS-specific work.
+
+## Design rules
+
+- Colours, spacing, radii, type sizes and motion come from the tokens in `packages/core`. Do not hard-code values that a token covers.
+- One typeface: Schibsted Grotesk, weights 400 to 700. No monospace for labels.
+- Colour only ever means an area (School blue, Business orange, Life green) or a status (hot red for late or over). Primary buttons are neutral ink.
+- Never: gradients, glow, glassmorphism, coloured side stripes on cards, nested cards, uppercase eyebrow labels, emoji as icons, bounce or elastic easing.
+- Motion: press feedback 160ms, transitions 150 to 250ms, ease-out `cubic-bezier(0.23, 1, 0.32, 1)`. Animate only `transform` and `opacity`. No animation on keyboard-triggered actions. Respect `prefers-reduced-motion`.
+- Touch targets are at least 44px. Text contrast is at least 4.5:1. Status is never shown by colour alone.
+- Every control has hover, focus-visible, active and disabled states. Every view has loading, empty and error states.
+- Copy: sentence case, buttons are verb plus object ("Add task"), no em dashes, no middle-dot separators, errors say what happened and what to do.
+
+## Engineering rules
+
+- Package manager is Bun. Use Bun workspaces. Do not add npm, pnpm or yarn lockfiles.
+- TypeScript strict. No `any`, no `@ts-ignore`, no non-null assertions on values that can really be null.
+- Every Convex function checks identity first and reads or writes only rows owned by that identity. Queries use an index that starts with `ownerId`.
+- Business logic lives once, in the shared operations layer in the backend or in `packages/core`. Web, mobile, MCP and CLI call it; they do not reimplement it.
+- "Today" always comes from the local date or timezone of the user, never from the UTC date of the server.
+- Never commit secrets. `.env*` files stay ignored except `.env.example`. Never print the contents of an env file.
+- Do not commit, push, deploy or change cloud settings unless the brief says so. Leave changes in the working tree for review.
+- Before you finish, run the verification commands in the brief and report their real output, including failures.

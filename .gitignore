@@ -8,3 +8,5 @@ coverage/
 *.log
 *.tsbuildinfo
 .clerk/
+.agents/playwright-mcp/
+.agents/logs/
