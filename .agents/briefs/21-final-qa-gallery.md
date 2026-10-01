@@ -9,7 +9,22 @@ Read `AGENTS.md`, `.agents/briefs/15-functional-qa.md`, `.agents/briefs/13-scree
 1. Week on a phone (below 700px): a day with nothing in it is a compact row, 56px high, with the day name and date on the left and nothing else. Days with items keep their card. The seven-tall-empty-cards stack goes away. Desktop stays as it is.
 2. List, empty day: the "Nothing planned for today." line sits 20px under the add field, not 8px, and uses the same muted text style as the tray's empty lines.
 3. Week on desktop: the card for today is marked by the day name in full ink and a 1px `--line-strong` border, not a bright 2px outline. The bright ring is reserved for keyboard focus.
-4. Run the `unslop` pass over any copy you touch.
+4. Clerk's sign-in card says "Sign in to kriyan" (the Clerk application name is lowercase). Use Clerk's `localization` prop on the provider so the titles read "Sign in to Kriyan" and "Create your Kriyan account", with the subtitle lines in the product's voice (no exclamation marks). Do not change Clerk instance settings.
+5. Android, from the reviewer's read of `.agents/screenshots/20/` (release 1.0.0 is published; these go into 1.0.1):
+   - Empty Day: the first-task prompt is a card (`--s1` background, 12dp radius, 16dp padding) sitting on the timeline, and its three examples are bordered chips in a wrapping row, left aligned, exactly like the web empty Day. Today they are centred bare text with hour labels showing through beside them.
+   - "Add a task" in the Day tray and List is a field-like row: a plus icon and left-aligned muted text on an `--s1` surface, 48dp high, the same as the web add row. Today it is centred bare text.
+   - The "N tasks left" count is hidden when N is 0.
+   - Sign-in: the block (name, line, form) is vertically centred in the space above the keyboard instead of pinned to the top, and "Send code" at rest (empty email) uses the disabled token style from `packages/core`, not a mid-grey fill with a light border.
+   - After these, build 1.0.1 with EAS (same profile, `versionCode` 2), run the production smoke on the headless emulator (`-no-window`), and publish release `android-v1.0.1` with `scripts/release-android.ps1`. This brief authorises that one release. The landing and download pages pick the version up from the release metadata script; commit the refreshed fallback.
+6. Run the `unslop` pass over any copy you touch.
+
+Cross-surface sign-in must be proven: an account created in the Android app with an email code can sign in on the web (what does the web sign-in offer it?), and an account created on the web with a password can sign in on Android. If either direction is impossible, fix it in the app (for example a password field on Android, or Clerk's email-code strategy on the web sign-in component) without changing Clerk instance settings, and say what you did.
+
+## Facts about production (checked by the reviewer)
+
+- `https://kriyan.app` serves the landing page, `www` redirects to it, `https://app.kriyan.app` serves the app; the Convex production deployment is `calm-salamander-183`. A test user signed in there and reached onboarding with no page errors.
+- Sign-up offers Google or email plus password. Sign-in for a user without a password offers only Google, so the skill's `session.mjs --ui` needs a password user (`user.mjs create --password`); the helper path works for any user.
+- One leftover test user exists with rows in production: its email starts with `kriyan-smoke-`. Sign in as it (helper path) and remove it with the app's own delete account flow, which is also your test of that flow on production. Confirm with `user.mjs list` and a production read that nothing remains.
 
 ## Job 2: finish brief 15
 
