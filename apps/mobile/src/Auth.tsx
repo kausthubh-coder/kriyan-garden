@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useSignIn, useSignUp } from "@clerk/expo";
 import { useSSO } from "@clerk/expo/experimental";
 import * as Linking from "expo-linking";
@@ -7,6 +7,7 @@ import { Button, Field, T, s } from "./ui";
 import { theme } from "./theme";
 
 export function Auth() {
+  const frameLogged = useRef(false);
   const { signIn } = useSignIn();
   const { signUp } = useSignUp();
   const { startSSOFlow } = useSSO();
@@ -61,7 +62,9 @@ export function Auth() {
         : "A sign-in code could not be sent. Check your email and connection, then try again.");
     } finally { setBusy(false); }
   }
-  return <KeyboardAvoidingView style={{ flex: 1 }} behavior="height"><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[s.page, { flexGrow: 1, justifyContent: "center", paddingVertical: theme.spacing[6] }]}>
+  return <KeyboardAvoidingView style={{ flex: 1 }} behavior="height" onLayout={() => {
+    if (!frameLogged.current) { frameLogged.current = true; console.info("Kriyan startup: sign-in form frame"); }
+  }}><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[s.page, { flexGrow: 1, justifyContent: "center", paddingVertical: theme.spacing[6] }]}>
     <T title>Kriyan</T>
     <T quiet>Organise your life with the AI you already use.</T>
     <T style={s.subtitle}>{creating ? "Create your Kriyan account" : "Sign in"}</T>

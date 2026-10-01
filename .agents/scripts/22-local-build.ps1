@@ -4,8 +4,8 @@ $logDirectory = Join-Path $taskRoot '.agents/logs/22'
 New-Item -ItemType Directory -Force -Path $logDirectory | Out-Null
 $memory = Get-CimInstance Win32_OperatingSystem
 $freeCommitGB = [math]::Round($memory.FreeVirtualMemory / 1MB, 2)
-while ($memory.FreeVirtualMemory -lt 5MB) {
-  Write-Output "Waiting before local build: $freeCommitGB GB free commit; 5 GB required."
+while ($memory.FreeVirtualMemory -lt 3MB) {
+  Write-Output "Waiting before local build: $freeCommitGB GB free commit; 3 GB required."
   Start-Sleep -Seconds 10
   $memory = Get-CimInstance Win32_OperatingSystem
   $freeCommitGB = [math]::Round($memory.FreeVirtualMemory / 1MB, 2)

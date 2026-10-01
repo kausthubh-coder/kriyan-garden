@@ -2,9 +2,29 @@
 
 1 October 2026. Branch `v2`.
 
-Status: PARTIAL, blocked by available host memory. Brief 22 Job 1 has not completed. The release is not published. Jobs 2 to 5 have not started in this continuation.
+Status: PARTIAL, Brief 22 Job 1 is running under the revised memory rules. The release is not published. Jobs 2 to 5 have not started in this continuation.
 
 ## Brief 22 continuation
+
+The reviewer revised the memory policy on 1 October: start at 3 GB free commit and stop the owned heavy process below 1 GB, checked every 10 seconds. Diagnosis now starts with the existing signed APK, without a build. The gate scripts follow that policy. The watchdog records free commit and its owned process IDs and checks creation times before termination. It never targets owner applications or Codex desktop helpers.
+
+The first API 36 launch silently raised the requested 1024 MB to 2560 MB. The watchdog stopped it at 668,804 KB free commit. A QEMU RAM override then produced `MemTotal: 988624 kB` in the guest. API 36 booted, but its APK installation crossed the memory floor; the watchdog stopped it at 1,026,628 KB. Those incomplete installations are setup failures, not application defects. An API 30 image was installed, but that emulator attempt was interrupted before app verification. The owner then freed commit, and this continuation returned to the original API 36 AVD.
+
+On API 36, the existing EAS APK installed using `adb install --no-streaming -r`. The host's public DNS requests were refused on the campus network. The emulator launcher now includes the connected adapter's DNS servers before the requested public fallbacks, without changing host settings. A real device HTTP request returned 204 before testing. Initial captures obscured by a System UI ANR dialog were discarded and repeated after the guest settled.
+
+The settled original APK still showed a white startup surface at the five-second capture. Its ten-second online capture showed the sign-in form. Logcat recorded `Displayed` at +2.157 seconds, `Running "main"` at +4.435 seconds and Clerk initialization at +5.290 seconds, with no JavaScript crash. Airplane-mode startup remained on "Loading your account." at ten seconds. This establishes the unset native/splash colours and unbounded account startup as real defects, independently of the earlier dead network. Receipts: `.agents/logs/22/original-{online,offline}-*.png`, matching XML/logcat, and `original-network-{on,off}.txt`.
+
+The local fix generates Expo's native and splash backgrounds from the shared token, loads fonts and Clerk in parallel, hides the splash when the dark app frame lays out, and bounds account startup with a 2.5-second timer outside Clerk's provider. It offers the requested message and "Try again". Native Clerk client synchronization is disabled because the app uses custom React Native auth controls and browser SSO, rather than Clerk native components. Startup frame diagnostics will measure the form and retry view layouts. Mobile typecheck and all three mobile helper tests pass.
+
+Local build preparation caught three problems: the initial token generator wrote CSS OKLCH into native resources, PowerShell split an unquoted dotted Kotlin argument, and the Expo splash plugin referenced a missing logo when configured without an image. The generator now uses the existing native colour conversion and existing Kriyan foreground icon; the compiler argument is quoted. The background test guards Android-compatible colours and the logo configuration. The first successful local build reported `BUILD SUCCESSFUL in 21m 1s` and produced a development-signed, x86_64-only release-mode APK, 51,883,855 bytes, SHA-256 `a8f97159875d4fd3e99665f5b8e8749dc09b2ab09175c8b30797683a1399a9a5`. It is an emulator verification artifact, not the release APK. Restart receipts are `gradle-{native-color,argument,splash-logo}-restart.{stdout,stderr}.log` and `gradle-before-retry.{stdout,stderr}.log` in `.agents/logs/22/`.
+
+After the API 36 guest settled, that APK's signed-out form laid out 1,562 ms after the first app layout, or 1,146 ms after Android's `Displayed` event. Its offline retry view laid out after 2,533 ms, or 2,066 ms after `Displayed`. Captures show the dark native Kriyan splash and dark form/error screens. Receipts are `fixed-{online,offline}-milestones.json`, matching logcat, XML and timed PNG captures. The initial boot's System UI ANR obscured the screen; those discarded receipts are retained in `.agents/logs/22/boot-anr/`.
+
+The reconnection check exposed a remaining defect: the device returned HTTP 204 after leaving airplane mode, but tapping "Try again" did not recover sign-in. Source inspection found that the public Clerk `load()` call without options restores its browser defaults. Retry now supplies Expo's native headless options. Verification of that correction is pending the rebuild. During its first rebuild, Ninja launched 18 C++ compilers independently of Gradle's one-worker setting. The owned build was stopped before the memory floor; no owner process was stopped. The build helper now defines one-compiler and one-linker CMake job pools. Receipt: `gradle-ninja-memory-stop.{stdout,stderr}.log`.
+
+At 19:58:36 America/New_York, the following guarded rebuild was stopped by the watchdog at 1,036,200 KB free commit. Its daemon-disappeared error is the expected result of that stop, not a passing build. Free commit recovered to only 1.98 GB after the stop, and the largest owner browser process measured 18.01 GB private memory. No Java or emulator process remained. The owner was asked to free commit again, and the next build must wait for the existing 3 GB gate. Receipts: `gradle-job-pool-watchdog-stop.{stdout,stderr}.log` and `gradle-memory.jsonl`. The latest preparation checks pass: three mobile tests, fourteen assertions, JavaScript syntax and zero PowerShell parser errors. Job 1 remains incomplete until retry recovery and signed-in relaunch pass on the rebuilt APK.
+
+The paragraphs below describe the earlier attempt under the superseded 5 GB rule.
 
 The initial Windows reading was 4,663,860 KB of free virtual memory, below the brief's 5 GB minimum. No Kriyan Gradle, emulator or QA process remained. Five unused Playwright/security helper processes were verified as descendants of this Codex session and stopped. Owner applications and other sessions were left running. The guarded build then refused to start at 4.83 GB free commit, exit 1. Receipt: `.agents/logs/22/local-build-original.log`.
 
@@ -20,7 +40,7 @@ Verification of the preparation: PowerShell parsing reports zero errors for the 
 
 Web QA uses a compiled local build and the live sites `https://kriyan.app` and `https://app.kriyan.app`. Local data belongs to disposable users on `avid-stingray-875`; production data belongs to disposable users on `calm-salamander-183`. Both use the existing Clerk development instance. No Clerk instance settings, custom scopes or API-key settings were changed. Brief 18 supersedes those parts of Brief 15.
 
-Production fixes require the reviewer to deploy the web and backend commits. This session does not deploy production. The authorized `convex dev --once` command synchronizes the development backend only.
+The reviewer has deployed the Brief 21 web and backend fixes. Brief 22 Job 4 will verify their production behavior. This session does not push or deploy. Earlier authorized `convex dev --once` runs synchronized only the development backend.
 
 Heavy checks run sequentially. Every browser used for QA is headless. Every Android emulator must use `-no-window -no-audio`. The owner's applications are not terminated.
 

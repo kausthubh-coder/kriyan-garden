@@ -10,14 +10,21 @@
     "userInterfaceStyle": "dark",
     "android": {
       "package": "app.kriyan.android",
-      "versionCode": 2
+      "versionCode": 2,
+      "backgroundColor": "#110f0d"
     },
     "plugins": [
       "expo-router",
       "expo-secure-store",
       "expo-font",
       "expo-notifications",
-      "expo-splash-screen",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#110f0d",
+          "image": "./assets/icons/foreground.png"
+        }
+      ],
       "@clerk/expo",
       "@clerk/expo-google-signin",
       "expo-quick-actions",
@@ -39,6 +46,7 @@
         "projectId": "6c332d90-6af8-4ea6-8c10-4ee8e0e93562"
       }
     },
-    "owner": "kausthubh"
+    "owner": "kausthubh",
+    "backgroundColor": "#110f0d"
   }
 }

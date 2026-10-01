@@ -7,7 +7,7 @@ import {
   layout,
   controls,
 } from "../src/tokens";
-import { nativeThemeSource } from "./nativeTokens";
+import { nativeColor, nativeThemeSource } from "./nativeTokens";
 
 const declarations = [
   "color-scheme: dark;",
@@ -45,3 +45,20 @@ for (const path of [
 console.log("Generated core and web tokens.css from tokens.ts");
 await Bun.write(new URL("../../../apps/mobile/src/theme.ts", import.meta.url), nativeThemeSource());
 console.log("Generated mobile theme.ts from tokens.ts");
+// Native startup renders before React and therefore needs the same token in
+// Expo's generated Android window and splash configuration.
+const configPath = new URL("../../../apps/mobile/app.json", import.meta.url);
+type Plugin = string | [string, Record<string, unknown>];
+const config = await Bun.file(configPath).json() as {
+  expo: { backgroundColor?: string; android: { backgroundColor?: string }; plugins: Plugin[] };
+};
+const backgroundColor = nativeColor(colors.bg);
+config.expo.backgroundColor = backgroundColor;
+config.expo.android.backgroundColor = backgroundColor;
+config.expo.plugins = config.expo.plugins.map<Plugin>(plugin =>
+  (typeof plugin === "string" ? plugin : plugin[0]) === "expo-splash-screen"
+    ? ["expo-splash-screen", { ...(typeof plugin === "string" ? {} : plugin[1]), backgroundColor, image: "./assets/icons/foreground.png" }]
+    : plugin,
+);
+await Bun.write(configPath, `${JSON.stringify(config, null, 2)}\n`);
+console.log("Generated native startup background from tokens.ts");

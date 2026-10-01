@@ -304,10 +304,12 @@ export function Sheet({
 export function Status({
   message,
   retry,
+  retryLabel = "Retry loading",
   loading = false,
 }: {
   message: string;
   retry?: () => void;
+  retryLabel?: string;
   loading?: boolean;
 }) {
   return (
@@ -316,7 +318,7 @@ export function Status({
       <T accessibilityRole={retry ? "alert" : undefined} quiet>
         {message}
       </T>
-      {retry && <Button label="Retry loading" onPress={retry} />}
+      {retry && <Button label={retryLabel} onPress={retry} />}
     </View>
   );
 }

@@ -5,6 +5,7 @@ $previousLocation = Get-Location
 $mappedHere = $false
 $savedEnvironment = @{}
 $environmentNames = @('ANDROID_HOME', 'ANDROID_SDK_ROOT', 'GRADLE_USER_HOME', 'TEMP', 'TMP', 'CI', 'NODE_ENV')
+$watchdog = $null
 foreach ($name in $environmentNames) { $savedEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
 try {
   if (-not (Get-Command java -ErrorAction SilentlyContinue)) { throw 'An existing Java installation is required. Install a supported JDK before building.' }
@@ -21,6 +22,14 @@ try {
   }
   $env:CI = '1'
   $env:NODE_ENV = 'production'
+  $freeCommitKB = (Get-CimInstance Win32_OperatingSystem).FreeVirtualMemory
+  if ($freeCommitKB -lt 3MB) { throw 'Local Android build needs at least 3 GB of free commit.' }
+  if (Get-CimInstance Win32_Process | Where-Object { $_.Name -match '^(emulator|qemu-system)' }) { throw 'Stop our emulator before starting the local build.' }
+  $watchdogPath = Join-Path $taskRoot '.agents/scripts/22-memory-watchdog.ps1'
+  if (-not (Test-Path -LiteralPath $watchdogPath)) { throw 'The Android memory watchdog is missing.' }
+  $memoryLog = Join-Path $taskRoot '.agents/logs/22/gradle-memory.jsonl'
+  New-Item -ItemType Directory -Force -Path (Split-Path $memoryLog -Parent) | Out-Null
+  $watchdog = Start-Process powershell.exe -WindowStyle Hidden -PassThru -ArgumentList @('-NoProfile', '-File', ('"' + $watchdogPath + '"'), '-OwnedPid', $PID, '-Receipt', ('"' + $memoryLog + '"'), '-Build')
   Set-Location (Join-Path $taskRoot 'apps/mobile')
   & bunx expo prebuild --platform android --no-install
   if ($LASTEXITCODE -ne 0) { throw 'Android prebuild failed.' }
@@ -55,7 +64,15 @@ rootProject.children.each { descriptor ->
   @'
 allprojects {
   afterEvaluate { project ->
-    if (project.hasProperty('android')) project.android.externalNativeBuild.cmake.version = '3.31.6'
+    if (project.hasProperty('android')) {
+      project.android.externalNativeBuild.cmake.version = '3.31.6'
+      // Gradle workers do not limit Ninja's independent compiler parallelism.
+      project.android.defaultConfig.externalNativeBuild.cmake.arguments += [
+        '-DCMAKE_JOB_POOLS=kriyan_compile=1;kriyan_link=1',
+        '-DCMAKE_JOB_POOL_COMPILE=kriyan_compile',
+        '-DCMAKE_JOB_POOL_LINK=kriyan_link'
+      ]
+    }
   }
 }
 '@ | Set-Content -LiteralPath $initFile
@@ -69,14 +86,16 @@ allprojects {
   $env:NODE_ENV = 'production'
   Set-Location "$Drive`:/apps/mobile/android"
   $freeCommitKB = (Get-CimInstance Win32_OperatingSystem).FreeVirtualMemory
-  while ($freeCommitKB -lt 5MB) {
-    Write-Output "Waiting before Gradle: $([math]::Round($freeCommitKB / 1MB, 2)) GB free commit; 5 GB required."
+  while ($freeCommitKB -lt 3MB) {
+    Write-Output "Waiting before Gradle: $([math]::Round($freeCommitKB / 1MB, 2)) GB free commit; 3 GB required."
     Start-Sleep -Seconds 10
     $freeCommitKB = (Get-CimInstance Win32_OperatingSystem).FreeVirtualMemory
   }
   Write-Output "Gradle memory gate passed: $([math]::Round($freeCommitKB / 1MB, 2)) GB free commit."
+  $watchdog.Refresh()
+  if ($watchdog.HasExited) { throw 'The memory watchdog exited before Gradle. Stop this build and inspect its memory receipt.' }
   if (Get-CimInstance Win32_Process | Where-Object { $_.Name -match '^(emulator|qemu-system)' }) { throw 'Stop our emulator before starting Gradle.' }
-  & ./gradlew.bat :app:assembleRelease --console=plain --no-daemon -PreactNativeArchitectures=x86_64 --max-workers=1 -Pkotlin.compiler.execution.strategy=in-process '-Dorg.gradle.jvmargs=-Xmx1536m -XX:MaxMetaspaceSize=512m' -I "$Drive`:/.agents/android-cmake.init.gradle"
+  & ./gradlew.bat :app:assembleRelease --console=plain --no-daemon '-PreactNativeArchitectures=x86_64' --max-workers=1 '-Pkotlin.compiler.execution.strategy=in-process' '-Dorg.gradle.jvmargs=-Xmx1536m -XX:MaxMetaspaceSize=512m' -I "$Drive`:/.agents/android-cmake.init.gradle"
   if ($LASTEXITCODE -ne 0) { throw 'Local APK build failed. Inspect the Gradle output.' }
   $artifactDirectory = Join-Path $taskRoot '.agents/builds'
   New-Item -ItemType Directory -Force -Path $artifactDirectory | Out-Null
@@ -84,6 +103,7 @@ allprojects {
   Copy-Item -LiteralPath (Join-Path $nativeDirectory 'app/build/outputs/apk/release/app-release.apk') -Destination $apk
   Write-Output "Development-signed emulator APK: $apk"
 } finally {
+  if ($watchdog -and -not $watchdog.HasExited) { Stop-Process -Id $watchdog.Id -ErrorAction SilentlyContinue }
   Set-Location $previousLocation
   foreach ($name in $environmentNames) { [Environment]::SetEnvironmentVariable($name, $savedEnvironment[$name], 'Process') }
   if ($mappedHere) { & subst "$Drive`:" /D }
