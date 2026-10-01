@@ -13,7 +13,8 @@
     "build": "bun run --filter @kriyan/web build",
     "lint": "bun run --filter '*' lint",
     "typecheck": "bun run --filter @kriyan/web typegen && bun run --filter '*' typecheck && tsc -p scripts",
-    "test": "bun run packages/core/scripts/quick-add-docs.ts --check && bun run --sequential --filter '*' test",
+    "test": "node --test .agents/skills/test-kriyan/scripts/lib/skill.test.mjs && bun run packages/core/scripts/quick-add-docs.ts --check && bun run --sequential --filter '*' test",
+    "skills:sync": "node scripts/sync-skills.mjs",
     "e2e": "bun run --filter @kriyan/web e2e",
     "docs:quick-add": "bun run packages/core/scripts/quick-add-docs.ts"
   },

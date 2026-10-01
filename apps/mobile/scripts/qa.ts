@@ -1,34 +1,18 @@
 // Test identity and credentials stay in memory and are never logged or saved.
-import { createClerkClient } from "@clerk/backend";
+import { createTestUser, deleteTestUser, clerkClient } from "../../../.agents/skills/test-kriyan/scripts/lib/users.mjs";
+import { configuration } from "../../../.agents/skills/test-kriyan/scripts/lib/config.mjs";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../../packages/backend/convex/_generated/api";
 import { localClock } from "@kriyan/core";
-const values = new Map<string, string>();
-for (const path of ["apps/web/.env.local", "packages/backend/.env.local"]) {
-  for (const line of (await Bun.file(path).text()).split(/\r?\n/)) {
-    const match = /^([A-Z_]+)=(.*)$/.exec(line);
-    if (match) values.set(match[1], match[2].replace(/^['"]|['"]$/g, ""));
-  }
-}
-const key = values.get("CLERK_SECRET_KEY"),
-  url = values.get("NEXT_PUBLIC_CONVEX_URL");
-if (!key?.startsWith("sk_test_") || !url)
-  throw new Error(
-    "A Clerk test instance and public Convex configuration are required.",
-  );
-const clerk = createClerkClient({ secretKey: key }),
-  email = `android-ui-${Date.now()}+clerk_test@example.com`,
-  password = `KriyanQA${crypto.randomUUID().replaceAll("-", "")}9a`;
-const user = await clerk.users.createUser({
-  emailAddress: [email],
-  password,
-  firstName: "Android UI QA",
-  privateMetadata: { disposableKriyanAndroidTest: true },
-});
+const url = configuration().NEXT_PUBLIC_CONVEX_URL;
+const clerk = clerkClient();
+const user = await createTestUser({ tag: "android-ui", password: true });
+const { email, password } = user;
+if (!password) throw new Error("The QA user needs a password.");
 const session = await clerk.sessions
   .createSession({ userId: user.id })
   .catch(async () => {
-    await clerk.users.deleteUser(user.id);
+    await deleteTestUser(user.id);
     throw new Error("Test session failed; the test user was removed.");
   });
 const client = new ConvexHttpClient(url);
@@ -47,9 +31,7 @@ async function ui(...args: string[]) {
 let cleaned = false;
 async function cleanup() {
   if (cleaned) return;
-  await refresh();
-  await client.mutation(api.profiles.resetAll, {});
-  await clerk.users.deleteUser(user.id);
+  await deleteTestUser(user.id);
   cleaned = true;
   await Bun.write(
     ".agents/logs/11-cleanup.json",

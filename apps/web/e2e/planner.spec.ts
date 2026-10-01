@@ -1,5 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { addDays } from "@kriyan/core";
+import { api } from "@kriyan/backend/convex/_generated/api";
+import { backendFor } from "./backend";
 test.describe.configure({ mode: "serial" });
 async function today(page: Page) {
   return page.evaluate(() => {
@@ -62,10 +64,18 @@ test("onboarding saves answers, resumes by URL and finishes with real tasks", as
     page.getByText("CS 201 lecture", { exact: true }).first(),
   ).toBeVisible();
   await page.getByRole("button", { name: "Continue", exact: true }).click();
-  await page.getByLabel("Goal title").fill("Read ten books");
+  await page.getByLabel("Goal title").fill("Read ten books during onboarding");
   await page.getByRole("button", { name: "In 3 months", exact: true }).click();
   await page.getByRole("button", { name: "A number", exact: true }).click();
   await page.getByLabel("Unit", { exact: true }).fill("books");
+  // Commit the inline field and verify its read-back before leaving this step.
+  // Clicking Continue also blurs it, racing the earlier incomplete metric save.
+  await page.getByLabel("Unit", { exact: true }).press("Tab");
+  const backend = await backendFor(page);
+  await expect.poll(async () =>
+    (await backend.query(api.goals.list, {})).find((goal) => goal.title === "Read ten books during onboarding")?.metric,
+  ).toEqual({ kind: "number", current: 0, target: 10, unit: "books" });
+  await expect(page.getByRole("status").filter({ hasText: "Saving" })).toHaveCount(0);
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page
     .getByLabel("Task", { exact: true })
