@@ -23,6 +23,17 @@ function setup() {
   };
 }
 afterEach(() => vi.useRealTimers());
+test("a failed reminder transition cannot change another owner's job", async () => {
+  const { t, a } = setup();
+  await a.mutation(api.profiles.ensure, { timezone: "America/New_York" });
+  await a.mutation(api.tasks.create, { title: "Private reminder", date: "2026-03-08", time: "10:00", reminders: [{ type: "at_start" }] });
+  const job = await t.run(ctx => ctx.db.query("reminderJobs").withIndex("by_owner", q => q.eq("ownerId", "reminder-a")).first());
+  if (!job) throw new Error("Missing reminder fixture");
+  await t.mutation(internal.reminders.failed, { ownerId: "reminder-b", jobId: job._id });
+  expect(await t.run(ctx => ctx.db.get(job._id))).toEqual(job);
+  await t.mutation(internal.reminders.failed, { ownerId: "reminder-a", jobId: job._id });
+  expect(await t.run(ctx => ctx.db.get(job._id))).toMatchObject({ state: "failed" });
+});
 test("scheduling uses profile timezone, cancels on move, complete, delete and date removal", async () => {
   const { t, a } = setup();
   await a.mutation(api.profiles.ensure, { timezone: "America/New_York" });

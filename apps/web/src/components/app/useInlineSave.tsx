@@ -5,7 +5,7 @@ import { api } from "@kriyan/backend/convex/_generated/api";
 import type { Profile } from "./types";
 import s from "./Onboarding.module.css";
 
-export const SetupSaveContext = createContext<((save: Promise<boolean>) => void) | null>(null);
+export const SetupSaveContext = createContext<((save: Promise<boolean>, superseded?: Promise<boolean>) => void) | null>(null);
 
 export function useInlineSave() {
   const register = useContext(SetupSaveContext);
@@ -40,9 +40,10 @@ export function useInlineSave() {
         return false;
       }
     };
-    const result = (queues.current[key] ?? Promise.resolve(true)).then(next);
+    const previous = queues.current[key];
+    const result = (previous ?? Promise.resolve(true)).then(next);
     queues.current[key] = result;
-    register?.(result);
+    register?.(result, previous);
     return result;
   }
   return { run, feedback };

@@ -66,6 +66,8 @@ test("onboarding saves answers, resumes by URL and finishes with real tasks", as
   await page.getByRole("button", { name: "In 3 months", exact: true }).click();
   await page.getByRole("button", { name: "A number", exact: true }).click();
   await page.getByLabel("Unit", { exact: true }).fill("books");
+  await page.getByLabel("Unit", { exact: true }).press("Tab");
+  await expect(page.locator("main").getByRole("alert")).toHaveCount(0);
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page
     .getByLabel("Task", { exact: true })
@@ -157,7 +159,7 @@ test("command palette finds a title and opens its task", async ({ page }) => {
   const palette = page.getByRole("dialog", { name: "Search and commands" });
   await palette.getByRole("combobox", { name: "Search" }).fill("E2E tray task");
   await expect(
-    palette.getByRole("button", { name: /^E2E tray task/ }),
+    palette.getByRole("option", { name: /^E2E tray task/ }),
   ).toBeVisible();
   await page.keyboard.press("Enter");
   await expect(

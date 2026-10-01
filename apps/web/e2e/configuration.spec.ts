@@ -33,13 +33,13 @@ test("goals save number progress, milestones and task progress", async ({
     await expect(dialog).not.toBeVisible();
     return page.locator("section").filter({ hasText: title });
   }
-  const number = await create("Read ten books", "number");
+  const number = await create("QA configuration books", "number");
   await expect(
     number.locator("button > span").filter({ hasText: /^2books$/ }),
   ).toBeVisible();
   await expect(number.locator("input, select")).toHaveCount(0);
   const trigger = number.getByRole("button", {
-    name: "Read ten books",
+    name: "QA configuration books",
     exact: true,
   });
   await trigger.click();
@@ -162,7 +162,7 @@ test("goals save number progress, milestones and task progress", async ({
   await page.keyboard.press("Control+k");
   const palette = page.getByRole("dialog", { name: "Search and commands" });
   await palette.getByRole("combobox", { name: "Search" }).fill("Gym");
-  await expect(palette.getByRole("button", { name: /^Gym/ })).toBeVisible();
+  await expect(palette.getByRole("option", { name: /^Gym/ })).toBeVisible();
   await page.keyboard.press("Enter");
   const panel = page.getByRole("dialog", { name: "Task details" });
   await panel.locator('[data-property="area"]').click();
@@ -324,7 +324,7 @@ test("dialogs and panels close with Escape and restore focus at both sizes", asy
       animations: "disabled",
     });
     const goal = page.getByRole("button", {
-      name: "Read ten books",
+      name: "QA configuration books",
       exact: true,
     });
     await goal.click();
