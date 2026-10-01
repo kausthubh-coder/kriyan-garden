@@ -15,6 +15,7 @@ import {
   longDate,
   plannedMinutes,
   weekdayName,
+  plannerCopy,
 } from "@kriyan/core";
 import type { TaskCreate, TaskPatch } from "@kriyan/backend/convex/validators";
 import type { Id } from "@kriyan/backend/convex/_generated/dataModel";
@@ -187,14 +188,15 @@ function Planner() {
     ),
     dated = shown.filter((task) => task.date === date),
     active = dated.filter((task) => task.status === "active");
-  const summary = daySummary({
+  const firstRun = !tasks.length && profile.onboardingDraft?.["planner.firstTaskAdded"] !== "1";
+  const summary = dated.length ? daySummary({
     left: active.length,
     total: dated.length,
     plannedMinutes: plannedMinutes(dated),
     // Keep the compact header to the reference's count and planned time.
     // No-length tasks retain their outlined markers and property value.
     withoutLength: 0,
-  });
+  }) : filter !== "all" ? `Nothing in ${areas.find((area) => area._id === filter)?.name}.` : firstRun ? plannerCopy.firstDay : plannerCopy.emptyDay;
   const currentTaskId = taskId ?? params.taskId;
   const selected = tasks.find((task) => task._id === currentTaskId);
   const row = (task: Task) => (
@@ -218,11 +220,7 @@ function Planner() {
   };
   return (
     <View style={{ flex: 1 }}>
-      <ScrollView
-        scrollEnabled={!dragging}
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={s.page}
-      >
+      <View style={[s.page, { flex: 1 }]}>
         <Header
           title={
             tab === "day"
@@ -288,10 +286,9 @@ function Planner() {
           ))}
         </View>
         {!data.connected && (
-          <T quiet accessibilityLiveRegion="polite">
-            Offline, changes will sync
-          </T>
+          <T quiet accessibilityLiveRegion="polite">Offline, changes will sync</T>
         )}
+        <ScrollView style={{ flex: 1 }} scrollEnabled={!dragging} keyboardShouldPersistTaps="handled">
         {error && <Status message={error} retry={() => setError("")} />}
         {shareError && (
           <T accessibilityRole="alert">
@@ -306,6 +303,9 @@ function Planner() {
                 (t) => filter === "all" || t.areaId === filter,
               ),
               anytime: day.anytime.filter(
+                (t) => filter === "all" || t.areaId === filter,
+              ),
+              unscheduled: day.unscheduled.filter(
                 (t) => filter === "all" || t.areaId === filter,
               ),
               events: day.events.filter(
@@ -325,12 +325,15 @@ function Planner() {
             open={(task) => setTaskId(task._id)}
             update={write}
             dragging={setDragging}
+            firstRun={firstRun}
+            add={(text = "") => { setInitialText(text); setAdding(true); }}
           />
         )}
         {tab === "list" && (
           <>
+            <Button label="Add a task" textOnly onPress={() => setAdding(true)} />
             {!dated.length && (
-              <Status message="Nothing planned for this day. Add a task to begin." />
+              <T quiet>{filter === "all" ? date === clock.today ? plannerCopy.emptyList : `Nothing planned for ${weekdayName(date)}.` : `Nothing in ${areas.find((area) => area._id === filter)?.name}.`}</T>
             )}
             {areas
               .filter((a) => filter === "all" || a._id === filter)
@@ -388,7 +391,8 @@ function Planner() {
             }}
           />
         )}
-      </ScrollView>
+        </ScrollView>
+      </View>
       {undo && (
         <View
           style={[

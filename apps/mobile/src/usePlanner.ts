@@ -6,6 +6,7 @@ export function usePlanner(selectedDate: string | null) {
   const client = useConvex(),
     { isAuthenticated } = useConvexAuth();
   const ensure = useMutation(api.profiles.ensure);
+  const saveGuidance = useMutation(api.profiles.saveOnboarding);
   const [ready, setReady] = useState(false),
     [error, setError] = useState(""),
     [attempt, setAttempt] = useState(0);
@@ -48,6 +49,12 @@ export function usePlanner(selectedDate: string | null) {
       api.week.get,
       skip ? "skip" : { startDate: weekStart(date) },
     );
+  const hasTasks = !!tasks?.length;
+  const firstTaskAdded = profile?.onboardingDraft?.["planner.firstTaskAdded"] === "1";
+  useEffect(() => {
+    if (!hasTasks || firstTaskAdded) return;
+    void saveGuidance({ drafts: { "planner.firstTaskAdded": "1" } }).catch(() => setError("Your planner hint could not be saved. Check your connection and retry loading."));
+  }, [hasTasks, firstTaskAdded, saveGuidance]);
   const subscribe = useCallback(
     (changed: () => void) => client.subscribeToConnectionState(() => changed()),
     [client],

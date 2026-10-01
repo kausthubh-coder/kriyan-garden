@@ -25,7 +25,7 @@ const headings = [
   "What will you do first?",
 ];
 const descriptions = [
-  "Kriyan sorts everything into areas. These three are a starting point; rename them, remove them, or add your own.",
+  "Kriyan sorts everything into areas. These are a starting point; rename them, remove them, or add your own.",
   "Add projects and courses to keep related tasks together.",
   "Add your classes and meetings to see the time you have left.",
   "Choose one goal to keep your next steps in view.",
@@ -111,9 +111,9 @@ export function Onboarding({
               onChangeText={setText}
               multiline
             />
-            <T quiet>Try: Review lecture notes today #school</T>
+            <T quiet>Try: Review notes today</T>
             <T quiet>Try: gym tomorrow 7am</T>
-            <T quiet>Try: Plan the launch Friday #business 45m</T>
+            <T quiet>Try: Plan the launch Friday 45m</T>
           </>
         )}
         {action.error && <T accessibilityRole="alert">{action.error}</T>}

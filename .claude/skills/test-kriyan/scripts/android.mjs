@@ -97,7 +97,7 @@ await main(async () => {
       if (!values.password) throw new UsageError('This Android app uses password-first sign-in. Create the test user with --password and pass it here; 424242 handles any subsequent email verification.');
       await tap('Password'); await input(values.password);
     }
-    await adb('shell', 'input', 'keyevent', '4'); await tap('Sign in');
+    await adb('shell', 'input', 'keyevent', '4'); await tap(hasPassword ? 'Sign in' : 'Send code');
     const signInDeadline = Date.now() + 90_000;
     let verified = false;
     while (Date.now() < signInDeadline) {
@@ -110,7 +110,7 @@ await main(async () => {
       if (!verified && texts.some(text => /Verification code/.test(text))) {
         await tap('Verification code'); await input('424242'); await adb('shell', 'input', 'keyevent', '4'); await tap('Verify code'); verified = true;
       }
-      if (texts.some(text => /Sign-in failed|Verification failed/.test(text))) throw new UsageError('Android sign-in failed. Check the development user/password and app Clerk configuration.');
+      if (texts.some(text => /Sign-in failed|Verification failed|code could not be verified|code could not be sent/.test(text))) throw new UsageError('Android sign-in failed. Check the development user and app Clerk configuration.');
     }
     throw new UsageError('Android sign-in timed out before reaching the planner or onboarding.');
   } finally {

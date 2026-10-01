@@ -1,5 +1,5 @@
 import { weekdayName, relativeDay } from "@kriyan/core";
-import { formatMinutes } from "@kriyan/core";
+import { plannerCopy, formatMinutes } from "@kriyan/core";
 import { Check } from "./Check";
 import { Filters } from "./Filters";
 import {
@@ -127,12 +127,12 @@ export function Tray({
             )
             .map(card)
         ) : (
-          <p className={s.empty}>{filter !== "all" ? `Nothing in ${areas.find((area) => area._id === filter)?.name}.` : "Tasks for today without a time wait here."}</p>
+          <p className={s.empty}>{filter !== "all" ? `Nothing in ${areas.find((area) => area._id === filter)?.name}.` : plannerCopy.anytime}</p>
         )}
         <button className={s.trayAdd} onClick={add}><Icon name="plus" />Add a task<span className={s.kbd}>N</span></button>
         {hint && anytime.length > 0 && <div className={s.trayHint}>
-          <span className={s.fineHint}>Drag a task from the tray onto the timeline to give it a time.</span>
-          <span className={s.touchHint}>Tap a task to give it a time.</span>
+          <span className={s.fineHint}>{plannerCopy.dragHint}</span>
+          <span className={s.touchHint}>{plannerCopy.touchHint}</span>
           <button className={s.hintDismiss} onClick={dismissHint}>Got it</button>
         </div>}
       </section>
@@ -145,11 +145,11 @@ export function Tray({
         ) : unscheduled.length ? (
           unscheduled.map(card)
         ) : (
-          <p className={s.empty}>{filter !== "all" ? `Nothing in ${areas.find((area) => area._id === filter)?.name}.` : "Tasks without a day land here until you schedule them."}</p>
+          <p className={s.empty}>{filter !== "all" ? `Nothing in ${areas.find((area) => area._id === filter)?.name}.` : plannerCopy.undated}</p>
         )}
         {hint && !anytime.length && unscheduled.length > 0 && <div className={s.trayHint}>
-          <span className={s.fineHint}>Drag a task from the tray onto the timeline to give it a time.</span>
-          <span className={s.touchHint}>Tap a task to give it a time.</span>
+          <span className={s.fineHint}>{plannerCopy.dragHint}</span>
+          <span className={s.touchHint}>{plannerCopy.touchHint}</span>
           <button className={s.hintDismiss} onClick={dismissHint}>Got it</button>
         </div>}
       </section>

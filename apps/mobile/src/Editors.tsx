@@ -8,6 +8,8 @@ import {
   Field,
   Header,
   ListRow,
+  Surface,
+  Dot,
   PrimaryButton,
   QuietButton,
   Sheet,
@@ -113,15 +115,11 @@ export function AreasEditor({
             (project) => project.kind === "course",
           ).length;
         return onboarding ? (
-          <View key={area._id} style={s.heading}>
-            <View style={{ flex: 1 }}>
-              <ListRow
-                label={area.name}
-                disclosure={false}
-                color={areaColor(area)}
-                onPress={() => edit(area)}
-              />
-            </View>
+          <View key={area._id} style={[s.heading, { borderBottomWidth: 1, borderColor: ui.colors.line }]}>
+            <Surface label={area.name} onPress={() => edit(area)} style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: ui.spacing[2], minHeight: ui.control.row }}>
+              <Dot color={areaColor(area)} large />
+              <T style={{ fontFamily: "Schibsted500" }}>{area.name}</T>
+            </Surface>
             <TextButton
               label={`Remove ${area.name}`}
               icon="close"

@@ -1,18 +1,20 @@
 import { useCallback, useRef, useState, type ReactNode } from "react";
 import {
-  ScrollView,
   StyleSheet,
   View,
   useWindowDimensions,
 } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import * as Haptics from "expo-haptics";
+import { useMutation } from "convex/react";
+import { api } from "@kriyan/backend/convex/_generated/api";
 import {
   countText,
   layoutIntervals,
   minutesOf,
   shortDate,
   timeOf,
+  plannerCopy,
 } from "@kriyan/core";
 import { theme } from "./theme";
 import { snapTime, snapLength } from "./helpers";
@@ -50,6 +52,8 @@ export function DayTimeline({
   open,
   update,
   dragging,
+  firstRun,
+  add,
 }: {
   day: Day;
   areas: Area[];
@@ -62,6 +66,8 @@ export function DayTimeline({
   open: (task: Task) => void;
   update: (task: Task, patch: TaskPatch) => Promise<unknown>;
   dragging: (active: boolean) => void;
+  firstRun: boolean;
+  add: (text?: string) => void;
 }) {
   const { fontScale } = useWindowDimensions();
   const gutter = Math.max(
@@ -69,8 +75,6 @@ export function DayTimeline({
     ui.control.touch * Math.min(fontScale, 1.3),
   );
   const grid = useRef<View>(null),
-    timelineScroll = useRef<ScrollView>(null),
-    positionedDate = useRef<string | null>(null),
     gridTop = useRef(0),
     grabbedOffset = useRef(0),
     [selected, setSelected] = useState<string | null>(null),
@@ -79,6 +83,18 @@ export function DayTimeline({
   const start = profile.dayStartHour,
     end = profile.dayEndHour;
   const height = (end - start) * hh;
+  const saveGuidance = useMutation(api.profiles.saveOnboarding);
+  const [hintBusy, setHintBusy] = useState(false);
+  const [hintError, setHintError] = useState("");
+  const hint = profile.onboardingDraft?.["planner.hintDismissed"] !== "1";
+  const card = (task: Task) => <TaskCard key={task._id} task={task} area={areas.find((area) => area._id === task.areaId)} project={projects.find((project) => project._id === task.projectId)?.name} today={today} open={() => open(task)} toggle={() => toggle(task)} schedule={() => schedule(task)} />;
+  const guidance = <>{hint && (day.anytime.length > 0 || day.unscheduled.length > 0) && <View style={{ flexDirection: "row", alignItems: "center", gap: theme.spacing[1] }}>
+    <T quiet style={{ flex: 1 }}>{plannerCopy.phoneDragHint}</T>
+    <Button label="Got it" textOnly disabled={hintBusy} onPress={() => {
+      setHintBusy(true); setHintError("");
+      void saveGuidance({ drafts: { "planner.hintDismissed": "1" } }).catch(() => setHintError("The hint could not be dismissed. Check your connection and try again.")).finally(() => setHintBusy(false));
+    }} />
+  </View>}{hintError && <T accessibilityRole="alert">{hintError}</T>}</>;
   const pick = useCallback(
     (task: Task, absoluteY: number) => {
       grid.current?.measureInWindow((_x, y) => {
@@ -148,11 +164,11 @@ export function DayTimeline({
         title="Any time today"
         value={`${countText(day.anytime.filter((task) => task.status === "active").length, "task")} left`}
       />
-      {!day.anytime.some((task) => task.status === "active") && (
-        <T quiet>No any-time tasks. Add a task without a time.</T>
+      {!day.anytime.length && (
+        <T quiet>{plannerCopy.anytime}</T>
       )}
       {day.anytime
-        .filter((task) => task.status === "active")
+        .slice().sort((a, b) => Number(a.status === "completed") - Number(b.status === "completed"))
         .map((task) => (
           <TaskDrag
             key={task._id}
@@ -190,28 +206,14 @@ export function DayTimeline({
             </View>
           </TaskDrag>
         ))}
-      <ScrollView
-        ref={timelineScroll}
-        nestedScrollEnabled
-        scrollEnabled={!dragId}
-        style={{
-          height: ui.mobile.timelineViewport,
-          marginTop: theme.spacing[3],
-        }}
-      >
+      <Button label="Add a task" textOnly onPress={() => add()} />
+      {day.anytime.length > 0 && guidance}
+      <SectionHeading title="No date yet" />
+      {day.unscheduled.length ? day.unscheduled.map(card) : <T quiet>{plannerCopy.undated}</T>}
+      {!day.anytime.length && guidance}
+      <View style={{ marginTop: theme.spacing[3] }}>
         <View
           ref={grid}
-          onLayout={() => {
-            if (positionedDate.current === day.date) return;
-            positionedDate.current = day.date;
-            timelineScroll.current?.scrollTo({
-              y:
-                day.date === today
-                  ? Math.max(0, Math.floor(now / 60) - 1 - start) * hh
-                  : 0,
-              animated: false,
-            });
-          }}
           collapsable={false}
           style={{
             height,
@@ -219,6 +221,11 @@ export function DayTimeline({
             marginTop: theme.spacing[3],
           }}
         >
+          {firstRun && <View style={{ position: "absolute", top: Math.max(0, Math.min(height - hh * 3, ((now - start * 60) * hh) / 60)), left: 0, right: 0, zIndex: 4, backgroundColor: theme.colors.bg, padding: theme.spacing[2] }}>
+            <T style={{ fontFamily: "Schibsted600" }}>{plannerCopy.firstTaskTitle}</T>
+            <T quiet>{plannerCopy.firstTaskExplanation}</T>
+            {plannerCopy.examples.map((text) => <Button key={text} label={text} textOnly onPress={() => add(text)} />)}
+          </View>}
           {Array.from({ length: end - start + 1 }, (_, i) => (
             <View
               key={i}
@@ -460,7 +467,7 @@ export function DayTimeline({
             </View>
           )}
         </View>
-      </ScrollView>
+      </View>
       {day.timed
         .filter(
           (t) =>

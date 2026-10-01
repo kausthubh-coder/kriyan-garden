@@ -20,6 +20,7 @@ apps/web/playwright-report/
 .agents/downloads/
 .agents/gradle/
 .agents/builds/
+.agents/keys/
 .agents/android-cmake.init.gradle
 apps/mobile/.expo/
 apps/mobile/dist/

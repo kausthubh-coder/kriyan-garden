@@ -1,3 +1,4 @@
+import { plannerCopy } from "@kriyan/core";
 import { weekdayName } from "@kriyan/core";
 import { daySummary, formatMinutes, plannedMinutes } from "@kriyan/core";
 import { SideRail } from "./SideRail";
@@ -96,7 +97,7 @@ export function ListView(
                   ) : null;
                 })}
               {!dated.length && (
-                <p className={s.empty}>{p.filter !== "all" ? `Nothing in ${p.areas.find((area) => area._id === p.filter)?.name}.` : `Nothing planned for ${p.date === p.today ? "today" : weekdayName(p.date)}.`}</p>
+                <p className={s.empty}>{p.filter !== "all" ? `Nothing in ${p.areas.find((area) => area._id === p.filter)?.name}.` : p.date === p.today ? plannerCopy.emptyList : `Nothing planned for ${weekdayName(p.date)}.`}</p>
               )}
               {later.length > 0 && (
                 <section className={s.sec}>

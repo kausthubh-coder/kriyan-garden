@@ -6,12 +6,12 @@ Kriyan is an open-source planner that makes organising and planning your life ea
 
 [Open Kriyan](https://app.kriyan.app/app) | [Try the public demo](https://kriyan.app/demo) | [Read the docs](docs/site/index.md)
 
-## Four ways to plan
+## Get Kriyan
 
-- **Web:** Day, List, Week and Goals, with quick add, a timeline and task details.
-- **Android:** In development. The [latest GitHub release route](https://github.com/kausthubh-coder/kriyan-garden/releases/latest) is where an APK will appear when available. No verified APK is included here.
-- **MCP:** A remote endpoint for OAuth-capable AI clients. [Connect the AI you already use](docs/site/mcp.md). Real local OAuth and backend proofs are recorded in [the auth report](docs/reports/18-auth.md).
-- **CLI:** Browser sign-in, silent refresh and commands for your tasks and goals over the same API. [Read the CLI guide](docs/site/cli.md). npm publication is not claimed.
+- [Open the web app](https://app.kriyan.app/app).
+- [Download Android 1.0.0](https://github.com/kausthubh-coder/kriyan-garden/releases/latest/download/kriyan.apk), for Android 7.0 or newer. [Install guide](https://kriyan.app/download).
+- Connect your AI to [the MCP endpoint](https://app.kriyan.app/mcp) using [the setup guide](https://kriyan.app/docs/mcp).
+- Use the CLI from this checkout with `bun run kriyan login`. [CLI guide](https://kriyan.app/docs/cli).
 
 All four surfaces use one Convex backend and Clerk identity. The public demo uses the real web components with an isolated in-memory store. It never writes to your account and resets on reload.
 

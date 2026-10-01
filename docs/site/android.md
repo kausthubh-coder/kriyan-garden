@@ -6,7 +6,13 @@ The app connects to the same Clerk identity and Convex operations as the web app
 
 ## Install and update
 
-[Check the latest GitHub release](/download) for an Android APK. If the release has no APK asset, a download is not available yet. Download only from the project's release page, open the APK, and allow installs from that source when Android asks. You can turn that permission off after installation. Kriyan is not on the Play Store. You can [use the web app](https://app.kriyan.app/app) on your phone now. The landing page phone image shows the mobile web demo, labelled as such.
+[Download Kriyan 1.0.0](/download) for Android 7.0 or newer. The download page shows the release version and APK size, read from GitHub at build time with a static fallback. The stable asset is `kriyan.apk`; each release also includes `kriyan-<version>.apk` and its SHA-256 in the release notes.
+
+1. Download the APK.
+2. Allow installs from your browser when Android asks.
+3. Open the APK and tap Install.
+
+Android will warn about installing outside the Play Store; tap Settings and allow installs from your browser. You can turn that permission off after installation.
 
 Download updates from the same release page. An update must use the same package identity and signing key. Keep the existing app installed when updating. Web and Android use the same account and planner data on Convex.
 
@@ -36,17 +42,16 @@ If native directories are present while changing app configuration, run prebuild
 
 ## Authentication and push setup
 
-Email/password sign-in uses Clerk's current `useSignIn` API and secure token cache. The app handles [Device Trust email verification](https://clerk.com/docs/guides/development/custom-flows/authentication/device-trust), authenticator codes and backup codes. Google sign-in uses `@clerk/expo-google-signin` and `useSignInWithGoogle` from `@clerk/expo/google`. Configure the following public values locally and in the chosen EAS environment before building:
+Email-code sign-in uses Clerk's current `useSignIn` API and secure token cache. Enter your email, tap Send code, then enter the code and tap Verify code. Development test addresses accept `424242`. Continue with Google uses Clerk's browser-based `useSSO` flow with its shared development credentials. It does not require Google client IDs. The hosted product uses the same Clerk development instance as the web app.
+
+The production EAS profile includes these public values:
 
 ```text
 EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY
 EXPO_PUBLIC_CONVEX_URL
-EXPO_PUBLIC_EAS_PROJECT_ID
-EXPO_PUBLIC_CLERK_GOOGLE_WEB_CLIENT_ID
-EXPO_PUBLIC_CLERK_GOOGLE_ANDROID_CLIENT_ID
 ```
 
-The owner must register `app.kriyan.android` in Clerk and Google's Android OAuth settings with the SHA-1 of the actual signing certificate. Follow [Clerk's native Google guide](https://clerk.com/docs/expo/guides/configure/auth-strategies/sign-in-with-google). Rebuild after changing native configuration. There is no Apple sign-in.
+The application ID remains `app.kriyan.android`, and the EAS project ID is stored in `app.json`. The backend is the production Convex deployment. EAS owns the Android signing keystore; keep using that keystore for updates. There is no Apple sign-in.
 
 Set up an EAS project and Android Firebase/FCM v1 push credentials following [Expo's Android push setup](https://docs.expo.dev/push-notifications/fcm-credentials/). Link its project ID using `EXPO_PUBLIC_EAS_PROJECT_ID`. The owner configures the corresponding `google-services.json` through their build environment, outside version control. The app config reads `ANDROID_GOOGLE_SERVICES_FILE` if provided. No cloud settings or credentials are changed by the implementation task.
 
@@ -88,13 +93,15 @@ This ABI targets an x86_64 emulator. Use the EAS profiles for a multi-ABI APK su
 Only the owner runs release scripts after reviewing and validating the build:
 
 ```powershell
-./scripts/release-android.ps1 -Version 0.2.0
+./scripts/release-android.ps1 -Version 1.0.0
 ```
 
 ```sh
-bash scripts/release-android.sh 0.2.0
+bash scripts/release-android.sh 1.0.0
 ```
 
-The scripts bump `app.json` version and Android version code, build the production APK through EAS, download the completed artifact into `.agents/builds`, and create GitHub release `android-v<version>` with the APK attached. They require EAS and GitHub authentication and configured Android signing/push. A failed build leaves the version bump in the working tree for review; restore or choose another version before retrying. They do not commit or push code. Neither release script was run during implementation.
+The scripts resolve this checkout's repository with `gh repo view`, build with EAS when no APK is supplied, and create `android-v<version>` with both `kriyan.apk` and `kriyan-<version>.apk`. Notes include SHA-256, byte size, minimum Android version and installation steps. They require EAS and GitHub authentication. An existing APK can be published with `./scripts/release-android.ps1 -Version 1.0.0 -Apk <path>` or `./scripts/release-android.sh 1.0.0 <path>` after verifying it. The configured version must match. A failed build leaves any version bump in the working tree for review. The scripts do not commit or push code.
 
-The web `/download` route redirects to the repository's latest GitHub release. Until the owner publishes an Android release, that URL can point to an older release or return no release.
+The landing page and `/download` page link directly to the latest release's stable `kriyan.apk` asset. The repository URL lives in `KRIYAN_REPOSITORY` in `apps/web/src/lib/origins.ts`, so a repository rename changes one constant.
+
+The release tag targets the checked-out Git commit. That commit must already exist on GitHub. The scripts do not push commits.

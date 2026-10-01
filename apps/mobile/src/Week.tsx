@@ -6,6 +6,7 @@ import {
   plannedMinutes,
   shortDate,
   weekdayName,
+  plannerCopy,
 } from "@kriyan/core";
 import { Dot, QuietButton, SectionHeading, Surface, T, s, ui } from "./ui";
 import { areaColor, type Area, type Profile, type Task } from "./types";
@@ -46,6 +47,7 @@ export function Week({
       .sort((a, b) => (a.deadline ?? "").localeCompare(b.deadline ?? ""));
   return (
     <View>
+      {!week.some((day) => [...day.timed, ...day.anytime, ...day.events].some((item) => areas.some((area) => area._id === item.areaId))) && <T quiet>{plannerCopy.emptyWeek}</T>}
       <View
         style={{
           flexDirection: "row",

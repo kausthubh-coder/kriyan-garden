@@ -1,18 +1,24 @@
 import { mkdir } from "node:fs/promises";
 const serial = "emulator-5554";
 const adb = `${process.cwd()}/.agents/android-sdk/platform-tools/adb.exe`;
-const directory = ".agents/screenshots/11";
+const directory = process.env.KRIYAN_QA_SCREENSHOTS ?? ".agents/screenshots/20";
 async function run(args: string[]) {
   const command = Bun.spawn([adb, "-s", serial, ...args], {
     stdout: "pipe",
     stderr: "pipe",
   });
-  const output = await new Response(command.stdout).arrayBuffer();
-  if ((await command.exited) !== 0) throw new Error("ADB operation failed.");
+  const [output, error] = await Promise.all([new Response(command.stdout).arrayBuffer(), new Response(command.stderr).text()]);
+  if ((await command.exited) !== 0) {
+    const reason = /idle state/i.test(error) ? "UI did not become idle" : /not found|offline/i.test(error) ? "Device is unavailable" : "ADB operation failed";
+    throw new Error(`${reason}.`);
+  }
   return output;
 }
 async function nodes() {
-  await run(["shell", "uiautomator", "dump", "/sdcard/kriyan11.xml"]);
+  for (let attempt = 0; ; attempt++) {
+    try { await run(["shell", "uiautomator", "dump", "/sdcard/kriyan11.xml"]); break; }
+    catch (error) { if (attempt === 3) throw error; await Bun.sleep(500); }
+  }
   return new TextDecoder().decode(
     await run(["exec-out", "cat", "/sdcard/kriyan11.xml"]),
   );
@@ -32,12 +38,23 @@ await mkdir(directory, { recursive: true });
 if (operation === "capture") {
   if (!value || !/^[a-z0-9-]+$/.test(value))
     throw new Error("Invalid capture name.");
+  const xml = await nodes();
   await Bun.write(
     `${directory}/${value}.png`,
     await run(["exec-out", "screencap", "-p"]),
   );
-  await Bun.write(`${directory}/${value}.xml`, await nodes());
+  await Bun.write(`${directory}/${value}.xml`, xml);
   console.log(`Saved ${directory}/${value}.png`);
+} else if (operation === "wait") {
+  if (!value) throw new Error("Choose a UI label to wait for.");
+  const deadline = Date.now() + 90_000;
+  for (;;) {
+    const xml = await nodes();
+    if (xml.includes(`content-desc="${value}"`) || xml.includes(`text="${value}"`)) break;
+    if (Date.now() > deadline) throw new Error(`UI did not show: ${value}`);
+    await Bun.sleep(1000);
+  }
+  console.log(`Visible: ${value}`);
 } else if (operation === "dump" || operation === "targets") {
   const xml = await nodes(),
     rows = xml.match(/<node\b[^>]*>/g) ?? [];
@@ -138,16 +155,9 @@ else if (operation === "home") await run(["shell", "input", "keyevent", "3"]);
 else if (operation === "input") {
   await run(["shell", "input", "keycombination", "113", "29"]);
   await run(["shell", "input", "keyevent", "67"]);
-  for (const character of process.argv.slice(3).join(" ")) {
-    await run([
-      "shell",
-      "input",
-      "text",
-      character === " " ? "%s" : `'${character.replaceAll("'", "'\\''")}'`,
-    ]);
-    await Bun.sleep(100);
-  }
-} else if (operation === "scroll") {
+  const text = process.argv.slice(3).join(" ").replaceAll(" ", "%s").replaceAll("'", "'\\''");
+  await run(["shell", "input", "text", `'${text}'`]);
+} else if (operation === "scroll" || operation === "scroll-up") {
   const rows = (await nodes()).match(/<node\b[^>]*>/g) ?? [],
     node = rows.find((node) => node.includes('scrollable="true"'));
   if (!node) throw new Error("No scrollable UI target.");
@@ -158,12 +168,12 @@ else if (operation === "input") {
     "input",
     "swipe",
     String(x),
-    String(Math.round(top + (bottom - top) * 0.8)),
+    String(Math.round(top + (bottom - top) * (operation === "scroll-up" ? 0.2 : 0.8))),
     String(x),
-    String(Math.round(top + (bottom - top) * 0.2)),
+    String(Math.round(top + (bottom - top) * (operation === "scroll-up" ? 0.8 : 0.2))),
     "450",
   ]);
 } else
   throw new Error(
-    "Use dump, capture, targets, tap, hold, home, left, right, back, input or scroll.",
+    "Use dump, capture, targets, tap, hold, home, left, right, back, input, scroll or scroll-up.",
   );

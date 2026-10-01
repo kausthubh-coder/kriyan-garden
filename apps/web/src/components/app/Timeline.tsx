@@ -1,3 +1,4 @@
+import { plannerCopy } from "@kriyan/core";
 import { layoutIntervals, minutesOf, timeOf, timeValue } from "@kriyan/core";
 import { TimelineBlock, type Block } from "./TimelineBlock";
 import type { Area, Day, Goal, Project, PanelSection, Task } from "./types";
@@ -120,9 +121,9 @@ export function Timeline({
       )}
       {firstRun && !loading && <div className={s.firstRun} data-first-run="true"
         style={{ top: `calc(${(promptMinute - startHour * 60) / 60} * var(--hh) + ${showNow ? "var(--space-18)" : "0px"})` }}>
-        <b>Your day starts here.</b>
-        <p>Type a task the way you would say it. Give it a time and it lands on this timeline.</p>
-        <div className={s.chips}>{["lunch with Priya 1pm", "gym tomorrow 7am", "essay fri 5pm 2h"].map((text) =>
+        <b>{plannerCopy.firstTaskTitle}</b>
+        <p>{plannerCopy.firstTaskExplanation}</p>
+        <div className={s.chips}>{plannerCopy.examples.map((text) =>
           <button type="button" className={s.f} key={text} onClick={() => add?.(text)}>{text}</button>)}</div>
       </div>}
     </div>

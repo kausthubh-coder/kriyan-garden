@@ -1,4 +1,4 @@
-import { Component, type ReactNode } from "react";
+import { Component, useEffect, useState, type ReactNode } from "react";
 import { ClerkProvider, useAuth } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
 import { ConvexReactClient } from "convex/react";
@@ -12,9 +12,20 @@ import { StatusBar, View } from "react-native";
 import { Status } from "../src/ui";
 import { theme } from "../src/theme";
 const url = process.env.EXPO_PUBLIC_CONVEX_URL;
-const client = url
-  ? new ConvexReactClient(url, { unsavedChangesWarning: false })
-  : null;
+function AccountBackend({ children }: { children: ReactNode }) {
+  const { isLoaded, userId } = useAuth();
+  if (!isLoaded) return <StartupStatus loading message="Loading your account." />;
+  return <UserBackend key={userId ?? "signed-out"}>{children}</UserBackend>;
+}
+function UserBackend({ children }: { children: ReactNode }) {
+  const [client] = useState(() => url ? new ConvexReactClient(url, { unsavedChangesWarning: false }) : null);
+  useEffect(() => () => {
+    // Let the provider clear its auth listeners before closing the connection.
+    setTimeout(() => { void client?.close(); }, 0);
+  }, [client]);
+  if (!client) return <StartupStatus message="App configuration is missing. Rebuild the app with its public configuration." />;
+  return <ConvexProviderWithClerk client={client} useAuth={useAuth}>{children}</ConvexProviderWithClerk>;
+}
 function StartupStatus({ message, loading = false }: { message: string; loading?: boolean }) {
   return <View style={{ flex: 1, backgroundColor: theme.colors.bg, justifyContent: "center", padding: theme.layout.phonePadding }}><StatusBar barStyle="light-content" /><Status message={message} loading={loading} /></View>;
 }
@@ -46,7 +57,7 @@ export default function Layout() {
       <StartupStatus message="The app font could not load. Restart the app to try again." />
     );
   if (!fonts) return <StartupStatus loading message="Loading Kriyan." />;
-  if (!client || !process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY)
+  if (!url || !process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY)
     return (
       <StartupStatus message="App configuration is missing. Add the public Clerk and Convex configuration and rebuild the app." />
     );
@@ -63,14 +74,14 @@ export default function Layout() {
                 tokenCache={tokenCache}
                 publishableKey={process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY}
               >
-                <ConvexProviderWithClerk client={client} useAuth={useAuth}>
+                <AccountBackend>
                   <Stack
                     screenOptions={{
                       headerShown: false,
                       contentStyle: { backgroundColor: theme.colors.bg },
                     }}
                   />
-                </ConvexProviderWithClerk>
+                </AccountBackend>
               </ClerkProvider>
             </ShareIntentProvider>
           </Boundary>

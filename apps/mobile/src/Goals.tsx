@@ -2,7 +2,7 @@ import { useState } from "react";
 import { View } from "react-native";
 import { useMutation } from "convex/react";
 import { api } from "@kriyan/backend/convex/_generated/api";
-import { goalProgress, shortDate, relativeDay } from "@kriyan/core";
+import { goalProgress, shortDate, relativeDay, plannerCopy } from "@kriyan/core";
 import {
   Button,
   Choices,
@@ -43,11 +43,15 @@ export function Goals({
   const [selected, setSelected] = useState<string | null>(null);
   const goal = goals.find((g) => g._id === selected);
   return (
-    <View style={s.field}>
+    <View>
       {!goals.length && (
-        <T quiet>No goals yet. Add a goal to track what matters.</T>
+        <View style={s.field}>
+          <T title>{plannerCopy.noGoals}</T>
+          <T quiet>{plannerCopy.goalExplanation}</T>
+          <Button label="Add your first goal" primary onPress={() => setSelected("first-goal")} />
+        </View>
       )}
-      {goals.map((goal) => {
+      {goals.map((goal, index) => {
         const progress = goalProgress(goal, today),
           color = areaColor(areas.find((a) => a._id === goal.areaId));
         return (
@@ -56,7 +60,7 @@ export function Goals({
             style={{
               paddingTop: theme.spacing[4],
               paddingBottom: theme.spacing[1],
-              borderTopWidth: 1,
+              borderTopWidth: index ? 1 : 0,
               borderColor: theme.colors.line,
             }}
           >
@@ -103,7 +107,7 @@ export function Goals({
                   }}
                 >
                   <Dot color={color} />
-                  <T quiet style={{ flex: 1 }}>
+                  <T quiet style={{ flex: 1, lineHeight: ui.type.meta * 1.2 }}>
                     {areas.find((a) => a._id === goal.areaId)?.name}
                     {goal.targetDate
                       ? `, due ${shortDate(goal.targetDate)}`
@@ -182,9 +186,10 @@ export function Goals({
                 (a.date ?? "9999").localeCompare(b.date ?? "9999"),
               )
               .slice(0, 2)
-              .map((task) => (
+              .map((task, index, linked) => (
                 <TaskRow
                   key={task._id}
+                  divider={index < linked.length - 1}
                   task={task}
                   area={areas.find((a) => a._id === task.areaId)}
                   project={
@@ -199,9 +204,9 @@ export function Goals({
           </View>
         );
       })}
-      {adding && (
-        <Sheet title="Add goal" close={closeAdd}>
-          <GoalForm areas={areas} today={today} saved={closeAdd} />
+      {(adding || selected === "first-goal") && (
+        <Sheet title="Add goal" close={() => { setSelected(null); closeAdd(); }}>
+          <GoalForm areas={areas} today={today} saved={() => { setSelected(null); closeAdd(); }} />
         </Sheet>
       )}
       {goal && (

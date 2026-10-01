@@ -1,5 +1,5 @@
 "use client";
-import { goalProgress } from "@kriyan/core";
+import { goalProgress, plannerCopy } from "@kriyan/core";
 import { Icon } from "./Icon";
 import { GoalSummary } from "./GoalSummary";
 import { Filters } from "./Filters";
@@ -42,8 +42,8 @@ export function GoalsView(p: GoalsProps) {
       ) : (
         p.filter !== "all" ? <p className={s.empty}>Nothing in {p.areas.find((area) => area._id === p.filter)?.name}.</p> :
         <div className={s.bigEmpty}>
-          <h2>No goals yet</h2>
-          <p>A goal shows where you are and where you should be today. Link tasks to it, track a number, or tick off milestones.</p>
+          <h2>{plannerCopy.noGoals}</h2>
+          <p>{plannerCopy.goalExplanation}</p>
           <button className={s.btn} onClick={() => p.addGoal?.()} disabled={!p.areas.length}><Icon name="plus" />Add your first goal</button>
           <div className={s.goalExamples}>Or start from an example
             <div className={s.chips}>

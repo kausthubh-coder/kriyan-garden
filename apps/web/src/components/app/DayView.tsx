@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef } from "react";
-import { daySummary, layout, plannedMinutes } from "@kriyan/core";
+import { daySummary, layout, plannedMinutes, plannerCopy } from "@kriyan/core";
 import { Tray } from "./Tray";
 import { Timeline } from "./Timeline";
 import { SideRail } from "./SideRail";
@@ -128,7 +128,7 @@ export function DayView({
           summary={
             !day || loading
               ? "Loading your day."
-              : !all.length ? (filter !== "all" ? `Nothing in ${areas.find((area) => area._id === filter)?.name}.` : firstRun ? "Nothing planned yet." : "Nothing planned.") : daySummary({
+              : !all.length ? (filter !== "all" ? `Nothing in ${areas.find((area) => area._id === filter)?.name}.` : firstRun ? plannerCopy.firstDay : plannerCopy.emptyDay) : daySummary({
                   left: active.length,
                   total: all.length,
                   plannedMinutes: planned,
@@ -138,7 +138,7 @@ export function DayView({
           phoneSummary={
             !day || loading
               ? "Loading your day."
-              : !all.length ? (filter !== "all" ? `Nothing in ${areas.find((area) => area._id === filter)?.name}.` : firstRun ? "Nothing planned yet." : "Nothing planned.") : daySummary({
+              : !all.length ? (filter !== "all" ? `Nothing in ${areas.find((area) => area._id === filter)?.name}.` : firstRun ? plannerCopy.firstDay : plannerCopy.emptyDay) : daySummary({
                   left: active.length,
                   total: all.length,
                   plannedMinutes: planned,

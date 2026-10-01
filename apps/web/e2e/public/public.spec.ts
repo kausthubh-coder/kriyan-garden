@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { KRIYAN_APK } from "../../src/lib/android-release";
 test.describe("Demo goals", () => {
   test.use({ actionTimeout: 10_000 });
   test("demo goal panels, milestones, creation and delete Undo use local transport and URL selection", async ({
@@ -317,7 +318,7 @@ test("landing parser, iframe, keyboard tabs and copy are usable", async ({ page,
   await expect(page.getByRole("button", {name:"Copy setup",exact:true})).toBeVisible({timeout:3000});
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
-test("docs, legal, metadata and planned download route respond", async ({ page, request }, info) => {
+test("docs, legal, metadata and Android download page respond", async ({ page, request }, info) => {
   await page.goto("/docs");
   await expect(page.getByRole("heading", { name: "Getting started", exact: true })).toBeVisible();
   if (info.project.name === "mobile") await page.getByText("Browse docs", { exact: true }).click();
@@ -332,8 +333,13 @@ test("docs, legal, metadata and planned download route respond", async ({ page, 
   expect(legacy.status()).toBe(307);
   expect(new URL(legacy.headers().location, "http://localhost:3004").pathname).toBe("/app");
   const release = await request.get("/download", { maxRedirects: 0 });
-  expect(release.status()).toBe(307);
-  expect(release.headers().location).toBe("https://github.com/kausthubh-coder/kriyan-garden/releases/latest");
+  expect(release.status()).toBe(200);
+  expect(await release.text()).toContain(KRIYAN_APK);
+  await page.goto("/download");
+  await expect(page.getByRole("heading", { name: "Get Kriyan for Android" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Download Android app" })).toHaveAttribute("href", KRIYAN_APK);
+  await expect(page.getByText(/Android will warn about installing outside the Play Store/)).toBeVisible();
+  await expect(page.getByText(/Android 7.0 or newer/)).toBeVisible();
   const headers = (await request.get("/demo")).headers();
   expect(headers["x-frame-options"]).toBe("SAMEORIGIN");
   expect(headers["content-security-policy"]).toContain("frame-ancestors 'self'");

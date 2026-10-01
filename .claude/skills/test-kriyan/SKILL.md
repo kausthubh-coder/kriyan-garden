@@ -42,7 +42,7 @@ They read `apps/web/.env.local` themselves. Session files go to `.agents/test-kr
 | `seed.mjs <email or id> fixture <name>` | Loads a named fixture from `scripts/fixtures/` (for example `empty-areas`, `overlapping-day`, `late-goal`, `dst-week`). |
 | `oauth.mjs <email> --resource mcp\|api --base <url> [--register] [--refresh] [--out <file>]` | Runs real sign-in, PKCE and consent. Uses the configured CLI client by default; `--register` creates a disposable dynamic client. Requests `openid profile email`, adding `offline_access` only with `--refresh`. Saves private token files without printing credentials. |
 | `mcp.mjs --token <token> --base <url> [--list] [--call <tool> <json>]` | A minimal Streamable HTTP MCP client for calling the server with a token from `oauth.mjs`. Also accepts `--token-file <file>` inside `.agents/test-kriyan/`; defaults to protocol `2026-07-28`, with `--protocol 2025-11-25` for the legacy stateless handshake. |
-| `android.mjs signin <email> [--password <pw>]` | Signs the running emulator app in through its real sign-in screen with `adb` and UI Automator. The current native screen requires a password first, then `424242` if it asks for email verification. Waits up to 30 minutes for an unavailable or busy emulator; accepts `--serial` and `--wait-minutes`. Never starts an emulator or clears another session. |
+| `android.mjs signin <email> [--password <pw>]` | Signs the running emulator app in through its real email-code screen with `adb` and UI Automator, using `424242`. Older password-first APKs also accept `--password`. Waits up to 30 minutes for an unavailable or busy emulator; accepts `--serial` and `--wait-minutes`. Never starts an emulator or clears another session. |
 | `doctor.mjs` | Checks development keys, matching Convex deployment, dynamic registration, client metadata documents, audience claims and the public Kriyan CLI application with PKCE, consent and the loopback redirect. |
 
 Every script exits non-zero with a one-line reason on failure.
@@ -84,7 +84,7 @@ On checkouts where a relative symlink is unavailable, `.claude/skills/test-kriya
 ### Android
 
 1. Coordinate with the shared emulator owner and use the existing device. If an APK needs building, `scripts/build-android-local.ps1` requires an Android SDK inside `.agents/android-sdk`; install the APK only when the device is free. `apps/mobile/scripts/qa.ts` holds a disposable account for manual QA; it does not start an emulator.
-2. `user.mjs create --tag android --password`, then `android.mjs signin <email> --password <pw>`.
+2. `user.mjs create --tag android`, then `android.mjs signin <email>`. For an older password-first APK, create with `--password` and pass `--password <pw>`.
 3. Drive the app with `adb` and UI Automator dumps; capture with `adb exec-out screencap -p`.
 4. Cross-surface check: add a task with `seed.mjs` or the web session, confirm it appears on the phone without a restart.
 5. `user.mjs delete <email>`.

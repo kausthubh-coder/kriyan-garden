@@ -1,3 +1,4 @@
+import { plannerCopy } from "@kriyan/core";
 import { weekdayName, longDate } from "@kriyan/core";
 import { addDays, formatMinutes, weekStart } from "@kriyan/core";
 import { Filters } from "./Filters";
@@ -24,7 +25,7 @@ export function WeekView(
         unit="week"
         subtitle={`${longDate(start)} to ${longDate(addDays(start, 6))}`}
         phoneDate={`${longDate(start)} to ${longDate(addDays(start, 6))}`}
-        summary={p.loading ? "Loading your week." : empty ? (p.filter === "all" ? "Nothing planned this week." : `Nothing in ${p.areas.find((area) => area._id === p.filter)?.name}.`) : `${formatMinutes(p.week?.reduce((sum, day) => sum + day.plannedMinutes, 0) ?? 0)} planned.`}
+        summary={p.loading ? "Loading your week." : empty ? (p.filter === "all" ? plannerCopy.emptyWeek : `Nothing in ${p.areas.find((area) => area._id === p.filter)?.name}.`) : `${formatMinutes(p.week?.reduce((sum, day) => sum + day.plannedMinutes, 0) ?? 0)} planned.`}
         navigate={(offset) => p.navigate(offset * 7)}
       />
       <Filters areas={p.areas} filter={p.filter} onChange={p.setFilter} />

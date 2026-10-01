@@ -14,6 +14,7 @@ type Props = {
   toggle: () => Promise<unknown>;
   schedule: () => void;
   card?: boolean;
+  divider?: boolean;
 };
 export function TaskRow({
   task,
@@ -24,6 +25,7 @@ export function TaskRow({
   toggle,
   schedule,
   card = false,
+  divider = true,
 }: Props) {
   const [dx, setDx] = useState(0);
   const pan = Gesture.Pan()
@@ -62,7 +64,7 @@ export function TaskRow({
             minHeight: ui.control.task,
             backgroundColor: card ? ui.colors.s2 : ui.colors.bg,
             borderRadius: card ? ui.radii[4] : 0,
-            borderBottomWidth: card ? 0 : 1,
+            borderBottomWidth: card || !divider ? 0 : 1,
             borderColor: ui.colors.line,
             marginBottom: card ? ui.spacing[1] : 0,
             paddingHorizontal: card ? ui.spacing[0] : 0,
