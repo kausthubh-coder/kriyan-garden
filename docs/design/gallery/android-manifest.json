@@ -1,0 +1,10 @@
+[
+  {
+    "surface": "Android",
+    "group": "auth",
+    "state": "empty",
+    "image": "android-auth-empty.png",
+    "viewport": "1080 x 2400",
+    "base": "EAS 1.0.1, production Convex"
+  }
+]

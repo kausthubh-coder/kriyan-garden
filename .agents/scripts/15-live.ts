@@ -11,7 +11,7 @@ import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../packages/backend/convex/_generated/api";
 import { canonicalJson } from "../../packages/backend/convex/canonical";
 import { quickAddGrammar } from "../../packages/core/src/quickAddGrammar";
-import { parse, localClock, addDays, reminderTimes, goalProgress } from "@kriyan/core";
+import { parse, localClock, addDays, reminderTimes, goalProgress } from "../../packages/core/src/index";
 
 const root = process.cwd();
 nextEnv.loadEnvConfig(resolve(root, "apps/web"));
@@ -20,14 +20,16 @@ if (!secretKey?.startsWith("sk_test_") || !url || !process.env.NEXT_PUBLIC_CLERK
 process.env.CLERK_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 process.env.PLAYWRIGHT_BROWSERS_PATH = resolve(root, ".agents/playwright-browsers");
 const sdk = createClerkClient({ secretKey });
-const base = "http://localhost:3500";
-const out = resolve(root, ".data/15");
+const base = process.env.E2E_BASE_URL ?? "http://localhost:3500";
+const production = base === "https://app.kriyan.app";
+const out = resolve(root, process.env.QA_OUTPUT ?? ".data/15");
 await mkdir(out, { recursive: true });
 await mkdir(resolve(root, ".agents/screenshots/15"), { recursive: true });
 type Receipt = { label: string; status: "pass" | "fail" | "blocked"; detail?: unknown };
 const receipts: Receipt[] = [];
 const users: { id: string; email: string; client: ConvexHttpClient; refresh: () => Promise<void> }[] = [];
 async function record(label: string, work: () => Promise<unknown>) {
+  if (process.env.QA_LABEL && !new RegExp(process.env.QA_LABEL).test(label) && !/Cleanup|Delete disposable|Final listing/.test(label)) return;
   try { const detail = await work(); receipts.push({ label, status: "pass", detail }); }
   catch (error) {
     // Expected task fixtures are public test data. Never emit raw SDK/HTTP exceptions.
@@ -39,7 +41,7 @@ async function record(label: string, work: () => Promise<unknown>) {
   await writeFile(resolve(out, "results.json"), JSON.stringify(receipts, null, 2));
 }
 function tableRows(table: string): Record<string, unknown>[] {
-  const raw = execFileSync("bunx", ["convex", "data", table, "--limit", "10000", "--format", "json"], { cwd: resolve(root, "packages/backend"), stdio: "pipe", windowsHide: true, encoding: "utf8", maxBuffer: 30_000_000 });
+  const raw = execFileSync("bunx", ["convex", "data", table, "--limit", "10000", "--format", "json", ...(production ? ["--prod"] : [])], { cwd: resolve(root, "packages/backend"), stdio: "pipe", windowsHide: true, encoding: "utf8", maxBuffer: 30_000_000 });
   if (!raw.trim()) return [];
   const rows: unknown = JSON.parse(raw);
   if (!Array.isArray(rows) || rows.length === 10000) throw new Error("Table inspection incomplete, increase the read limit.");
@@ -60,7 +62,7 @@ async function add(page: Page, text: string) {
   await expect(dialog).not.toBeVisible();
 }
 const refreshTimer = setInterval(() => { void Promise.all(users.map(u => u.refresh())).catch(() => {}); }, 20000);
-const browser = await chromium.launch();
+const browser = await chromium.launch({ channel: "chrome" });
 try {
   await clerkSetup();
   for (const label of ["a", "b"]) {
@@ -190,6 +192,7 @@ try {
     await record(`Offline three UI changes saved once ${width}`, async () => {
       await page.goto(`${base}/app?view=list`);
       await expect(page.getByRole("button", { name: "Add task", exact: true }).first()).toBeVisible();
+      await expect(page.getByRole("button", { name: "School", exact: true })).toBeVisible();
       await context.setOffline(true);
       for (let i = 0; i < 3; i++) {
         const open = page.getByRole("button", { name: "Add task", exact: true }).first();
@@ -197,6 +200,7 @@ try {
         const dialog = page.getByRole("dialog", { name: "Add a task" });
         await dialog.getByRole("textbox").fill(`QA offline ${width} ${i} later`);
         await dialog.getByRole("button", { name: "Add task", exact: true }).click();
+        await expect(dialog).not.toBeVisible();
         // A mutation remains pending offline. Escape permits another capture.
         if (await dialog.isVisible()) await page.keyboard.press("Escape");
       }
@@ -213,8 +217,13 @@ try {
         expect(new URL(page.url()).searchParams.get("view")).toBe(view);
         expect(new URL(page.url()).searchParams.get("area")).toBe(area._id);
       }
-      await page.goBack(); expect(new URL(page.url()).searchParams.get("view")).toBe("week");
-      await page.goForward(); expect(new URL(page.url()).searchParams.get("view")).toBe("goals");
+      const navigation = page.getByRole("navigation", { name: "Main", exact: true });
+      await navigation.getByRole("button", { name: "Week", exact: true }).click();
+      await expect.poll(() => new URL(page.url()).searchParams.get("view")).toBe("week");
+      await navigation.getByRole("button", { name: "Goals", exact: true }).click();
+      await expect.poll(() => new URL(page.url()).searchParams.get("view")).toBe("goals");
+      await page.goBack(); await expect.poll(() => new URL(page.url()).searchParams.get("view")).toBe("week");
+      await page.goForward(); await expect.poll(() => new URL(page.url()).searchParams.get("view")).toBe("goals");
     });
     await record(`Profile today and now line in Auckland and Honolulu ${width}`, async () => {
       const observations = [];
@@ -224,7 +233,7 @@ try {
         await expect(page.locator('[data-loading="false"]')).toBeVisible();
         const clock = localClock(new Date(), zone);
         const current = await page.locator('button[aria-label*="Today"]').count();
-        const line = page.locator('[data-timeline] > div[style*="var(--hh)"]').filter({ has: page.locator('span') });
+        const line = page.locator('[data-timeline] > div[style*="var(--hh)"]').filter({ has: page.locator('span') }).last();
         await expect(line).toContainText(`${String(Math.floor(clock.minutes / 60)).padStart(2, "0")}:${String(clock.minutes % 60).padStart(2, "0")}`);
         await page.screenshot({ path: resolve(root, `.agents/screenshots/15/zone-${zone.split("/")[1]}-${width}.png`) });
         observations.push({ zone, expectedToday: clock.today, expectedMinutes: clock.minutes, todayControls: current });
