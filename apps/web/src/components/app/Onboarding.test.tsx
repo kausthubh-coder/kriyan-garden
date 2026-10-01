@@ -80,13 +80,16 @@ test("Continue accepts a corrected goal after an earlier queued save fails", asy
   fireEvent.blur(title);
   await waitFor(() => expect(state.create).toHaveBeenCalledTimes(1));
   fireEvent.click(screen.getByRole("button", { name: "A number" }));
-  await waitFor(() => expect(state.update).toHaveBeenCalledTimes(1));
   const unit = screen.getByRole("textbox", { name: "Unit" });
   fireEvent.change(unit, { target: { value: "books" } });
   fireEvent.blur(unit);
+  await waitFor(() => expect(state.update).toHaveBeenCalledTimes(1));
+  fireEvent.change(unit, { target: { value: "chapters" } });
+  fireEvent.blur(unit);
   fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-  await act(async () => rejectEarlier?.(new Error("A number needs a unit")));
+  await act(async () => rejectEarlier?.(new Error("The earlier save failed")));
   await waitFor(() => expect(state.update).toHaveBeenCalledTimes(2));
+  expect(state.update.mock.calls[1]?.[0]).toMatchObject({ patch: { metric: { unit: "chapters" } } });
   await waitFor(() => expect(state.push).toHaveBeenCalledWith("/app/welcome?step=5", { scroll: false }));
 });
 test("Escape cancels an area rename without saving the abandoned text", () => {

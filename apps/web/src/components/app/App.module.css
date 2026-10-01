@@ -2696,7 +2696,7 @@ h2.h em {
 }
 .app .goalNumberFields input { width: var(--space-64); }
 .app .goalDayEditor { flex-basis: 100%; margin-top: var(--space-8); }
-.app .goalCreateFoot { display: flex; align-items: center; gap: var(--space-12); padding: var(--space-12) var(--space-12) var(--space-12) var(--space-20); color: var(--ink-3); font-size: var(--text-13); }
+.app .goalCreateFoot { display: flex; align-items: center; gap: var(--space-12); padding: var(--space-12) var(--space-20); color: var(--ink-3); font-size: var(--text-13); }
 .app .goalCreateFoot .btn { margin-left: auto; flex: none; }
 .app .phoneSettings { display: none; }
 @media (hover: hover) and (pointer: fine) {

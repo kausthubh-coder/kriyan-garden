@@ -38,7 +38,7 @@ test("goals save number progress, milestones and task progress", async ({
     }
     return page.locator("section").filter({ hasText: title });
   }
-  // The preceding onboarding test already creates "Read ten books".
+  // The preceding onboarding test already creates "Read ten books during onboarding".
   // Give this independent goal a distinct title so exact locators stay unique.
   const number = await create("Read ten more books", "number");
   await expect(
@@ -169,7 +169,7 @@ test("goals save number progress, milestones and task progress", async ({
   await page.keyboard.press("Control+k");
   const palette = page.getByRole("dialog", { name: "Search and commands" });
   await palette.getByRole("combobox", { name: "Search" }).fill("Gym");
-  await expect(palette.getByRole("button", { name: /^Gym/ })).toBeVisible();
+  await expect(palette.getByRole("option", { name: /^Gym/ })).toBeVisible();
   await page.keyboard.press("Enter");
   const panel = page.getByRole("dialog", { name: "Task details" });
   await panel.locator('[data-property="area"]').click();
@@ -320,6 +320,10 @@ test("dialogs and panels close with Escape and restore focus at both sizes", asy
     });
     await expect(creation).toBeVisible();
     await expect(creation.getByLabel("Goal title")).toBeFocused();
+    const content = await creation.locator("fieldset").boundingBox();
+    const submit = await creation.getByRole("button", { name: "Add goal", exact: true }).boundingBox();
+    if (!content || !submit) throw new Error("Goal content or submit button has no bounds.");
+    expect(Math.abs(content.x + content.width - submit.x - submit.width)).toBeLessThanOrEqual(1);
     await page.keyboard.press("Escape");
     await expect(creation).not.toBeVisible();
     await expect(addGoal).toBeFocused();
@@ -329,7 +333,7 @@ test("dialogs and panels close with Escape and restore focus at both sizes", asy
       animations: "disabled",
     });
     const goal = page.getByRole("button", {
-      name: "Read ten books",
+      name: "Read ten books during onboarding",
       exact: true,
     });
     await goal.click();

@@ -142,7 +142,7 @@ for (const [width, height] of [
         .getByRole("combobox", { name: "Search" })
         .fill(email ? "Send the September invoice" : "gym");
       await expect(
-        palette.getByRole("button", {
+        palette.getByRole("option", {
           name: email ? /^Send the September invoice/ : /^Gym/,
         }),
       ).toBeVisible();

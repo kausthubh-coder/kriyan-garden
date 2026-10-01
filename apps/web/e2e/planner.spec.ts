@@ -167,7 +167,7 @@ test("command palette finds a title and opens its task", async ({ page }) => {
   const palette = page.getByRole("dialog", { name: "Search and commands" });
   await palette.getByRole("combobox", { name: "Search" }).fill("E2E tray task");
   await expect(
-    palette.getByRole("button", { name: /^E2E tray task/ }),
+    palette.getByRole("option", { name: /^E2E tray task/ }),
   ).toBeVisible();
   await page.keyboard.press("Enter");
   await expect(
