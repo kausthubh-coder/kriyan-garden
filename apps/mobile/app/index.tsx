@@ -24,6 +24,7 @@ import { usePlanner } from "../src/usePlanner";
 import { useNotifications } from "../src/notifications";
 import {
   Button,
+  AddTaskRow,
   Chip,
   Header,
   QuietButton,
@@ -196,6 +197,7 @@ function Planner() {
     // Keep the compact header to the reference's count and planned time.
     // No-length tasks retain their outlined markers and property value.
     withoutLength: 0,
+    hideEmptyCount: true,
   }) : filter !== "all" ? `Nothing in ${areas.find((area) => area._id === filter)?.name}.` : firstRun ? plannerCopy.firstDay : plannerCopy.emptyDay;
   const currentTaskId = taskId ?? params.taskId;
   const selected = tasks.find((task) => task._id === currentTaskId);
@@ -331,7 +333,7 @@ function Planner() {
         )}
         {tab === "list" && (
           <>
-            <Button label="Add a task" textOnly onPress={() => setAdding(true)} />
+            <AddTaskRow onPress={() => setAdding(true)} />
             {!dated.length && (
               <T quiet>{filter === "all" ? date === clock.today ? plannerCopy.emptyList : `Nothing planned for ${weekdayName(date)}.` : `Nothing in ${areas.find((area) => area._id === filter)?.name}.`}</T>
             )}
@@ -344,7 +346,7 @@ function Planner() {
                     <SectionHeading
                       title={area.name}
                       color={areaColor(area)}
-                      value={`${countText(entries.filter((t) => t.status === "active").length, "task")} left${plannedMinutes(entries) ? `, ${formatMinutes(plannedMinutes(entries))}` : ""}`}
+                      value={[entries.some((task) => task.status === "active") ? `${countText(entries.filter((task) => task.status === "active").length, "task")} left` : "", plannedMinutes(entries) ? formatMinutes(plannedMinutes(entries)) : ""].filter(Boolean).join(", ") || undefined}
                     />
                     {entries.map(row)}
                   </View>

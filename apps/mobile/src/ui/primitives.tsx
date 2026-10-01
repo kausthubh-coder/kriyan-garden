@@ -5,6 +5,13 @@ import { ui } from "./tokens";
 import { areaColor, type Area } from "../types";
 const c = ui.colors;
 
+export function AddTaskRow({ onPress }: { onPress: () => void }) {
+  return <Surface label="Add a task" onPress={onPress} style={{
+    backgroundColor: c.s1, minHeight: ui.spacing[19], borderRadius: ui.radii[4],
+    flexDirection: "row", alignItems: "center", gap: ui.spacing[1], paddingHorizontal: ui.spacing[5],
+  }}><Icon name="plus" color={c["ink-3"]} /><T quiet>Add a task</T></Surface>;
+}
+
 export function Dot({
   color,
   large = false,

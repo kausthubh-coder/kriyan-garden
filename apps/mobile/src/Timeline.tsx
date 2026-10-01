@@ -20,6 +20,8 @@ import { theme } from "./theme";
 import { snapTime, snapLength } from "./helpers";
 import {
   Button,
+  AddTaskRow,
+  Chip,
   Check,
   Dot,
   SectionHeading,
@@ -83,6 +85,7 @@ export function DayTimeline({
   const start = profile.dayStartHour,
     end = profile.dayEndHour;
   const height = (end - start) * hh;
+  const tasksLeft = day.anytime.filter((task) => task.status === "active").length;
   const saveGuidance = useMutation(api.profiles.saveOnboarding);
   const [hintBusy, setHintBusy] = useState(false);
   const [hintError, setHintError] = useState("");
@@ -162,7 +165,7 @@ export function DayTimeline({
     <View>
       <SectionHeading
         title="Any time today"
-        value={`${countText(day.anytime.filter((task) => task.status === "active").length, "task")} left`}
+        value={tasksLeft ? `${countText(tasksLeft, "task")} left` : undefined}
       />
       {!day.anytime.length && (
         <T quiet>{plannerCopy.anytime}</T>
@@ -206,7 +209,7 @@ export function DayTimeline({
             </View>
           </TaskDrag>
         ))}
-      <Button label="Add a task" textOnly onPress={() => add()} />
+      <AddTaskRow onPress={() => add()} />
       {day.anytime.length > 0 && guidance}
       <SectionHeading title="No date yet" />
       {day.unscheduled.length ? day.unscheduled.map(card) : <T quiet>{plannerCopy.undated}</T>}
@@ -221,10 +224,12 @@ export function DayTimeline({
             marginTop: theme.spacing[3],
           }}
         >
-          {firstRun && <View style={{ position: "absolute", top: Math.max(0, Math.min(height - hh * 3, ((now - start * 60) * hh) / 60)), left: 0, right: 0, zIndex: 4, backgroundColor: theme.colors.bg, padding: theme.spacing[2] }}>
+          {firstRun && <View style={{ position: "absolute", top: Math.max(0, Math.min(height - hh * 3, ((now - start * 60) * hh) / 60)), left: -gutter, right: 0, zIndex: 4, backgroundColor: theme.colors.s1, borderRadius: theme.radii[4], padding: theme.spacing[5], gap: theme.spacing[1] }}>
             <T style={{ fontFamily: "Schibsted600" }}>{plannerCopy.firstTaskTitle}</T>
             <T quiet>{plannerCopy.firstTaskExplanation}</T>
-            {plannerCopy.examples.map((text) => <Button key={text} label={text} textOnly onPress={() => add(text)} />)}
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: theme.spacing[1] }}>
+              {plannerCopy.examples.map((text) => <Chip key={text} label={text} onPress={() => add(text)} />)}
+            </View>
           </View>}
           {Array.from({ length: end - start + 1 }, (_, i) => (
             <View

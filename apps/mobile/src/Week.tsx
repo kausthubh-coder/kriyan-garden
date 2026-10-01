@@ -130,7 +130,7 @@ export function Week({
       )}
       <SectionHeading
         title={weekdayName(date)}
-        value={`${countText(dated.length, "task")} left${plannedMinutes(dated) ? `, ${formatMinutes(plannedMinutes(dated))}` : ""}`}
+        value={dated.length ? `${countText(dated.length, "task")} left${plannedMinutes(dated) ? `, ${formatMinutes(plannedMinutes(dated))}` : ""}` : undefined}
       />
       {dated.length ? (
         (expandedDate === date ? dated : dated.slice(0, 3)).map(row)

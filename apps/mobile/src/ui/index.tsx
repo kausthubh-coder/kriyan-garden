@@ -130,8 +130,8 @@ export function Button({
         hover && !(primary || selected) && { backgroundColor: c.s3 },
         focus && { borderColor: c.ink, borderWidth: 2 },
         pressed && { opacity: 0.8 },
-        disabled && { opacity: 0.45 },
         style,
+        disabled && { backgroundColor: c["disabled-bg"], borderColor: c.line },
       ]}
     >
       <Animated.View
@@ -152,13 +152,13 @@ export function Button({
         {icon && (
           <Icon
             name={icon}
-            color={primary || selected ? c.on : (color ?? c.ink)}
+            color={disabled ? c["disabled-ink"] : primary || selected ? c.on : (color ?? c.ink)}
           />
         )}
         {(!icon || showLabel) && (
           <T
             style={{
-              color: primary || selected ? c.on : (color ?? c["ink-2"]),
+              color: disabled ? c["disabled-ink"] : primary || selected ? c.on : (color ?? c["ink-2"]),
               fontFamily: "Schibsted500",
             }}
           >
