@@ -1,6 +1,6 @@
 # Kriyan MCP
 
-Kriyan gives assistants access to the signed-in user's tasks, goals, areas, projects and courses. It uses the same operations and backend rules as the REST API. There are 21 tools and no delete tools. The server asks assistants to read before writing, use returned IDs and repeat the stored result's `readBack` sentence.
+Kriyan gives assistants access to the signed-in user's tasks, goals, areas, projects and courses. Plan with the AI you already use in your own areas. Your assistant uses your area names and never assumes the suggested defaults. It uses the same operations and backend rules as the REST API. There are 21 tools and no delete tools. The server asks assistants to read before writing, use returned IDs and repeat the stored result's `readBack` sentence.
 
 The production endpoint is `https://app.kriyan.app/mcp`, using Streamable HTTP. Protected-resource metadata is at `https://app.kriyan.app/.well-known/oauth-protected-resource/mcp`. These URLs describe the hosted endpoint. This brief verifies the local server against the development backend with real Clerk OAuth and does not deploy the web app. See [the auth report](reports/18-auth.md).
 

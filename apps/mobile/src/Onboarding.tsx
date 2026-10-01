@@ -25,7 +25,7 @@ const headings = [
   "What will you do first?",
 ];
 const descriptions = [
-  "Kriyan sorts everything into areas. Start with these three and change them any time.",
+  "Kriyan sorts everything into areas. These three are a starting point; rename them, remove them, or add your own.",
   "Add projects and courses to keep related tasks together.",
   "Add your classes and meetings to see the time you have left.",
   "Choose one goal to keep your next steps in view.",

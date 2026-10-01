@@ -1,6 +1,6 @@
 # Kriyan CLI
 
-Tasks and goals across School, Business and Life, from your terminal. The CLI calls the same `/api/v1` operations as Kriyan's MCP server.
+Organise tasks and goals in your areas from your terminal. Plan with the AI you already use through Kriyan's MCP server. The CLI calls the same `/api/v1` operations as Kriyan's MCP server.
 
 ## Install
 

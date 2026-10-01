@@ -1,7 +1,7 @@
 {
   "name": "kriyan",
   "version": "0.1.0",
-  "description": "Plan tasks and goals in School, Business and Life from your terminal.",
+  "description": "Organise tasks and goals in your areas from your terminal. Plan with the AI you already use through MCP.",
   "license": "MIT",
   "type": "module",
   "bin": { "kriyan": "dist/kriyan.js" },

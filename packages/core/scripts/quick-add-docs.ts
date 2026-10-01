@@ -4,6 +4,8 @@ const document = `# Quick add
 
 Type a title, followed by any combination of a day, time, #tag and length. Every part except the title is optional. Length is never inferred. The Day view defaults to its selected day and area; the API can supply different defaults. Dates use your local day, not the server's UTC date.
 
+Area names belong to you. Music is a custom area in these tested examples; use your own area names.
+
 ## Tokens
 
 This table is generated from the same fixtures exercised by quickAdd.test.ts. Rebuild it with \`bun run docs:quick-add\` from the repository root.

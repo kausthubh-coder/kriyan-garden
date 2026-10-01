@@ -1,6 +1,6 @@
 # Kriyan
 
-Your day on one timeline. Kriyan is an open-source planner for school, business and life. Tasks with a time sit on the timeline. Tasks without one wait beside it. Length is optional.
+Kriyan is an open-source planner that makes organising and planning your life easy. Plan with the AI you already use to get more done.
 
 ![The real Kriyan Day view with sample tasks](apps/web/public/landing/day.webp)
 
@@ -10,8 +10,8 @@ Your day on one timeline. Kriyan is an open-source planner for school, business 
 
 - **Web:** Day, List, Week and Goals, with quick add, a timeline and task details.
 - **Android:** In development. The [latest GitHub release route](https://github.com/kausthubh-coder/kriyan-garden/releases/latest) is where an APK will appear when available. No verified APK is included here.
-- **MCP:** A remote endpoint for OAuth-capable AI clients. [Setup drafts](docs/site/mcp.md) await brief 05 integration and client verification.
-- **CLI:** A planned thin client over the same API. [CLI docs](docs/site/cli.md) await brief 05; npm publication is not claimed.
+- **MCP:** A remote endpoint for OAuth-capable AI clients. [Connect the AI you already use](docs/site/mcp.md). Real local OAuth and backend proofs are recorded in [the auth report](docs/reports/18-auth.md).
+- **CLI:** Browser sign-in, silent refresh and commands for your tasks and goals over the same API. [Read the CLI guide](docs/site/cli.md). npm publication is not claimed.
 
 All four surfaces use one Convex backend and Clerk identity. The public demo uses the real web components with an isolated in-memory store. It never writes to your account and resets on reload.
 
@@ -38,7 +38,7 @@ docs/PLAN.md       Implementation plan
 .agents/briefs/    Scoped implementation and verification briefs
 ```
 
-Android and CLI workspaces are supplied by parallel implementation briefs. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup and review, [SECURITY.md](SECURITY.md) for private vulnerability reports, and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for community expectations.
+The Android and CLI workspaces live in `apps/mobile` and `packages/cli`. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup and review, [SECURITY.md](SECURITY.md) for private vulnerability reports, and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for community expectations.
 
 The hosted version is free. Your data is yours to export or delete. The production backend region and final account deletion behavior require integration review, as described in the [privacy policy](docs/site/privacy.md).
 

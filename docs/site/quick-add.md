@@ -2,6 +2,8 @@
 
 Type a title, followed by any combination of a day, time, #tag and length. Every part except the title is optional. Length is never inferred. The Day view defaults to its selected day and area; the API can supply different defaults. Dates use your local day, not the server's UTC date.
 
+Area names belong to you. Music is a custom area in these tested examples; use your own area names.
+
 ## Tokens
 
 This table is generated from the same fixtures exercised by quickAdd.test.ts. Rebuild it with `bun run docs:quick-add` from the repository root.
@@ -26,6 +28,7 @@ This table is generated from the same fixtures exercised by quickAdd.test.ts. Re
 | `1.5h`, `1h30m`, `1h 30min`, `1h30mins` | Decimal hours or combined hours and minutes |
 | `45m`, `45min`, `45mins`, `45 m` | Length in minutes |
 | `#school`, `#sch` | Area name or ID prefix, case insensitive |
+| `#music` | An existing area you named yourself (Music in this example) |
 | `#econ`, `#ECON101` | Project or course prefix; also selects its area |
 
 ## How the parser decides
@@ -37,6 +40,7 @@ The first day and first time win. A weekday means its next occurrence, including
 | Input | Parsed fields |
 | --- | --- |
 | "gym tomorrow 7am" | {"title":"Gym","date":"2026-09-30","time":"07:00"} |
+| "practice piano tomorrow #music" | {"title":"Practice piano","areaId":"music","date":"2026-09-30"} |
 | "call amma" | {"title":"Call amma"} |
 | "essay fri #econ 2h" | {"title":"Essay","areaId":"school","projectId":"econ","date":"2026-10-02","durationMinutes":120} |
 | "read for 20 minutes at 9" | {"title":"Read for 20 minutes","time":"09:00"} |

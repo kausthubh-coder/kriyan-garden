@@ -56,7 +56,7 @@ export function Auth() {
       contentContainerStyle={[s.page, { paddingTop: theme.spacing[6] }]}
     >
       <T title>Kriyan</T>
-      <T quiet>Make room for School, Business and Life.</T>
+      <T quiet>Organise your life with the AI you already use.</T>
       <T style={s.subtitle}>Sign in</T>
       <Field
         label="Email"

@@ -2,7 +2,7 @@
 
 Written 29 September 2026. Replaces the delivery phases in `PLAN.md`. Product decisions in `PLAN.md` that are not contradicted here still stand (hosted product, open source, Clerk + Convex + Vercel, Bun).
 
-The approved design is the interactive prototype in `design-proposals/prototype/`: a dark, time-first Day view, with List, Week and Goals views, optional task length, and three areas (School, Business, Life).
+Kriyan is an open-source planner that makes organising and planning your life easy and lets the AI you already use plan with you. The approved design is the interactive prototype in `design/proposals/prototype/`: a dark, time-first Day view, with List, Week and Goals views, optional task length and user-defined areas. School, Business and Life are suggested starting points only.
 
 ## 1. What we are building
 
@@ -10,7 +10,7 @@ The approved design is the interactive prototype in `design-proposals/prototype/
 |---|---|---|
 | Landing page | Public marketing page at `kriyan.app` | Vercel |
 | Web app | The full product at `app.kriyan.app` | Vercel |
-| Mobile app | Expo app for iOS and Android | App Store, Google Play |
+| Android app | Expo app for Android | GitHub APK releases |
 | MCP server | Remote server at `app.kriyan.app/mcp` for AI clients | Vercel (inside the web app) |
 | CLI | `kriyan` command, installed from npm | The user's machine |
 | Backend | One Convex deployment shared by everything | Convex |
@@ -143,7 +143,7 @@ Rebuild the UI from the prototype in React, on the existing Next.js 16 app. Read
 | Drag | Tray to timeline, move, resize. Keyboard alternatives for each. |
 | State | Convex `useQuery` and `useMutation` with optimistic updates and undo |
 | Settings | Areas and projects, timetable, daily capacity, timezone, connected AI clients, export, delete account |
-| Theme | Dark at launch. Colours are tokens in `packages/core`, so a light theme is a token set, not a rewrite. |
+| Theme | Dark only. Colours are tokens in `packages/core`. |
 | Quality | Loading skeletons, empty states, error states, offline banner, reduced motion, full keyboard use, 4.5:1 contrast |
 
 Styling stays CSS Modules with tokens, as today. State that belongs in the URL (view, date, area filter, open task) goes in the URL.
@@ -152,7 +152,7 @@ Styling stays CSS Modules with tokens, as today. State that belongs in the URL (
 
 Five short steps, skippable, under two minutes:
 
-1. **Areas.** School, Business and Life are preselected. Rename, remove or add.
+1. **Areas.** Choose your areas. The suggested defaults are starting points; rename, remove or add your own.
 2. **Projects and courses.** Add a few under each area, or skip.
 3. **Timetable.** Add classes and fixed meetings, or skip. Mobile offers a calendar import later.
 4. **First goal.** One goal with a target date, or skip.

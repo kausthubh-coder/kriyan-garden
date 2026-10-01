@@ -21,8 +21,8 @@ export function OnboardingFrameSkeleton() {
             <p className={s.step}>Step 1 of 5</p>
             <h1>What do you plan for?</h1>
             <p className={s.description}>
-              Kriyan sorts everything into areas. Start with these three, rename
-              them, or add your own.
+              Kriyan sorts everything into areas. These three are a starting point;
+              rename them, remove them, or add your own.
             </p>
             <div className={s.answers} role="status" aria-label="Loading setup">
               <div className={s.skeleton} />

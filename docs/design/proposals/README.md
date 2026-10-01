@@ -4,14 +4,14 @@ Three directions for the home screen, built as static HTML mockups. Open `index.
 
 ## Why round 1 was rejected
 
-- All seven garden variations shared one skin: beige background, serif type, white cards with a coloured side stripe. Only the card arrangement changed.
+- All seven earlier variations shared one skin: beige background, serif type, white cards with a coloured side stripe. Only the card arrangement changed.
 - That skin matches a pattern Anthropic's frontend-design skill names as generic AI output (cream background, serif display, terracotta accent). Impeccable calls the side-stripe card "the most recognizable tell".
 - The spatial layouts showed about 8 tasks per screen and could not be scanned.
-- None showed goals, progress, or the life / business / school structure.
+- None showed goals, progress or the structure of the person's areas.
 
 ## What all three proposals share
 
-- Three Areas (School, Business, Life), each with one colour. Projects and courses sit inside an area.
+- User-defined areas, each with one colour. School, Business and Life are example areas only. Projects and courses sit inside an area.
 - One merged Today, filterable by area.
 - Goals are optional and shallow: Area, Goal, Project or Habit, Task. Progress is shown against where you should be today.
 - Deadlines show time needed against time free, so you see "3h to spare" or "3h short".

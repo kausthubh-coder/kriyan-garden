@@ -53,6 +53,7 @@ export function parseArguments(argv: readonly string[]): Arguments {
 }
 
 export const helpText = `Kriyan CLI
+Organise tasks and goals in your areas. Use kriyan mcp to plan with your AI.
 
 Usage: kriyan <command> [--json]
 

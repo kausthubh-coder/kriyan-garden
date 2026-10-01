@@ -298,6 +298,11 @@ test("landing parser, iframe, keyboard tabs and copy are usable", async ({ page,
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Your day on one timeline.");
+  await expect(page).toHaveTitle("Kriyan | Organise your life with your AI");
+  await expect(page.locator("main > header p")).toHaveText("Kriyan is an open-source planner that makes it easy to organise your life and get more done. Tasks with a time sit on the timeline. Tasks without one wait beside it. Length is optional.");
+  await expect(page.getByText("See the week's load by area, spot the day that is too full, and move work to a lighter one. The list shows what is left in each of your areas.", { exact: true })).toBeVisible();
+  await expect(page.getByText(/Ask it what to do first, to clear a day, or to plan the week\./)).toBeVisible();
+  await expect(page.locator('meta[name="description"]')).toHaveAttribute("content", "An open-source planner that makes organising and planning your life easy. Plan with the AI you already use.");
   await expect(page.frameLocator('iframe[title="Interactive Kriyan demo with sample tasks"]').getByRole("button", { name: "Add task", exact: true }).first()).toBeVisible();
   await expect(page.getByRole("status").first()).toBeEmpty();
   await page.getByRole("button", { name: "essay fri 5pm #econ 2h", exact: true }).click();
@@ -307,9 +312,9 @@ test("landing parser, iframe, keyboard tabs and copy are usable", async ({ page,
   await first.focus(); await page.keyboard.press("ArrowRight");
   await expect(page.getByRole("tab", { name: "Claude Code", exact: true })).toBeFocused();
   await expect(page.getByRole("tabpanel")).toContainText("claude mcp add");
-  await page.getByRole("button", { name: "Copy", exact: true }).click();
-  await expect(page.getByRole("button", {name:"Copied",exact:true})).toBeVisible();
-  await expect(page.getByRole("button", {name:"Copy",exact:true})).toBeVisible({timeout:3000});
+  await page.getByRole("button", { name: "Copy setup", exact: true }).click();
+  await expect(page.getByRole("button", {name:"Copied setup",exact:true})).toBeVisible();
+  await expect(page.getByRole("button", {name:"Copy setup",exact:true})).toBeVisible({timeout:3000});
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 test("docs, legal, metadata and planned download route respond", async ({ page, request }, info) => {
@@ -318,6 +323,7 @@ test("docs, legal, metadata and planned download route respond", async ({ page, 
   if (info.project.name === "mobile") await page.getByText("Browse docs", { exact: true }).click();
   await page.getByRole("navigation", { name: "Documentation" }).getByRole("link", { name: "Quick add", exact: true }).click();
   await expect(page.getByRole("table").first()).toBeVisible();
+  await expect(page.getByRole("cell", { name: '"practice piano tomorrow #music"', exact: true })).toBeVisible();
   for (const route of ["/docs/mcp", "/docs/api", "/docs/cli", "/docs/android", "/docs/self-hosting", "/privacy", "/terms", "/sitemap.xml", "/robots.txt", "/opengraph-image"]) {
     const result = await request.get(route); expect(result.status(), route).toBe(200);
   }

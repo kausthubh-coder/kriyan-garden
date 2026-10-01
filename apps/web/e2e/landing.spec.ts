@@ -34,11 +34,11 @@ for (const width of [1440,390]) {
         await page.getByRole("tab",{name,exact:true}).click();
         const snippet = await page.getByRole("tabpanel").locator("code").innerText();
         expect(mcp.replaceAll("\r\n", "\n")).toContain(snippet);
-        await page.getByRole("button",{name:"Copy",exact:true}).click();
-        await expect(page.getByRole("button",{name:"Copied",exact:true})).toBeVisible();
+        await page.getByRole("button",{name:"Copy setup",exact:true}).click();
+        await expect(page.getByRole("button",{name:"Copied setup",exact:true})).toBeVisible();
         expect((await page.evaluate(() => navigator.clipboard.readText())).replaceAll("\r\n", "\n")).toBe(snippet);
       }
-      await expect(page.getByRole("button",{name:"Copy",exact:true})).toBeVisible({timeout:3000});
+      await expect(page.getByRole("button",{name:"Copy setup",exact:true})).toBeVisible({timeout:3000});
       const hero = page.locator('iframe[title="Interactive Kriyan demo with sample tasks"]');
       await hero.scrollIntoViewIfNeeded();
       const frame = page.frameLocator('iframe[title="Interactive Kriyan demo with sample tasks"]');

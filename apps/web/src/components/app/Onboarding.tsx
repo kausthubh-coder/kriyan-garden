@@ -44,7 +44,7 @@ const headings = [
   "What is on your mind?",
 ];
 const descriptions = [
-  "Kriyan sorts everything into areas. Start with these three, rename them, or add your own.",
+  "Kriyan sorts everything into areas. These three are a starting point; rename them, remove them, or add your own.",
   "Add a project or course under each area. You can add more later in settings.",
   "Add classes and standing meetings so you can plan around them. You can skip this and add them later.",
   "Choose one goal and a target. Tasks, a number or milestones can measure your progress.",

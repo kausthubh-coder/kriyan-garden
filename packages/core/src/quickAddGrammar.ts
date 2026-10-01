@@ -19,5 +19,6 @@ export const quickAddGrammar: { tokens: string[]; meaning: string; suffix: strin
   { tokens: ["1.5h", "1h30m", "1h 30min", "1h30mins"], meaning: "Decimal hours or combined hours and minutes", suffix: "", expected: { durationMinutes: 90 } },
   { tokens: ["45m", "45min", "45mins", "45 m"], meaning: "Length in minutes", suffix: "", expected: { durationMinutes: 45 } },
   { tokens: ["#school", "#sch"], meaning: "Area name or ID prefix, case insensitive", suffix: "", expected: { areaId: "school" } },
+  { tokens: ["#music"], meaning: "An existing area you named yourself (Music in this example)", suffix: "", expected: { areaId: "music" } },
   { tokens: ["#econ", "#ECON101"], meaning: "Project or course prefix; also selects its area", suffix: "", expected: { areaId: "school", projectId: "econ" } },
 ];

@@ -31,6 +31,6 @@ export function createPlannerMcp(execute: typeof runOperation = runOperation) {
     }
   }, {
     serverInfo: { name: "kriyan", version: "0.2.0" }, supportedProtocolVersions: ["2026-07-28", "2025-11-25"], maxSubscriptions: 0,
-    instructions: "Read the relevant tasks, goals and spaces before writing, and repeat each write's readBack sentence to the user. Never invent IDs; use returned IDs or resolve a unique name and ask the user to choose when names are ambiguous.",
+    instructions: "Help the person organise and plan their life with the AI they already use. Areas are user-defined; use the person's area names and never assume the defaults. Read the relevant tasks, goals and spaces before writing, and repeat each write's readBack sentence to the user. Never invent IDs; use returned IDs or resolve a unique name and ask the user to choose when names are ambiguous.",
   });
 }

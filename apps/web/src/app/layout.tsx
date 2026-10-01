@@ -6,9 +6,9 @@ const font = localFont({ src: "../../public/fonts/SchibstedGrotesk.woff2", varia
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://kriyan.app"),
-  title: { default: "Kriyan", template: "%s | Kriyan" },
-  description: "A planner for tasks and goals across School, Business and Life.",
-  openGraph: { type: "website", siteName: "Kriyan", title: "Kriyan", description: "Your day on one timeline." },
+  title: { default: "Kriyan | Organise your life with your AI", template: "%s | Kriyan" },
+  description: "An open-source planner that makes organising and planning your life easy. Plan with the AI you already use.",
+  openGraph: { type: "website", siteName: "Kriyan", title: "Kriyan | Organise your life with your AI", description: "An open-source planner that makes organising and planning your life easy. Plan with the AI you already use." },
   twitter: { card: "summary_large_image" },
 };
 

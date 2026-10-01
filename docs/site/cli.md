@@ -1,6 +1,6 @@
 # CLI
 
-The `kriyan` command is a thin client over the shared API. Run it from a clone with Bun:
+Organise tasks and goals in your areas from your terminal. The `kriyan` command uses the shared API, so it sees the same planner as the app and the AI you already use. Run it from a clone with Bun:
 
 ## Run from a clone
 

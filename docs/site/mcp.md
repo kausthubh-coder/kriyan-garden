@@ -1,6 +1,6 @@
 # Plan with your AI
 
-Kriyan's remote MCP endpoint is `https://app.kriyan.app/mcp`. An OAuth-capable client signs you in through Clerk and asks you to approve access to your planner.
+Kriyan's remote MCP endpoint is `https://app.kriyan.app/mcp`. Plan with the AI you already use in your own areas. Your assistant uses your area names and never assumes the suggested defaults. An OAuth-capable client signs you in through Clerk and asks you to approve access to your planner.
 
 Clerk development is the hosted identity provider. Dynamic registration, client metadata documents and resource audience claims are configured through the Clerk CLI. Sign-in uses S256 PKCE, consent and the standard scopes `openid profile email`. A token for the exact `/mcp` resource grants access only to your own planner. No Clerk dashboard steps are needed.
 

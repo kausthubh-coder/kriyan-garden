@@ -91,7 +91,7 @@ async function goalRows(context: Context) {
 
 export const operations = {
   me: operation(schemas.me, false, "Read the caller's profile and local calendar.", async (_input, ctx) => ({ userId: ctx.userId, profile: ctx.profile ? identify(ctx.profile) : null })),
-  get_overview: operation(schemas.get_overview, false, "Start here: areas, projects, courses, active goals and today's summary.", async (_input, ctx) => {
+  get_overview: operation(schemas.get_overview, false, "Start here: user-defined areas, projects, courses, active goals and today's summary. Use the person's area names and never assume the defaults.", async (_input, ctx) => {
     const [day, goals] = await Promise.all([dayView(ctx, ctx.today), goalRows(ctx)]);
     const count = [...day.timed, ...day.anytime].filter(task => task.status === "active").length;
     return { areas: ctx.areas.map(identify), projects: projectRows(ctx).map(identify), goals: goals.filter(goal => goal.status === "active"), summary: `${count} active tasks today, ${day.plannedMinutes} minutes planned, ${day.freeMinutes} minutes free.`, day };

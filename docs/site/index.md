@@ -1,6 +1,6 @@
 # Getting started
 
-Kriyan is an open-source planner for school, business and life. Your day is a timeline with a tray beside it. Task length is optional.
+Kriyan is an open-source planner that makes organising and planning your life easy. Plan with the AI you already use to get more done. Your day is a timeline with a tray beside it. Task length is optional.
 
 ## Try a day
 
@@ -8,7 +8,7 @@ Kriyan is an open-source planner for school, business and life. Your day is a ti
 
 ## Create your planner
 
-[Sign up](https://app.kriyan.app/sign-up), then choose your areas. School, Business and Life are suggested starting points. Rename them, add projects or courses, and enter classes or fixed meetings in your timetable. You can skip setup steps and return to Settings later.
+[Sign up](https://app.kriyan.app/sign-up), then choose your areas. The suggested areas are starting points. Rename or remove them, add your own, add projects or courses, and enter classes or fixed meetings in your timetable. You can skip setup steps and return to Settings later.
 
 ## Add a task
 

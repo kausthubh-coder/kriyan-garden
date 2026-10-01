@@ -1,6 +1,7 @@
 import type { QuickAddResult } from "./quickAdd";
 export const quickAddCases: { text: string; expected: Partial<QuickAddResult> }[] = [
     { text: "gym tomorrow 7am", expected: { title: "Gym", date: "2026-09-30", time: "07:00" } },
+    { text: "practice piano tomorrow #music", expected: { title: "Practice piano", areaId: "music", date: "2026-09-30" } },
     { text: "call amma", expected: { title: "Call amma" } },
     { text: "essay fri #econ 2h", expected: { title: "Essay", areaId: "school", projectId: "econ", date: "2026-10-02", durationMinutes: 120 } },
     { text: "read for 20 minutes at 9", expected: { title: "Read for 20 minutes", time: "09:00" } },

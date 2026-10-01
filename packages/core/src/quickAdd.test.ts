@@ -12,6 +12,7 @@ const context: QuickAddContext = {
     { id: "school", name: "School" },
     { id: "biz", name: "Business" },
     { id: "life", name: "Life" },
+    { id: "music", name: "Music" },
   ],
   projects: [{ id: "econ", name: "Econ 101", areaId: "school" }],
 };
