@@ -1,5 +1,5 @@
 import { readFile, unlink } from "node:fs/promises";
-import { createClerkClient } from "@clerk/backend";
+import { deleteTestUser } from "../../../.agents/skills/test-kriyan/scripts/lib/users.mjs";
 import { test, expect } from "@playwright/test";
 import { api } from "@kriyan/backend/convex/_generated/api";
 import { backendFor } from "./backend";
@@ -38,10 +38,7 @@ test("reset the disposable planner and remove its test user", async ({ page }, t
   ).toBeVisible();
   // Close the app before the final reset so it cannot recreate a profile.
   await page.close();
-  await backend.mutation(api.profiles.resetAll, {});
-  await createClerkClient({
-    secretKey: process.env.CLERK_SECRET_KEY,
-  }).users.deleteUser(record.id);
+  await deleteTestUser(record.id);
   await unlink(`e2e/.auth/${prefix}disposable-user.json`);
   await unlink(`e2e/.auth/${prefix}user.json`);
 });

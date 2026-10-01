@@ -1,10 +1,7 @@
-import { chromium, expect } from "@playwright/test";
-import {
-  clerk,
-  clerkSetup,
-  setupClerkTestingToken,
-} from "@clerk/testing/playwright";
-import { createClerkClient } from "@clerk/backend";
+import { expect } from "@playwright/test";
+import { createTestUser, deleteTestUser, resolveUser } from "../../../.agents/skills/test-kriyan/scripts/lib/users.mjs";
+import { prepareClerk, launchBrowser, signInPage } from "../../../.agents/skills/test-kriyan/scripts/lib/browser.mjs";
+import { serviceCall } from "../../../.agents/skills/test-kriyan/scripts/lib/service.mjs";
 import nextEnv from "@next/env";
 import { mkdir, readFile, writeFile, unlink } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -15,14 +12,7 @@ nextEnv.loadEnvConfig(process.cwd());
 process.env.PLAYWRIGHT_BROWSERS_PATH = resolve(
   "../../.agents/playwright-browsers",
 );
-process.env.CLERK_PUBLISHABLE_KEY =
-  process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-if (!process.env.CLERK_SECRET_KEY?.startsWith("sk_test_"))
-  throw new Error("A development Clerk instance is required.");
-await clerkSetup();
-const clerkClient = createClerkClient({
-  secretKey: process.env.CLERK_SECRET_KEY,
-});
+await prepareClerk();
 const previous: unknown = await readFile(
   "e2e/.auth/disposable-user.json",
   "utf8",
@@ -34,18 +24,15 @@ const user =
   typeof previous === "object" &&
   "id" in previous &&
   typeof previous.id === "string"
-    ? await clerkClient.users.getUser(previous.id)
-    : await clerkClient.users.createUser({
-        emailAddress: [`kriyan-brief12-${Date.now()}+clerk_test@example.com`],
-        skipPasswordRequirement: true,
-      });
-const email = user.emailAddresses[0]?.emailAddress;
-if (!email) throw new Error("The disposable user has no email address.");
+    ? await resolveUser(previous.id)
+    : await createTestUser({ tag: "brief12" });
+const email = user.email;
+const baseURL = process.env.E2E_BASE_URL ?? "http://localhost:3400";
 const directory = resolve("../../.agents/screenshots/12");
 await mkdir(directory, { recursive: true });
-const browser = await chromium.launch();
+const browser = await launchBrowser();
 const context = await browser.newContext({
-  baseURL: "http://localhost:3400",
+  baseURL,
   viewport: { width: 1440, height: 900 },
   timezoneId: "America/New_York",
   reducedMotion: "reduce",
@@ -57,10 +44,7 @@ const errors: string[] = [],
 page.on("pageerror", (e) => errors.push(e.message));
 let backend: Awaited<ReturnType<typeof backendFor>> | undefined;
 try {
-  await setupClerkTestingToken({ page });
-  await page.goto("/sign-in", { timeout: 120_000 });
-  await clerk.signIn({ page, emailAddress: email });
-  await page.goto("/app/welcome", { timeout: 120_000 });
+  await signInPage(page, email, { base: baseURL, destination: "/app/welcome" });
   await expect(
     page.getByRole("heading", { name: "What do you plan for?" }),
   ).toBeVisible({ timeout: 120_000 });
@@ -83,7 +67,7 @@ try {
       [390, 844],
     ]) {
       const phoneContext = width === 390 ? await browser.newContext({
-        baseURL: "http://localhost:3400", viewport: { width, height },
+        baseURL, viewport: { width, height },
         timezoneId: "America/New_York", reducedMotion: "reduce", hasTouch: true, isMobile: true,
         storageState: await context.storageState(),
       }) : undefined;
@@ -132,24 +116,24 @@ try {
   }
   await page.getByRole("button", { name: "Work", exact: true }).click();
   await capture("welcome-step-1");
-  await backend.mutation(api.projects.create, {
+  await serviceCall(api.service.projectsCreate, user.id, "projects.create", {
     areaId: school._id,
     name: "CS 201",
     kind: "course",
   });
-  await backend.mutation(api.projects.create, {
+  await serviceCall(api.service.projectsCreate, user.id, "projects.create", {
     areaId: school._id,
     name: "Calculus II",
     kind: "course",
   });
-  await backend.mutation(api.projects.create, {
+  await serviceCall(api.service.projectsCreate, user.id, "projects.create", {
     areaId: work._id,
     name: "Hartley website",
     kind: "project",
   });
   await page.goto("/app/welcome?step=2");
   await capture("welcome-step-2");
-  await backend.mutation(api.events.create, {
+  await serviceCall(api.service.eventsCreate, user.id, "events.create", {
     areaId: school._id,
     title: "CS 201 lecture",
     weekdays: [2, 4],
@@ -160,7 +144,7 @@ try {
   });
   await page.goto("/app/welcome?step=3");
   await capture("welcome-step-3");
-  await backend.mutation(api.goals.create, {
+  await serviceCall(api.service.goalsCreate, user.id, "goals.create", {
     areaId: life._id,
     title: "Read ten books",
     startDate: today,
@@ -169,15 +153,15 @@ try {
   });
   await page.goto("/app/welcome?step=4");
   await capture("welcome-step-4");
-  await backend.mutation(api.tasks.quickAdd, {
+  await serviceCall(api.service.tasksQuickAdd, user.id, "tasks.quickAdd", {
     text: "Problem set 4 today 14:00 1h #cs201",
     today,
   });
-  await backend.mutation(api.tasks.quickAdd, {
+  await serviceCall(api.service.tasksQuickAdd, user.id, "tasks.quickAdd", {
     text: "Gym tomorrow 7am",
     today,
   });
-  await backend.mutation(api.tasks.quickAdd, {
+  await serviceCall(api.service.tasksQuickAdd, user.id, "tasks.quickAdd", {
     text: "Call Amma today",
     today,
   });
@@ -204,7 +188,7 @@ try {
   if (questionWidth !== 520) throw new Error(`Desktop question column is ${questionWidth}px.`);
   checks.push("Question column is 520px at 1024px; phone previews are 260px; no horizontal overflow at either capture size.");
   await backend.mutation(api.profiles.completeOnboarding, {});
-  await backend.mutation(api.habits.create, {
+  await serviceCall(api.service.habitsCreate, user.id, "habits.create", {
     areaId: life._id,
     title: "Read daily",
     weeklyTarget: 5,
@@ -238,10 +222,9 @@ try {
   );
 } finally {
   await page.close();
-  if (backend) await backend.mutation(api.profiles.resetAll, {});
   await context.close();
   await browser.close();
-  await clerkClient.users.deleteUser(user.id);
+  await deleteTestUser(user.id);
   if (previous) await unlink("e2e/.auth/disposable-user.json").catch(() => {});
   await writeFile(
     `${directory}/capture-results.json`,
