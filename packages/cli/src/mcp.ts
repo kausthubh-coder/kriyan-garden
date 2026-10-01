@@ -3,7 +3,7 @@ export function mcpSetup(base: string) {
   const endpoint = `${base}/mcp`;
   return {
     endpoint,
-    claude: `Claude web or desktop: Settings > Connectors > Add custom connector. Name: Kriyan. Remote MCP server URL: ${endpoint}. Connect and approve the requested scopes.`,
+    claude: `Claude web or desktop: Settings > Connectors > Add custom connector. Name: Kriyan. Remote MCP server URL: ${endpoint}. Connect and approve access to your planner.`,
     claudeCode: `claude mcp add --transport http kriyan ${endpoint}`,
     chatgpt: `ChatGPT: Settings > Security and login > Developer mode. Open Plugins, select +, and add Kriyan with MCP server URL ${endpoint}, choose OAuth, then connect.`,
     cursor: JSON.stringify({ mcpServers: { kriyan: { url: endpoint } } }, null, 2),
@@ -13,5 +13,5 @@ export function mcpSetup(base: string) {
 
 export function formatMcp(base: string): string {
   const setup = mcpSetup(base);
-  return `${setup.claude}\n\nClaude Code\n${setup.claudeCode}\n\n${setup.chatgpt}\n\nCursor, .cursor/mcp.json\n${setup.cursor}\n\nVS Code, .vscode/mcp.json\n${setup.vscode}\n\nAllow tasks:read, tasks:write, spaces:read, spaces:write, goals:read and goals:write when you connect.`;
+  return `${setup.claude}\n\nClaude Code\n${setup.claudeCode}\n\n${setup.chatgpt}\n\nCursor, .cursor/mcp.json\n${setup.cursor}\n\nVS Code, .vscode/mcp.json\n${setup.vscode}\n\nSign in through Clerk and approve access to your planner. Clients request openid profile email for the MCP resource.`;
 }

@@ -18,5 +18,5 @@ export async function GET(request: Request) {
     const today = calendar.today ?? localClock(new Date(), calendar.timezone).today;
     const discovered = metadata.parse(await fetchClerkAuthorizationServerMetadata({ publishableKey }));
     return Response.json({ clientId, authorizationEndpoint: discovered.authorization_endpoint, tokenEndpoint: discovered.token_endpoint, resource: apiResourceUrl(request), scopes: [...SCOPES, "offline_access"], today, timezone: calendar.timezone }, { headers: { "Cache-Control": "no-store" } });
-  } catch (error) { return apiErrorResponse(error, [], request); }
+  } catch (error) { return apiErrorResponse(error, request); }
 }

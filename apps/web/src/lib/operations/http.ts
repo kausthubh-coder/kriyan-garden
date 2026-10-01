@@ -1,21 +1,16 @@
 import { auth } from "@clerk/nextjs/server";
-import { operations, runOperation, type Caller, type OperationName } from "./index";
+import { runOperation, type Caller, type OperationName } from "./index";
 import { OperationError, publicError } from "./errors";
 import { verifyUserOAuth } from "./oauth";
 import { apiResourceUrl, apiResourceMetadataUrl } from "./origin";
 
 export async function apiCaller(request: Request): Promise<Caller> {
-  const state = await auth({ acceptsToken: ["oauth_token", "api_key"] });
-  if (!state.isAuthenticated) throw new OperationError("UNAUTHENTICATED", "Sign in with kriyan login or supply a user API key.", 401);
-  if (state.tokenType === "oauth_token") {
-    const bearer = request.headers.get("authorization")?.match(/^Bearer\s+(\S+)$/i)?.[1];
-    const verified = await verifyUserOAuth(bearer, apiResourceUrl(request));
-    if (!verified) throw new OperationError("INVALID_TOKEN", "This login is not valid for the Kriyan API. Run kriyan login again.", 401);
-    return { userId: verified.extra.userId, scopes: verified.scopes };
-  }
-  if (state.tokenType !== "api_key") throw new OperationError("UNAUTHENTICATED", "Sign in with kriyan login or supply a user API key.", 401);
-  if (!state.userId?.startsWith("user_")) throw new OperationError("FORBIDDEN", "Use a token owned by a user account.", 403);
-  return { userId: state.userId, scopes: state.scopes };
+  const state = await auth({ acceptsToken: "oauth_token" });
+  if (!state.isAuthenticated || state.tokenType !== "oauth_token") throw new OperationError("UNAUTHENTICATED", "Sign in with kriyan login and try again.", 401);
+  const bearer = request.headers.get("authorization")?.match(/^Bearer\s+(\S+)$/i)?.[1];
+  const verified = await verifyUserOAuth(bearer, apiResourceUrl(request));
+  if (!verified) throw new OperationError("INVALID_TOKEN", "This login is not valid for the Kriyan API. Run kriyan login again.", 401);
+  return { userId: verified.extra.userId };
 }
 export async function requestInput(request: Request): Promise<Record<string, unknown>> {
   const input: Record<string, unknown> = Object.fromEntries(new URL(request.url).searchParams);
@@ -39,10 +34,10 @@ export function apiRoute(name: OperationName, options: { id?: string; created?: 
       if (options.id) input.id = options.id;
       const value = await runOperation(name, input, caller);
       return Response.json(value, { status: options.created ? 201 : 200, headers: { "Cache-Control": "no-store" } });
-    } catch (error) { return apiErrorResponse(error, operations[name].scopes, request); }
+    } catch (error) { return apiErrorResponse(error, request); }
   };
 }
-export function apiErrorResponse(error: unknown, scopes: readonly string[] = [], request?: Request) {
+export function apiErrorResponse(error: unknown, request?: Request) {
   const safe = publicError(error);
   const headers: Record<string, string> = { "Cache-Control": "no-store" };
   const metadata = request ? `resource_metadata="${apiResourceMetadataUrl(request)}"` : "";
@@ -50,7 +45,6 @@ export function apiErrorResponse(error: unknown, scopes: readonly string[] = [],
     const parameters = [safe.code === "INVALID_TOKEN" ? 'error="invalid_token"' : "", metadata].filter(Boolean).join(", ");
     headers["WWW-Authenticate"] = parameters ? `Bearer ${parameters}` : "Bearer";
   }
-  if (safe.code === "INSUFFICIENT_SCOPE") headers["WWW-Authenticate"] = `Bearer error="insufficient_scope", scope="${scopes.join(" ")}"${metadata ? `, ${metadata}` : ""}`;
   if (safe.status === 429) headers["Retry-After"] = "60";
   return Response.json({ error: { code: safe.code, message: safe.message, ...(safe.candidates ? { candidates: safe.candidates } : {}) } }, { status: safe.status, headers });
 }

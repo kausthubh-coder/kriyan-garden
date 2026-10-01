@@ -49,14 +49,6 @@ export async function deleteTestUser(identifier) {
   const user = await resolveUser(identifier);
   if (fixtures.has(user.email)) throw new UsageError('The two long-lived fixtures are protected.');
   await resetOwner(user.id);
-  // User API keys are not guaranteed to be cascade-deleted by Clerk.
-  try {
-    const keys = await clerkClient().apiKeys.list({ subject: user.id, limit: 100 });
-    for (const key of keys.data) await clerkClient().apiKeys.delete(key.id);
-  } catch (error) {
-    if (!error?.errors?.some(item => /disabled|not_enabled|feature_not_available/.test(item.code)))
-      throw providerError(error, 'Test API-key cleanup');
-  }
   try { await clerkClient().users.deleteUser(user.id); }
   catch (error) { throw providerError(error, 'Test-user deletion'); }
   return { id: user.id, email: user.email, plannerDataRemoved: true, deleted: true };

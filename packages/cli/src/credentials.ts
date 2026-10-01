@@ -21,10 +21,10 @@ type EntryFactory = (account: string) => Promise<KeyringEntry>;
 
 export function parseTokens(value: unknown): Tokens {
   const record = object(value);
-  if (typeof record.accessToken !== "string" || !record.accessToken || typeof record.clientId !== "string" || !record.clientId || (record.refreshToken !== undefined && typeof record.refreshToken !== "string") || (record.resource !== undefined && (typeof record.resource !== "string" || !record.resource))) {
+  if ((record.accessToken !== undefined && typeof record.accessToken !== "string") || (!record.accessToken && (typeof record.refreshToken !== "string" || !record.refreshToken)) || typeof record.clientId !== "string" || !record.clientId || (record.refreshToken !== undefined && typeof record.refreshToken !== "string") || (record.resource !== undefined && (typeof record.resource !== "string" || !record.resource))) {
     throw new CliError("Saved credentials are invalid. Run kriyan logout, then kriyan login.", 3);
   }
-  return { accessToken: record.accessToken, clientId: record.clientId, ...(typeof record.resource === "string" ? { resource: record.resource } : {}), ...(typeof record.refreshToken === "string" ? { refreshToken: record.refreshToken } : {}) };
+  return { accessToken: typeof record.accessToken === "string" ? record.accessToken : "", clientId: record.clientId, ...(typeof record.resource === "string" ? { resource: record.resource } : {}), ...(typeof record.refreshToken === "string" ? { refreshToken: record.refreshToken } : {}) };
 }
 
 const nativeEntry: EntryFactory = async (account) => {

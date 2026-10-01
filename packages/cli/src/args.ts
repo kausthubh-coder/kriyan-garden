@@ -75,5 +75,5 @@ Usage: kriyan <command> [--json]
 Use quotes around task text or a task name containing spaces.
 Every command supports --json. --help shows this help.
 KRIYAN_URL defaults to https://app.kriyan.app.
-Set KRIYAN_API_KEY for scripts and CI.
+Run kriyan login before using authenticated commands.
 `;

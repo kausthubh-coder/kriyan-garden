@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { CliError } from "./errors";
 
 export async function openBrowser(url: string): Promise<void> {
+  if (process.env.BROWSER === "none") throw new CliError("Open the displayed URL to sign in.");
   const program = process.platform === "win32" ? "rundll32.exe" : process.platform === "darwin" ? "open" : "xdg-open";
   const args = process.platform === "win32" ? ["url.dll,FileProtocolHandler", url] : [url];
   await new Promise<void>((resolve, reject) => {

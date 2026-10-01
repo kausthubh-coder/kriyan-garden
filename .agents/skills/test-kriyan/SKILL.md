@@ -40,11 +40,10 @@ They read `apps/web/.env.local` themselves. Session files go to `.agents/test-kr
 | `seed.mjs <email or id> sample` | Loads the prototype's sample data into that user's planner through the signed service functions (no browser). |
 | `seed.mjs <email or id> reset` | Deletes every row the user owns. |
 | `seed.mjs <email or id> fixture <name>` | Loads a named fixture from `scripts/fixtures/` (for example `empty-areas`, `overlapping-day`, `late-goal`, `dst-week`). |
-| `apikey.mjs <email or id> --scopes tasks:read,tasks:write ... --reveal` | Creates a user API key (needs user API keys enabled in the Clerk dashboard) and prints the secret once. |
-| `oauth.mjs <email> --resource mcp\|api --client <client id> --base <url> --reveal` | Runs the PKCE authorization flow against Clerk as that user with Playwright, approving the consent screen, and prints the access token once. Needs the OAuth scopes and application to exist in Clerk. |
+| `oauth.mjs <email> --resource mcp\|api --base <url> [--register] [--refresh] [--out <file>]` | Runs real sign-in, PKCE and consent. Uses the configured CLI client by default; `--register` creates a disposable dynamic client. Requests `openid profile email`, adding `offline_access` only with `--refresh`. Saves private token files without printing credentials. |
 | `mcp.mjs --token <token> --base <url> [--list] [--call <tool> <json>]` | A minimal Streamable HTTP MCP client for calling the server with a token from `oauth.mjs`. Also accepts `--token-file <file>` inside `.agents/test-kriyan/`; defaults to protocol `2026-07-28`, with `--protocol 2025-11-25` for the legacy stateless handshake. |
 | `android.mjs signin <email> [--password <pw>]` | Signs the running emulator app in through its real sign-in screen with `adb` and UI Automator. The current native screen requires a password first, then `424242` if it asks for email verification. Waits up to 30 minutes for an unavailable or busy emulator; accepts `--serial` and `--wait-minutes`. Never starts an emulator or clears another session. |
-| `doctor.mjs` | Checks keys are development keys, the Convex deployment matches the repository, the Clerk instance has the six planner scopes and user API keys enabled, and reports what is missing. |
+| `doctor.mjs` | Checks development keys, matching Convex deployment, dynamic registration, client metadata documents, audience claims and the public Kriyan CLI application with PKCE, consent and the loopback redirect. |
 
 Every script exits non-zero with a one-line reason on failure.
 
@@ -68,17 +67,19 @@ On checkouts where a relative symlink is unavailable, `.claude/skills/test-kriya
 
 ### MCP server
 
-1. Run `doctor.mjs`. If the scopes or OAuth application are missing, stop and report the exact dashboard steps from `docs/setup/05-development-oauth.md`; do not try to work around it.
-2. `oauth.mjs <email> --resource mcp --client <id> --base <url> --reveal` → access token.
-3. `mcp.mjs --token <token> --base <url> --list`, then `--call get_day '{"date":"2026-10-01"}'` and so on. Read-backs should match what `token.mjs` plus a direct query shows.
-4. For a real client, `claude mcp add --transport http kriyan <url>/mcp` and complete the browser sign-in with the test email and `424242`.
+1. Run `doctor.mjs`. All checks must pass. Fix missing configuration through the Clerk CLI using `docs/setup/05-development-oauth.md`.
+2. Create a password test user with `user.mjs create --tag mcp --password`, then run `oauth.mjs <email> --password <pw> --resource mcp --register --base http://localhost:3400 --out mcp.json`. This tests dynamic registration, real sign-in, S256 PKCE and consent. The standard scopes grant access to that user's planner for the exact `/mcp` resource.
+3. `mcp.mjs --token-file mcp.json --base http://localhost:3400 --list`, then call `get_overview`, `get_day`, `quick_add` and `complete_task`. Read back the stored result after each write. The MCP script accepts a token file containing `accessToken`.
+4. Test an API-resource token against MCP and an MCP-resource token against API. Each must get 401. No token must get the protected-resource metadata challenge. Verify expiration with a real Clerk-verified token and a controlled resource-server clock advance, without changing Clerk settings.
+5. Delete any dynamically registered test OAuth application and every test user when finished. Use the Clerk Backend API application's ID, never the long-lived Kriyan CLI application's ID.
 
 ### REST API and CLI
 
-- API with an OAuth token: `oauth.mjs --resource api`, then `curl -H "Authorization: Bearer <token>" <url>/api/v1/day?date=...`.
-- API with a key: `apikey.mjs`, then `Authorization: Bearer <key>`.
-- CLI, key mode: `KRIYAN_URL=<url> KRIYAN_API_KEY=<key> node packages/cli/dist/kriyan.js today`.
-- CLI, browser login: run `kriyan login` with `BROWSER=none` so it prints the authorize URL, open that URL with Playwright as the test user (the same flow `oauth.mjs` uses), and let the loopback redirect complete. Run from both PowerShell and Git Bash on Windows.
+1. Create a password test user, then `oauth.mjs <email> --password <pw> --resource api --base http://localhost:3400 --out api.json` obtains a resource-bound token for `/api/v1`. Load its `accessToken` from the private file into the request's Bearer header. Do not print it.
+2. Read `/api/v1/day`, quick-add a task and try another test user's task ID. Reads and writes share the same owner-isolated backend as MCP.
+3. Build with `bun run --filter kriyan build`. Set `KRIYAN_URL` to the test origin and `BROWSER=none`, then run `node packages/cli/dist/kriyan.js login`. Capture the authorize URL privately and complete its real sign-in and consent with Playwright. The CLI listens on an ephemeral `127.0.0.1` loopback port.
+4. Run `whoami`, `today`, `add`, `done` and `logout` from PowerShell and Git Bash. Tokens go into the OS keychain, with a protected file fallback. Test refresh by removing only the access token from the saved credential while keeping its refresh token, client ID and resource. The next command must recover and save a new access token without another browser sign-in.
+5. Logout and delete the test users. Browser login and silent refresh are the only CLI authentication path.
 
 ### Android
 
@@ -92,6 +93,8 @@ On checkouts where a relative symlink is unavailable, `.claude/skills/test-kriya
 
 Always finish with `user.mjs prune --older-than 0m --tag <your tag>` or explicit deletes, then `user.mjs list`. If another session owns active test accounts, leave those accounts alone and report them; verify every account created by your session was removed.
 
-## What still needs a person
+## Nothing needs the Clerk dashboard
 
-The Clerk dashboard has no API for two settings the MCP server, API and CLI depend on: custom OAuth scopes (`tasks:read`, `tasks:write`, `spaces:read`, `spaces:write`, `goals:read`, `goals:write`) and enabling user API keys. `doctor.mjs` tells you whether they exist. If they do not, report it; everything else in this skill still works.
+The development instance is the hosted product's identity provider. Dynamic client registration, client metadata documents and resource audience claims were enabled through `clerk api /instance/oauth_application_settings --instance dev`. The public Kriyan CLI application was created through `clerk api /oauth_applications --instance dev` with S256 PKCE, consent, the loopback callback and `openid profile email offline_access`. Its client ID is configured in the web environment and Vercel and is never printed by this skill.
+
+MCP and API tokens for the correct resource grant access only to the verified user's own planner. There are no custom OAuth scopes or user API keys to configure. `doctor.mjs` checks the configuration without changing it. Clerk development limits still apply: 100 users and a development banner on its hosted pages.

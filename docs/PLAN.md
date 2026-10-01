@@ -72,31 +72,21 @@ CLI/API  ─┘  (signed by the web server)
 
 ## 5. Authentication
 
-Clerk is the only identity provider. The Clerk user ID is the owner ID everywhere.
+Clerk is the only identity provider. The hosted product uses the Clerk development instance, including production. There is no Clerk production instance to create. Development is limited to 100 users and shows a development banner on hosted sign-in and consent pages. The Clerk user ID is the owner ID everywhere.
 
-| Surface | How the user signs in | How Convex trusts the request |
-|---|---|---|
-| Web | Clerk session (email, Google) | Clerk JWT from the `convex` template, verified by `auth.config.ts`. Exists today. |
-| Mobile | `@clerk/expo` with native Google and Apple sign-in, token kept in `expo-secure-store` | Same Clerk JWT template. |
-| MCP | The AI client runs Clerk's OAuth flow in the browser; the user approves a consent screen | `/mcp` verifies the OAuth token with Clerk, then calls Convex with an HMAC-signed service request carrying the verified user ID. Exists today. |
-| CLI | `kriyan login` opens the browser and runs OAuth with PKCE against a pre-registered public client, using a loopback redirect on `127.0.0.1` | `/api/v1` verifies the token with Clerk, then makes the same signed service request. |
-| CLI in CI or scripts | The user creates an API key in account settings and sets `KRIYAN_API_KEY` | `/api/v1` verifies the key with Clerk (`acceptsToken: ["oauth_token", "api_key"]`). |
+| Surface | Sign-in | Convex trust |
+| --- | --- | --- |
+| Web and Android | Clerk session | Clerk JWT from the convex template, verified by auth.config.ts |
+| MCP | Browser OAuth with S256 PKCE and consent, through dynamic registration or a client metadata document | Web server verifies the token for its exact MCP resource, then signs the service request for the verified owner |
+| API and CLI | Browser OAuth with S256 PKCE, consent and an ephemeral 127.0.0.1 callback; CLI refreshes silently | Web server verifies the token for its exact API resource, then signs the same service request |
 
-Why the CLI and MCP go through the web server and not straight to Convex:
-- The MCP spec forbids passing a client's token on to another service.
-- Clerk API keys are opaque, so Convex cannot verify them.
-- We could not confirm that Convex can verify a Clerk OAuth access token directly.
+OAuth uses `openid profile email`, adding `offline_access` when refresh is needed. No custom scopes or user API keys are required. A valid token for `/mcp` or `/api/v1` grants full access to the verified user's own planner; each resource refuses tokens intended for the other. Expired, revoked, audience-less and non-user tokens are refused.
 
-Rules:
-- `MCP_SERVICE_SECRET` (renamed `SERVICE_SECRET`) lives only in Vercel and Convex server environments.
-- Signed requests use canonical JSON and a 5-minute window (PR #1). We add a nonce to block replays.
-- OAuth scopes gate writes: `tasks:read`, `tasks:write`, `spaces:read`, `spaces:write`, `goals:read`, `goals:write`.
-- The CLI stores tokens in the OS keychain (`@napi-rs/keyring`) and falls back to a user-only config file when no keychain exists.
-- No destructive delete over MCP or CLI until a trash with restore exists.
+Dynamic client registration, client metadata documents, audience claims and the public Kriyan CLI application were configured through the Clerk CLI. The application requires PKCE and consent, registers `http://127.0.0.1/callback` and allows `openid profile email offline_access`. `CLERK_CLI_CLIENT_ID` is configured in the web environment and Vercel. Nothing needs the Clerk dashboard. See `docs/setup/05-development-oauth.md`.
 
-Open points to check during the build:
-- Clerk's device-code login is documented but may still be in beta. We ship browser login and API keys first and add device-code later.
-- Loopback redirects on any port are described in Clerk's blog, not its reference docs. We confirm it in the dashboard before building on it.
+External callers go through the web server rather than forwarding their token to Convex. Service requests use canonical JSON, HMAC signatures, an owner-bound nonce and a five-minute window. The service secret lives only in server environments. Convex checks ownership and owner indexes on every operation.
+
+The CLI stores tokens in the OS keychain and falls back to a user-only config file when the keychain is unavailable. Refresh preserves the exact resource and client binding. MCP and CLI have no destructive delete until a trash with restore exists.
 
 ## 6. MCP server
 
@@ -152,7 +142,7 @@ Rebuild the UI from the prototype in React, on the existing Next.js 16 app. Read
 | Task detail | Area, project, day, time, optional length, deadline, goal, plus the features already on `main`: notes editor with slash commands, repeat builder, reminders |
 | Drag | Tray to timeline, move, resize. Keyboard alternatives for each. |
 | State | Convex `useQuery` and `useMutation` with optimistic updates and undo |
-| Settings | Areas and projects, timetable, daily capacity, timezone, API keys, connected AI clients, export, delete account |
+| Settings | Areas and projects, timetable, daily capacity, timezone, connected AI clients, export, delete account |
 | Theme | Dark at launch. Colours are tokens in `packages/core`, so a light theme is a token set, not a rewrite. |
 | Quality | Loading skeletons, empty states, error states, offline banner, reduced motion, full keyboard use, 4.5:1 contrast |
 
@@ -220,8 +210,8 @@ Native sign-in and push both need a development build, so we use EAS from the st
 
 | Item | Action |
 |---|---|
-| Domain | Move the app from `kriyan.vercel.app` to `app.kriyan.app`. Clerk production instances need a domain you own. |
-| Clerk | Create the production instance, set DNS records, configure Google and Apple sign-in, OAuth scopes, consent screen, API keys. |
+| Domain | Move the app from `kriyan.vercel.app` to `app.kriyan.app`. Keep the configured public OAuth resource origin aligned with the domain. |
+| Clerk | Keep the development instance as the production identity provider. OAuth is configured through the CLI with standard scopes, PKCE, consent, DCR, CIMD and audience claims. Accept the 100-user limit and development banner. |
 | Convex | Production deployment with its own environment variables. |
 | Vercel | Production environment variables, preview deployments pointed at the Convex dev deployment. |
 | Monitoring | Error tracking on web and mobile, Convex log alerts. |

@@ -1,7 +1,7 @@
 import { withMcpAuth } from "mcp-handler";
 import { createPlannerMcp } from "@/lib/operations/mcp";
 import { trustedOrigin, mcpPublicOrigin } from "@/lib/operations/origin";
-import { scopeChallenge, verifyMcpBearer } from "@/lib/operations/mcp-auth";
+import { verifyMcpBearer } from "@/lib/operations/mcp-auth";
 
 export const maxDuration = 60;
 const planner = createPlannerMcp();
@@ -13,7 +13,7 @@ async function handle(request: Request) {
     "Access-Control-Allow-Headers": "Authorization, Content-Type, MCP-Protocol-Version, Mcp-Method, Mcp-Name, Mcp-Session-Id, Last-Event-ID",
     "Access-Control-Expose-Headers": "WWW-Authenticate, MCP-Protocol-Version", "Vary": "Origin",
   } });
-  const response = await withMcpAuth(async request => await scopeChallenge(request) ?? planner(request), verifyMcpBearer,
+  const response = await withMcpAuth(planner, verifyMcpBearer,
     { required: true, resourceMetadataPath: "/.well-known/oauth-protected-resource/mcp", resourceUrl: mcpPublicOrigin(request) })(request);
   response.headers.set("Cache-Control", "no-store");
   if (request.headers.has("origin")) {

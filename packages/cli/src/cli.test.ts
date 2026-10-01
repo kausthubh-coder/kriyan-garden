@@ -18,7 +18,7 @@ const fakeStore = (initial: Tokens | null = { accessToken: "test-access", refres
   return store;
 };
 const context = { today: "2026-09-29", timezone: "America/New_York" };
-const config = { clientId: "public-client", resource: "https://app.example/api/v1", authorizationEndpoint: "https://clerk.example/oauth/authorize", tokenEndpoint: "https://clerk.example/oauth/token", scopes: ["tasks:read", "tasks:write", "offline_access"] };
+const config = { clientId: "public-client", resource: "https://app.example/api/v1", authorizationEndpoint: "https://clerk.example/oauth/authorize", tokenEndpoint: "https://clerk.example/oauth/token", scopes: ["openid", "profile", "email", "offline_access"] };
 function harness(http: Http, store = fakeStore()) {
   const stdout: string[] = [], stderr: string[] = [], opened: string[] = [];
   return { stdout, stderr, opened, invoke: (args: string[]) => run(args, { http, store, env: { KRIYAN_URL: "https://app.example" }, now: () => new Date("2026-09-30T01:00:00Z"), timezone: context.timezone, stdout: (value) => stdout.push(value), stderr: (value) => stderr.push(value), open: async (url) => { opened.push(url); } }) };
@@ -88,14 +88,24 @@ describe("HTTP and authentication", () => {
     expect(new URLSearchParams(grants[0]).get("resource")).toBe(config.resource);
     expect(await store.read()).toEqual({ accessToken: "test-rotated", refreshToken: "test-rotated-refresh", clientId: config.clientId, resource: config.resource });
   });
-  test("API keys bypass saved credentials and never refresh", async () => {
-    let calls = 0; const http: Http = async (_url, init) => { calls++; expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer test-api-key"); return response({}, 401); };
-    const store: CredentialStore = { ...fakeStore(), read: async () => { throw new Error("Should not read store"); } };
-    await expect(new ApiClient("https://app.example", context, store, http, "test-api-key").request("/me")).rejects.toMatchObject({ exitCode: 3 }); expect(calls).toBe(1);
-  });
   test("missing login is exit 3 without HTTP calls", async () => {
     const http: Http = async () => { throw new Error("Unexpected HTTP"); };
     await expect(new ApiClient("https://app.example", context, fakeStore(null), http).request("/me")).rejects.toMatchObject({ exitCode: 3 });
+  });
+  test("a missing access token recovers from the saved refresh token", async () => {
+    const saved = parseTokens({ refreshToken: "test-refresh", clientId: config.clientId, resource: config.resource });
+    const store = fakeStore(saved);
+    const calls: string[] = [];
+    const http: Http = async (url, init) => {
+      calls.push(url);
+      if (url.includes("auth-config")) return response(config);
+      if (url === config.tokenEndpoint) return response({ access_token: "test-recovered", token_type: "Bearer" });
+      expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer test-recovered");
+      return response({ userId: "user-test" });
+    };
+    expect(await new ApiClient("https://app.example", context, store, http).request("/me")).toEqual({ userId: "user-test" });
+    expect(calls).toHaveLength(3);
+    expect((await store.read())?.accessToken).toBe("test-recovered");
   });
   test("maps structured API errors without exposing unexpected exception details", async () => {
     const app = harness(async () => response({ error: { code: "rate_limited", message: "Too many requests. Try again in one minute." } }, 429));

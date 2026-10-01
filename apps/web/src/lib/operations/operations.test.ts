@@ -13,18 +13,22 @@ import { schemas } from "./schemas";
 import { trustedOrigin, mcpResourceUrl, apiResourceUrl } from "./origin";
 import { apiRoute } from "./http";
 import { createPlannerMcp } from "./mcp";
-import { scopeChallenge, verifyMcpBearer } from "./mcp-auth";
+import { verifyMcpBearer } from "./mcp-auth";
 import { GET as authConfig } from "../../app/api/v1/auth-config/route";
 import { POST as mcpPost } from "../../app/mcp/route";
 
-const caller = { userId: "user_disposable", scopes: [...SCOPES] };
+function authorizedRequest(url: string, init: RequestInit = {}) {
+  return new Request(url, { ...init, headers: { authorization: "Bearer offline-fixture", ...Object.fromEntries(new Headers(init.headers)) } });
+}
+const caller = { userId: "user_disposable" };
 const area = { _id: "school", _creationTime: 0, ownerId: caller.userId, createdAt: 0, updatedAt: 0, name: "School", color: "blue", sortOrder: 0 };
 const profile = { ...area, _id: "profile", timezone: "America/Los_Angeles", dailyCapacityMinutes: 360, dayStartHour: 7, dayEndHour: 23, onboardingComplete: true };
 const task = { ...area, _id: "task", title: "Essay", areaId: area._id, projectId: null, goalId: null, date: "2026-09-29", time: null, durationMinutes: null, deadline: null, repeat: null, reminders: [], notes: "Notes", searchText: "Essay Notes", sortOrder: 0, status: "active", completedAt: null };
 const day = { date: task.date, timed: [], anytime: [task], unscheduled: [], events: [], plannedMinutes: 0, countWithoutDuration: 1 };
 beforeEach(() => {
   fake.call.mockReset(); fake.auth.mockReset(); fake.verifyToken.mockReset();
-  fake.auth.mockResolvedValue({ isAuthenticated: true, userId: caller.userId, scopes: caller.scopes, tokenType: "api_key" });
+  fake.auth.mockResolvedValue({ isAuthenticated: true, userId: caller.userId, scopes: [...SCOPES], tokenType: "oauth_token" });
+  fake.verifyToken.mockResolvedValue({ aud: ["http://localhost:3005/api/v1"], subject: caller.userId, scopes: [...SCOPES], clientId: "fixture", expiration: null, revoked: false, expired: false });
   fake.call.mockImplementation(async (ref, _owner, _operation, payload) => {
     const name = getFunctionName(ref);
     if (name === "service:plannerContext") return { profile, areas: [area], projects: [] };
@@ -38,13 +42,13 @@ beforeEach(() => {
   });
 });
 afterEach(() => { vi.unstubAllEnvs(); vi.useRealTimers(); });
-test("all 21 tools share schemas and enforce scopes before any backend call", async () => {
+test("all 21 tools share schemas and reject non-user identities before any backend call", async () => {
   expect(MCP_TOOLS).toHaveLength(21);
   expect(MCP_TOOLS.some(name => name.includes("delete"))).toBe(false);
   for (const name of MCP_TOOLS) {
     expect(operations[name].schema.shape.today).toBeDefined();
     expect(operations[name].schema.shape.timezone).toBeDefined();
-    await expect(runOperation(name, {}, { ...caller, scopes: [] })).rejects.toMatchObject({ code: "INSUFFICIENT_SCOPE", status: 403 });
+    await expect(runOperation(name, {}, { userId: "org_other" })).rejects.toMatchObject({ code: "FORBIDDEN", status: 403 });
   }
   expect(fake.call).not.toHaveBeenCalled();
 });
@@ -83,33 +87,30 @@ test("due filters use deadlines and local calendar, title filtering stays in bac
 test("structured schemas reject malformed calendars, clocks, lengths and extra fields", () => {
   for (const input of [{ title: "Essay", date: "2026-02-30" }, { title: "Essay", time: "25:00" }, { title: "Essay", durationMinutes: 0 }, { title: "Essay", timezone: "Invalid/zone" }, { title: "Essay", ownerId: "other" }]) expect(schemas.create_task.safeParse(input).success).toBe(false);
 });
-test("HTTP authenticates user API keys and returns JSON errors without service details", async () => {
-  const request = new Request("http://localhost:3005/api/v1/day?today=2026-09-29");
+test("HTTP authenticates resource-bound OAuth tokens and returns JSON errors without service details", async () => {
+  const request = authorizedRequest("http://localhost:3005/api/v1/day?today=2026-09-29");
   let response = await apiRoute("get_day")(request);
   expect(response.status).toBe(200);
-  expect(fake.auth).toHaveBeenCalledWith({ acceptsToken: ["oauth_token", "api_key"] });
+  expect(fake.auth).toHaveBeenCalledWith({ acceptsToken: "oauth_token" });
   expect(await response.json()).toMatchObject({ today: "2026-09-29", timezone: profile.timezone });
   fake.auth.mockResolvedValueOnce({ isAuthenticated: false });
   response = await apiRoute("get_day")(request);
   expect(response.status).toBe(401);
-  fake.auth.mockResolvedValueOnce({ isAuthenticated: true, tokenType: "api_key", userId: null, subject: "org_other", scopes: caller.scopes });
-  expect((await apiRoute("get_day")(request)).status).toBe(403);
   fake.call.mockRejectedValueOnce(new Error("[Request ID: private] Server Error\nCould not find public function for service:plannerContext"));
   response = await apiRoute("get_day")(request);
   expect(response.status).toBe(503);
   expect(await response.text()).not.toContain("private");
 });
-test("HTTP rejects malformed JSON and insufficient scopes with useful status codes", async () => {
-  const malformed = new Request("http://localhost:3005/api/v1/tasks", { method: "POST", headers: { "content-type": "application/json" }, body: "{" });
+test("HTTP rejects malformed JSON and accepts standard scopes for writes", async () => {
+  const malformed = authorizedRequest("http://localhost:3005/api/v1/tasks", { method: "POST", headers: { "content-type": "application/json" }, body: "{" });
   expect((await apiRoute("create_task")(malformed)).status).toBe(400);
-  fake.auth.mockResolvedValueOnce({ isAuthenticated: true, tokenType: "api_key", userId: caller.userId, scopes: ["tasks:read"] });
-  const response = await apiRoute("create_task")(new Request("http://localhost:3005/api/v1/tasks", { method: "POST", headers: { "content-type": "application/json" }, body: '{"title":"Essay"}' }));
-  expect(response.status).toBe(403);
-  expect(response.headers.get("www-authenticate")).toContain("tasks:write");
+  const response = await apiRoute("create_task")(authorizedRequest("http://localhost:3005/api/v1/tasks", { method: "POST", headers: { "content-type": "application/json" }, body: '{"title":"Essay"}' }));
+  expect(response.status).toBe(200);
+  expect(response.headers.has("www-authenticate")).toBe(false);
 });
-test("REST verifies the actual OAuth bearer and uses its verified identity and scopes", async () => {
+test("REST verifies the actual OAuth bearer and uses its verified identity", async () => {
   fake.auth.mockResolvedValue({ isAuthenticated: true, tokenType: "oauth_token", userId: "user_untrusted", scopes: [...SCOPES] });
-  const verified = { aud: ["http://localhost:3005/api/v1"], subject: caller.userId, scopes: ["tasks:read"], clientId: "fixture", expiration: null, revoked: false, expired: false };
+  const verified = { aud: ["http://localhost:3005/api/v1"], subject: caller.userId, scopes: [...SCOPES], clientId: "fixture", expiration: null, revoked: false, expired: false };
   fake.verifyToken.mockResolvedValue(verified);
   const request = new Request("http://localhost:3005/api/v1/day?today=2026-09-29", { headers: { authorization: "Bearer offline-fixture" } });
   expect((await apiRoute("get_day")(request)).status).toBe(200);
@@ -117,9 +118,10 @@ test("REST verifies the actual OAuth bearer and uses its verified identity and s
   expect(fake.call.mock.calls.every(call => call[1] === caller.userId)).toBe(true);
   fake.call.mockClear();
   const write = await apiRoute("create_task")(new Request("http://localhost:3005/api/v1/tasks", { method: "POST", headers: { authorization: "Bearer offline-fixture", "content-type": "application/json" }, body: '{"title":"Essay"}' }));
-  expect(write.status).toBe(403);
-  expect(write.headers.get("www-authenticate")).toContain("resource_metadata=\"http://localhost:3005/.well-known/oauth-protected-resource/api/v1\"");
-  expect(fake.call).not.toHaveBeenCalled();
+  expect(write.status).toBe(200);
+  expect(write.headers.has("www-authenticate")).toBe(false);
+  expect(fake.call).toHaveBeenCalled();
+  fake.call.mockClear();
   for (const patch of [{ aud: undefined }, { aud: ["http://localhost:3005/mcp"] }, { subject: "org_other" }, { subject: "" }, { revoked: true }, { expired: true }]) {
     fake.verifyToken.mockResolvedValueOnce({ ...verified, ...patch });
     const response = await apiRoute("get_day")(request);
@@ -134,12 +136,11 @@ test("REST verifies the actual OAuth bearer and uses its verified identity and s
   expect((await apiRoute("get_day")(new Request(request.url))).status).toBe(401);
   expect(fake.verifyToken).not.toHaveBeenCalled();
 });
-test("REST user API keys retain scoped authentication without an OAuth audience call", async () => {
-  const request = new Request("http://localhost:3005/api/v1/day?today=2026-09-29", { headers: { authorization: "Bearer test-api-key" } });
-  expect((await apiRoute("get_day")(request)).status).toBe(200);
+test("REST refuses unsupported token types before contacting the backend", async () => {
+  fake.auth.mockResolvedValueOnce({ isAuthenticated: true, tokenType: "session_token" });
+  expect((await apiRoute("get_day")(authorizedRequest("http://localhost:3005/api/v1/day"))).status).toBe(401);
+  expect(fake.call).not.toHaveBeenCalled();
   expect(fake.verifyToken).not.toHaveBeenCalled();
-  fake.auth.mockResolvedValueOnce({ isAuthenticated: true, tokenType: "api_key", userId: "org_other", scopes: [...SCOPES] });
-  expect((await apiRoute("get_day")(request)).status).toBe(403);
 });
 test("public login configuration echoes a device calendar and never guesses an anonymous timezone", async () => {
   vi.stubEnv("CLERK_CLI_CLIENT_ID", "public_test_client");
@@ -151,15 +152,11 @@ test("public login configuration echoes a device calendar and never guesses an a
   vi.stubEnv("CLERK_CLI_CLIENT_ID", "");
   expect((await authConfig(new Request("http://localhost:3005/api/v1/auth-config"))).status).toBe(503);
 });
-test("MCP missing scopes produces HTTP403 and an OAuth step-up challenge", async () => {
-  const request = new Request("http://localhost:3005/mcp", { method: "POST", body: JSON.stringify({ method: "tools/call", params: { name: "quick_add", arguments: { text: "Essay" } } }) });
-  request.auth = { token: "offline-fixture", clientId: "fixture", scopes: ["tasks:read"], extra: { userId: caller.userId } };
-  const response = await scopeChallenge(request);
-  expect(response?.status).toBe(403);
-  expect(response?.headers.get("www-authenticate")).toContain('scope="tasks:write"');
-  expect(response?.headers.get("www-authenticate")).toContain('/.well-known/oauth-protected-resource/mcp');
-  request.auth.scopes.push("tasks:write");
-  expect(await scopeChallenge(request)).toBeNull();
+test("MCP refuses an API-audience token before executing a write", async () => {
+  const request = authorizedRequest("http://localhost:3005/mcp", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "quick_add", arguments: { text: "Essay" } } }) });
+  const response = await mcpPost(request);
+  expect(response.status).toBe(401);
+  expect(response.headers.get("www-authenticate")).toContain('/.well-known/oauth-protected-resource/mcp');
   expect(fake.call).not.toHaveBeenCalled();
 });
 test("MCP OAuth tokens are bound to this resource and a live user identity", async () => {
@@ -168,7 +165,7 @@ test("MCP OAuth tokens are bound to this resource and a live user identity", asy
   fake.verifyToken.mockResolvedValue(verified);
   expect(await verifyMcpBearer(request, "offline-fixture")).toMatchObject({ clientId: "fixture", extra: { userId: caller.userId } });
   expect(fake.verifyToken).toHaveBeenCalledWith("offline-fixture", { audience: "http://localhost:3005/mcp" });
-  for (const patch of [{ aud: undefined }, { aud: ["https://other.example/mcp"] }, { subject: "org_other" }, { revoked: true }, { expired: true }]) {
+  for (const patch of [{ aud: undefined }, { aud: ["http://localhost:3005/api/v1"] }, { subject: "org_other" }, { revoked: true }, { expired: true }]) {
     fake.verifyToken.mockResolvedValueOnce({ ...verified, ...patch });
     expect(await verifyMcpBearer(request, "offline-fixture")).toBeUndefined();
   }
@@ -217,7 +214,6 @@ test("public audience and challenges ignore internal proxy URLs and untrusted fo
   expect(await verifyMcpBearer(request, "offline-fixture")).toBeDefined();
   expect(fake.verifyToken).toHaveBeenCalledWith("offline-fixture", { audience: "https://planner.example/mcp" });
   request.auth = { token: "offline-fixture", clientId: "fixture", scopes: [], extra: { userId: caller.userId } };
-  expect((await scopeChallenge(request))?.headers.get("www-authenticate")).toContain("https://planner.example/.well-known/oauth-protected-resource/mcp");
 });
 
 async function rpc(handler: ReturnType<typeof createPlannerMcp>, method: string, version: string, params: Record<string, unknown> = {}) {
@@ -225,7 +221,7 @@ async function rpc(handler: ReturnType<typeof createPlannerMcp>, method: string,
   const headers: Record<string, string> = { "content-type": "application/json", accept: "application/json, text/event-stream", "MCP-Protocol-Version": version };
   if (modern) { headers["Mcp-Method"] = method; if (method === "tools/call") headers["Mcp-Name"] = String(params.name); }
   const request = new Request("http://localhost:3005/mcp", { method: "POST", headers, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params: modern ? { ...params, _meta: { "io.modelcontextprotocol/protocolVersion": version, "io.modelcontextprotocol/clientCapabilities": {}, "io.modelcontextprotocol/clientInfo": { name: "offline-test", version: "1" } } } : params }) });
-  request.auth = { token: "offline-fixture", clientId: "fixture", scopes: caller.scopes, extra: { userId: caller.userId } };
+  request.auth = { token: "offline-fixture", clientId: "fixture", scopes: [...SCOPES], extra: { userId: caller.userId } };
   const response = await handler(request);
   const body = await response.text();
   const json: unknown = JSON.parse(body.startsWith("event:") || body.startsWith("data:") ? body.split("\n").find(line => line.startsWith("data: "))?.slice(6) ?? "{}" : body);
@@ -238,7 +234,7 @@ for (const version of ["2025-11-25", "2026-07-28"]) test(`real MCP SDK serves li
   expect(opening.response.headers.has("mcp-session-id")).toBe(false);
   const listed = await rpc(handler, "tools/list", version);
   expect(listed.response.status).toBe(200);
-  expect(listed.json).toMatchObject({ result: { tools: expect.arrayContaining([expect.objectContaining({ name: "quick_add", _meta: { securitySchemes: [{ type: "oauth2", scopes: ["tasks:write"] }] } })]) } });
+  expect(listed.json).toMatchObject({ result: { tools: expect.arrayContaining([expect.objectContaining({ name: "quick_add", _meta: { securitySchemes: [{ type: "oauth2", scopes: [...SCOPES] }] } })]) } });
   const called = await rpc(handler, "tools/call", version, { name: "get_overview", arguments: { today: "2026-09-29" } });
   expect(called.response.status).toBe(200);
   expect(JSON.stringify(called.json)).toContain("active tasks today");

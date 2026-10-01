@@ -30,9 +30,9 @@ Never put a secret behind a NEXT_PUBLIC prefix. Never commit an environment file
 
 ## Web deployment
 
-Use a Vercel project rooted at `apps/web`, with the workspace install at the repository root. Set environment values in the project, deploy your own Convex production backend, and configure your own Clerk production instance. The production routing currently assumes `kriyan.app` for marketing and `app.kriyan.app` for the app; change the origin constants and host routing for domains you own. Development uses one localhost origin and port, normally 3000.
+Use a Vercel project rooted at `apps/web`, with the workspace install at the repository root. Set environment values in the project, deploy your own Convex production backend, and configure your own Clerk instance through its CLI. The hosted product uses development identity with a 100-user limit and a development banner. The production routing currently assumes `kriyan.app` for marketing and `app.kriyan.app` for the app; change the origin constants and host routing for domains you own. Development uses one localhost origin and port, normally 3000.
 
-Configure Clerk callback URLs, allowed origins, JWT template, OAuth scopes and consent for your domain. Test sign-up, owner isolation, export and deletion before opening access. The hosted deployment's exact database region is not declared in this repository; select and disclose the region for your own deployment.
+Configure Clerk callback URLs, allowed origins, JWT template, standard OAuth scopes, PKCE, resource audience claims and consent for your domain. Test sign-up, owner isolation, export and deletion before opening access. The hosted deployment's exact database region is not declared in this repository; select and disclose the region for your own deployment.
 
 ## Android build
 

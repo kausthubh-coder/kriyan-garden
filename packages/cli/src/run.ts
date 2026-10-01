@@ -13,7 +13,7 @@ export interface Dependencies {
   store?: CredentialStore;
   now?: () => Date;
   timezone?: string;
-  env?: { KRIYAN_URL?: string; KRIYAN_API_KEY?: string };
+  env?: { KRIYAN_URL?: string };
   stdout?: (message: string) => void;
   stderr?: (message: string) => void;
   open?: (url: string) => Promise<void>;
@@ -33,7 +33,7 @@ export async function run(argv: readonly string[], dependencies: Dependencies = 
     const http = dependencies.http ?? fetch;
     const store = dependencies.store ?? credentials(base);
     const open = dependencies.open ?? openBrowser;
-    const client = new ApiClient(env.KRIYAN_URL ?? base, context, store, http, env.KRIYAN_API_KEY, stderr);
+    const client = new ApiClient(env.KRIYAN_URL ?? base, context, store, http, stderr);
     const print = (value: unknown, formatted: string) => stdout(args.json ? JSON.stringify(value, null, 2) : formatted);
     const spaces = async () => rows((await client.request("/spaces")).areas);
     const reference = args.positional[0] ?? "";

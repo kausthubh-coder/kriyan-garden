@@ -1,20 +1,18 @@
 # Kriyan API v1
 
-Base URL: `https://app.kriyan.app/api/v1`. This worktree implements the routes but has not deployed them. [The report](reports/05-mcp-api-cli.md) records the current live blockers. MCP and REST call `apps/web/src/lib/operations/` and the same owner-isolated Convex service functions.
+Base URL: `https://app.kriyan.app/api/v1`. The routes were verified locally against the development backend with real Clerk OAuth. [The auth report](reports/18-auth.md) records the proof; this brief does not deploy the web app. MCP and REST call `apps/web/src/lib/operations/` and the same owner-isolated Convex service functions.
 
 ## Authentication
 
-Send `Authorization: Bearer <token>` using a Clerk user OAuth access token or user-owned API key. Routes call `auth({ acceptsToken: ["oauth_token", "api_key"] })`. Session JWTs and organization-owned keys are rejected. The token needs the operation's scopes listed below. See [Clerk request authentication](https://clerk.com/docs/reference/backend/authenticate-request) and [API-key creation](https://clerk.com/docs/reference/backend/api-keys/create).
+Send `Authorization: Bearer <token>` with a Clerk user OAuth access token for the exact `/api/v1` resource. Browser login with S256 PKCE requests `openid profile email`; the CLI also requests `offline_access` for silent refresh. A valid token grants full access to its verified user's own planner. Session tokens and non-user identities cannot authorize the API. There is no per-operation scope gate.
 
-OAuth tokens must target the exact canonical REST resource `https://app.kriyan.app/api/v1`, without a trailing slash. REST verifies the actual bearer through the pinned `@clerk/backend@3.21.0` SDK with that audience and uses the verified subject/scopes. Missing audiences, another resource's audience, revoked/expired tokens and non-user subjects are rejected. A token for `/mcp` cannot authorize REST, and a REST token cannot authorize MCP. User API keys keep Clerk's verified user/scopes path and do not undergo OAuth audience verification.
+REST verifies the actual bearer against `https://app.kriyan.app/api/v1`, with no trailing slash. A token for `/mcp`, a missing audience, an expired or revoked token or a non-user subject gets 401. Every backend read and write remains owner-isolated.
 
-Public resource metadata is at `/.well-known/oauth-protected-resource/api/v1`. REST 401 and insufficient-scope 403 responses advertise this URL in `WWW-Authenticate`. Both resource URLs use the same configured `MCP_PUBLIC_ORIGIN`, despite its existing name. Set it to the public HTTPS origin for self-hosting. Production defaults to `https://app.kriyan.app`; loopback development uses its request origin. Internal reverse-proxy URLs and forwarded headers cannot change production audiences or challenges.
+Public metadata lives at `/.well-known/oauth-protected-resource/api/v1`. A 401 advertises it in `WWW-Authenticate`. Both resources use `MCP_PUBLIC_ORIGIN`, defaulting to `https://app.kriyan.app` in production and the request's loopback origin in local development. Internal URLs and forwarded headers cannot choose the production audience.
 
-`GET /auth-config` is public so the CLI can start login. With a configured public `CLERK_CLI_CLIENT_ID`, it returns `clientId`, `authorizationEndpoint`, `tokenEndpoint`, `resource`, `scopes`, `today` and `timezone`. The resource is the canonical REST URL above. Endpoints are discovered from Clerk metadata. The CLI validates the resource against its configured app origin and sends it in authorization, code exchange and refresh. The CLI supplies its device calendar. Anonymous callers must supply an IANA `timezone` because there is no profile to read. An omitted `today` is calculated in that timezone. Missing operator configuration returns 503 `AUTH_NOT_CONFIGURED`. Tokens and client secrets are never returned.
+`GET /auth-config` returns public client ID, authorization and token endpoints, resource, standard scopes, today and timezone. Supply your device's IANA timezone. An omitted today is calculated in that timezone. The CLI checks the resource matches its app origin and sends it in authorization, exchange and refresh. Missing configuration gets 503.
 
-Six planner scopes are supported: `tasks:read`, `tasks:write`, `spaces:read`, `spaces:write`, `goals:read`, `goals:write`. CLI login additionally requests `offline_access` for refresh. The configured Clerk application must allow them. Organization access and task deletion are outside this release.
-
-Supervisor setup payloads and dashboard-only requirements are in [development OAuth setup](setup/05-development-oauth.md). Enable resource-derived audience claims before signing in. Old credentials without the correct audience may need a new `kriyan login`.
+The hosted product uses the Clerk development instance, with its 100-user limit and development banner. Configuration was done through the Clerk CLI and needs no dashboard work. See [how Clerk is configured](setup/05-development-oauth.md).
 
 ## Request conventions
 
@@ -30,23 +28,23 @@ Writes return `ok: true`, the saved `id`, one plain `readBack` sentence and the 
 
 Paths below are relative to `/api/v1`.
 
-| Method/path | Inputs and result | Scope |
-| --- | --- | --- |
-| `GET /auth-config` | Public CLI login settings; supply device timezone | Public |
-| `GET /me` | Profile and Clerk user ID | Authenticated user; no planner scope |
-| `GET /overview` | Areas, projects/courses, active goals, today's summary | All three read scopes |
-| `GET /day?date=YYYY-MM-DD` | Defaults to today; timed/any-time tasks, events, unscheduled tasks, planned/free minutes | `tasks:read` |
-| `GET /week?start=YYYY-MM-DD` | Defaults to this calendar week's start; per-day load and deadlines within 14 days of today | `tasks:read` |
-| `GET /tasks` | Task filters below, up to 100 | `tasks:read` |
-| `POST /tasks/quick-add` | `text`; saved task and parsed fields | `tasks:write` |
-| `POST /tasks` | Structured task fields below | `tasks:write` |
-| `PATCH /tasks/:id` | Any mutable task fields; omitted fields stay unchanged | `tasks:write` |
-| `POST /tasks/:id/complete` | `completed`, defaults true; false reopens | `tasks:write` |
-| `POST /tasks/:id/move` | Required nullable `date`, optional nullable `time`; nothing else changes | `tasks:write` |
-| `GET /goals` | `status=active|done|archived|all` (default active), optional area | `goals:read` |
-| `POST /goals` | Goal fields below | `goals:write` |
-| `PATCH /goals/:id` | Any mutable goal fields | `goals:write` |
-| `GET /spaces` | Areas, projects and courses | `spaces:read` |
+| Method/path | Inputs and result |
+| --- | --- |
+| `GET /auth-config` | Public CLI login settings; supply device timezone |
+| `GET /me` | Profile and Clerk user ID |
+| `GET /overview` | Areas, projects/courses, active goals, today's summary |
+| `GET /day?date=YYYY-MM-DD` | Defaults to today; timed/any-time tasks, events, unscheduled tasks, planned/free minutes |
+| `GET /week?start=YYYY-MM-DD` | Defaults to this calendar week's start; per-day load and deadlines within 14 days of today |
+| `GET /tasks` | Task filters below, up to 100 |
+| `POST /tasks/quick-add` | `text`; saved task and parsed fields |
+| `POST /tasks` | Structured task fields below |
+| `PATCH /tasks/:id` | Any mutable task fields; omitted fields stay unchanged |
+| `POST /tasks/:id/complete` | `completed`, defaults true; false reopens |
+| `POST /tasks/:id/move` | Required nullable `date`, optional nullable `time`; nothing else changes |
+| `GET /goals` | `status=active|
+| `POST /goals` | Goal fields below |
+| `PATCH /goals/:id` | Any mutable goal fields |
+| `GET /spaces` | Areas, projects and courses |
 
 `GET /tasks` accepts area/project/goal references, `status=active|completed|all` (default active), `dateFrom`, `dateTo`, `deadlineFrom`, `deadlineTo`, `text` and `limit` (1 through 100, default 100). Text is a case-insensitive title substring. `due=today|week|overdue` filters deadlines using the effective local date and cannot be combined with explicit deadline bounds. Week means the current calendar week. Bounds are inclusive; reversed ranges are invalid. Filtering happens before the 100-result limit. An excessive broad scan asks for narrower filters instead of silently dropping matches. MCP `search` separately searches titles and notes.
 
@@ -56,21 +54,21 @@ Goal create requires `title` (max 120). Optional fields are area, `note` (max 18
 
 ## Examples
 
-Use your shell or secret manager to set `KRIYAN_API_KEY`. These commands do not print it.
+Obtain a resource-bound OAuth access token through PKCE and keep it in a private token store. These examples read it from `KRIYAN_ACCESS_TOKEN`; do not print it.
 
 ```sh
 curl --fail-with-body \
-  -H "Authorization: Bearer $KRIYAN_API_KEY" \
+  -H "Authorization: Bearer $KRIYAN_ACCESS_TOKEN" \
   'https://app.kriyan.app/api/v1/day?today=2026-09-29&timezone=America%2FNew_York'
 
 curl --fail-with-body \
-  -H "Authorization: Bearer $KRIYAN_API_KEY" \
+  -H "Authorization: Bearer $KRIYAN_ACCESS_TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{"text":"essay fri #econ 2h","today":"2026-09-29","timezone":"America/New_York"}' \
   'https://app.kriyan.app/api/v1/tasks/quick-add'
 
 curl --fail-with-body \
-  -H "Authorization: Bearer $KRIYAN_API_KEY" \
+  -H "Authorization: Bearer $KRIYAN_ACCESS_TOKEN" \
   -H 'Content-Type: application/json' \
   -X PATCH \
   -d '{"durationMinutes":null,"today":"2026-09-29","timezone":"America/New_York"}' \
@@ -84,8 +82,8 @@ Errors have `{ "error": { "code": "...", "message": "..." } }`. Ambiguity adds `
 | HTTP status | Meaning |
 | --- | --- |
 | 400 | Invalid fields, calendar, JSON, ID or incompatible references |
-| 401 | No valid OAuth access token or API key; sign in again |
-| 403 | Wrong identity kind or missing scope; approve the required scope |
+| 401 | No valid resource-bound OAuth access token; sign in again |
+| 403 | The request origin is not allowed; use the configured origin |
 | 404 | The requested record does not exist for this owner |
 | 409 | Ambiguous name; choose a returned candidate |
 | 413 | Body too large; shorten it |
@@ -94,4 +92,4 @@ Errors have `{ "error": { "code": "...", "message": "..." } }`. Ambiguity adds `
 | 500 | Unexpected failure; try again without assuming the write succeeded |
 | 503 | Required operator settings or backend functions are unavailable |
 
-Scope errors include `WWW-Authenticate: Bearer error="insufficient_scope"` with required scopes. Rate errors include `Retry-After: 60`. Convex shares fixed-minute limits of 60 reads and 30 writes per user across REST and MCP. Compound operations count once; separate users and read/write budgets are independent.
+Rate errors include `Retry-After: 60`. Convex shares fixed-minute limits of 60 reads and 30 writes per user across REST and MCP. Compound operations count once; separate users and read/write budgets are independent.

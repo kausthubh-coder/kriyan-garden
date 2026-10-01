@@ -2,7 +2,7 @@
 
 Kriyan's remote MCP endpoint is `https://app.kriyan.app/mcp`. An OAuth-capable client signs you in through Clerk and asks you to approve access to your planner.
 
-The following setup drafts are provided for integration. The MCP worker (brief 05) is finalizing supported clients, scopes and tool behavior. Production domain and OAuth configuration have not been verified here. These snippets are not a claim that a live connection has passed testing. No original docs/mcp.md existed in this base checkout.
+Clerk development is the hosted identity provider. Dynamic registration, client metadata documents and resource audience claims are configured through the Clerk CLI. Sign-in uses S256 PKCE, consent and the standard scopes `openid profile email`. A token for the exact `/mcp` resource grants access only to your own planner. No Clerk dashboard steps are needed.
 
 ## Claude
 
@@ -57,4 +57,4 @@ Connect and approve access through Clerk.
 
 ## What to expect
 
-Ask your AI to show your day, find a task or add a task in plain language. Your AI client may need a paid plan or developer features for remote MCP. Review the access you approve. Disconnect clients in Settings or revoke authorization through your identity provider. Tool names, exact scopes and client verification results will be supplied by brief 05 during integration.
+Ask your AI to show your day, find a task or add a task in plain language. Your AI client may need a paid plan or developer features for remote MCP. Review the access you approve. Disconnect clients in Settings or revoke authorization through your identity provider. Start with `get_overview` or `get_day`, then use `quick_add` and `complete_task`. Your assistant reads your planner before writing and repeats the stored result after each write. API-resource, expired and missing tokens are refused by MCP. Clerk development has a 100-user limit and shows a development banner on its hosted pages.

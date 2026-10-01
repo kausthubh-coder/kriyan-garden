@@ -2,7 +2,7 @@
 
 Kriyan gives assistants access to the signed-in user's tasks, goals, areas, projects and courses. It uses the same operations and backend rules as the REST API. There are 21 tools and no delete tools. The server asks assistants to read before writing, use returned IDs and repeat the stored result's `readBack` sentence.
 
-The production endpoint is `https://app.kriyan.app/mcp`, using Streamable HTTP. Protected-resource metadata is at `https://app.kriyan.app/.well-known/oauth-protected-resource/mcp`. These URLs describe the intended deployment; this worktree has not been deployed. See [the implementation report](reports/05-mcp-api-cli.md) for current blockers.
+The production endpoint is `https://app.kriyan.app/mcp`, using Streamable HTTP. Protected-resource metadata is at `https://app.kriyan.app/.well-known/oauth-protected-resource/mcp`. These URLs describe the hosted endpoint. This brief verifies the local server against the development backend with real Clerk OAuth and does not deploy the web app. See [the auth report](reports/18-auth.md).
 
 ## Protocol and package versions
 
@@ -19,24 +19,15 @@ Checked against official package releases and protocol documentation on 29 Septe
 
 Both `2025-11-25` and `2026-07-28` work in offline tests through the actual SDK and handler. The older revision uses `initialize`; requests carry `MCP-Protocol-Version: 2025-11-25`. The server runs statelessly, without a session ID. The newer revision starts with `server/discover`, has no initialization handshake or sessions, and requires `MCP-Protocol-Version` and `Mcp-Method`. Tool calls also use `Mcp-Name`. Its request metadata includes `io.modelcontextprotocol/protocolVersion`, `io.modelcontextprotocol/clientCapabilities` and `io.modelcontextprotocol/clientInfo`. Use a compatible client rather than constructing these messages manually.
 
-The v1 SDK alone cannot serve the new revision. The handler's v2 SDK integration supports both revisions and creates a fresh server for each request. Protocol tests discover the server, list tools, read overview, quick add and complete a task under both revisions. They use a fake backend and do not establish a live OAuth integration pass. Sources: [SDK protocol versions](https://ts.sdk.modelcontextprotocol.io/v2/protocol-versions), [Vercel handler](https://github.com/vercel-labs/mcp-handler), [current Streamable HTTP](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http).
+The v1 SDK alone cannot serve the new revision. The handler's v2 SDK integration supports both revisions and creates a fresh server for each request. Protocol tests discover the server, list tools, read overview, quick add and complete a task under both revisions. Those protocol unit tests use a fake backend. The auth report separately records real OAuth and backend proof under both revisions. Sources: [SDK protocol versions](https://ts.sdk.modelcontextprotocol.io/v2/protocol-versions), [Vercel handler](https://github.com/vercel-labs/mcp-handler), [current Streamable HTTP](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http).
 
 ## Authorization and limits
 
-Clerk is the OAuth authorization server. A client discovers it through protected-resource metadata, signs in and obtains a user OAuth access token intended for the exact `/mcp` resource URL. Session JWTs, organization identities and API keys cannot substitute for MCP OAuth tokens. Verification supplies the expected audience to Clerk and rejects missing or different audiences. The operator must enable Clerk audience claims; otherwise valid-looking tokens without an audience are rejected. See [MCP audience requirements](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization#token-audience-binding-and-validation).
+Clerk is the OAuth authorization server. A client discovers it through protected-resource metadata, signs in and obtains a user OAuth access token intended for the exact `/mcp` resource URL. Session JWTs, organization identities and API keys cannot substitute for MCP OAuth tokens. Verification supplies the expected audience to Clerk and rejects missing or different audiences. Audience claims are enabled on the configured development instance; otherwise valid-looking tokens without an audience are rejected. See [MCP audience requirements](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization#token-audience-binding-and-validation).
 
-REST and CLI use the distinct `/api/v1` resource and its own protected-resource metadata. Both URLs use `MCP_PUBLIC_ORIGIN` for a shared canonical public origin, and each rejects tokens intended only for the other. See [development OAuth setup](setup/05-development-oauth.md) for supervisor payloads. Clerk's dynamic-client default scopes must exclude `offline_access`; refresh-capable clients request it explicitly.
+REST and CLI use the distinct `/api/v1` resource and its own protected-resource metadata. Both URLs use `MCP_PUBLIC_ORIGIN` for a shared canonical public origin, and each rejects tokens intended only for the other. See [development OAuth setup](setup/05-development-oauth.md) for the configuration confirmed through the Clerk CLI. Clerk's dynamic-client default scopes must exclude `offline_access`; refresh-capable clients request it explicitly.
 
-| Scope | Allows |
-| --- | --- |
-| `tasks:read` | Read tasks, day/week plans and search |
-| `tasks:write` | Add, edit, move, complete and reopen tasks |
-| `spaces:read` | Read areas, projects and courses |
-| `spaces:write` | Create or rename projects and courses |
-| `goals:read` | Read goals and milestones |
-| `goals:write` | Create or edit goals, progress and milestones |
-
-Overview needs `tasks:read`, `spaces:read` and `goals:read`. Other read tools need their own read scope, and write tools need their own write scope. Missing scopes produce HTTP 403 with a `WWW-Authenticate` scope challenge before execution. Tool descriptors also expose OAuth scopes in `_meta.securitySchemes`. Clients should request the scopes needed for their actions and show Clerk's consent screen.
+Clients request `openid profile email`, plus `offline_access` when refresh is needed. A token for the exact MCP resource grants full access to the verified user's own planner. There are no custom scopes or per-operation scope challenges. Tool descriptors advertise the standard OAuth scopes.
 
 Convex enforces 60 read operations and 30 write operations per user per fixed minute, independently. A compound operation consumes one slot even if it needs several backend calls. Its signed, short-lived invocation ID cannot be reused by another owner or used to promote a read to a write. REST and MCP share these budgets. Rate errors say to wait and try again. See [the Convex component](https://www.convex.dev/components/rate-limiter).
 
@@ -54,29 +45,29 @@ Writes return `{ "ok": true, "id": "...", "readBack": "...", "today": "...", "ti
 
 ## Tools
 
-| Tool | Purpose | Scope |
-| --- | --- | --- |
-| `get_overview` | Areas, projects/courses, active goals and today's summary | All three read scopes |
-| `get_day` | Timed/any-time tasks, events, unscheduled tasks and capacity | `tasks:read` |
-| `get_week` | Per-day area loads and the next 14 days' deadlines | `tasks:read` |
-| `list_tasks` | Filter by area, project, goal, status, dates, deadlines or title text, up to 100 | `tasks:read` |
-| `get_task` | A task with notes, repeat and reminders | `tasks:read` |
-| `quick_add` | Parse the app's text grammar and save a task | `tasks:write` |
-| `create_task` | Save structured task fields with optional length | `tasks:write` |
-| `update_task` | Patch task fields | `tasks:write` |
-| `complete_task` | Complete or reopen and report a repeat's next occurrence | `tasks:write` |
-| `move_task` | Change only a task's date and time | `tasks:write` |
-| `search` | Full-text search over titles and notes | `tasks:read` |
-| `list_goals` | List goals, filtered by status or area | `goals:read` |
-| `get_goal` | Read a goal with progress and milestones | `goals:read` |
-| `create_goal` | Add a goal and its metric | `goals:write` |
-| `update_goal` | Patch a goal | `goals:write` |
-| `set_goal_progress` | Set a number metric's current value atomically | `goals:write` |
-| `add_milestone` | Add a goal milestone | `goals:write` |
-| `complete_milestone` | Complete or reopen a milestone | `goals:write` |
-| `list_spaces` | Read areas, projects and courses | `spaces:read` |
-| `create_project` | Create a project or course in an area | `spaces:write` |
-| `update_project` | Rename a project/course or edit its note | `spaces:write` |
+| Tool | Purpose |
+| --- | --- |
+| `get_overview` | Areas, projects/courses, active goals and today's summary |
+| `get_day` | Timed/any-time tasks, events, unscheduled tasks and capacity |
+| `get_week` | Per-day area loads and the next 14 days' deadlines |
+| `list_tasks` | Filter by area, project, goal, status, dates, deadlines or title text, up to 100 |
+| `get_task` | A task with notes, repeat and reminders |
+| `quick_add` | Parse the app's text grammar and save a task |
+| `create_task` | Save structured task fields with optional length |
+| `update_task` | Patch task fields |
+| `complete_task` | Complete or reopen and report a repeat's next occurrence |
+| `move_task` | Change only a task's date and time |
+| `search` | Full-text search over titles and notes |
+| `list_goals` | List goals, filtered by status or area |
+| `get_goal` | Read a goal with progress and milestones |
+| `create_goal` | Add a goal and its metric |
+| `update_goal` | Patch a goal |
+| `set_goal_progress` | Set a number metric's current value atomically |
+| `add_milestone` | Add a goal milestone |
+| `complete_milestone` | Complete or reopen a milestone |
+| `list_spaces` | Read areas, projects and courses |
+| `create_project` | Create a project or course in an area |
+| `update_project` | Rename a project/course or edit its note |
 
 ## Client setup
 
@@ -84,7 +75,7 @@ Complete the Clerk and deployment requirements in [the report](reports/05-mcp-ap
 
 ### Claude web and desktop
 
-Open **Settings > Connectors > Add custom connector**. Use name **Kriyan** and remote MCP server URL `https://app.kriyan.app/mcp`. Connect, sign in through Clerk and approve the requested scopes. The desktop app uses the same remote custom connector flow. A local `localhost` server cannot be reached by Claude's cloud connector. See [Claude's connector setup](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp).
+Open **Settings > Connectors > Add custom connector**. Use name **Kriyan** and remote MCP server URL `https://app.kriyan.app/mcp`. Connect, sign in through Clerk and approve access to your planner. The desktop app uses the same remote custom connector flow. A local `localhost` server cannot be reached by Claude's cloud connector. See [Claude's connector setup](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp).
 
 ### Claude Code
 
@@ -96,7 +87,7 @@ Open `/mcp` in Claude Code to authenticate Kriyan. See [Claude Code MCP](https:/
 
 ### ChatGPT
 
-Open **Settings > Security and login > Developer mode**. Open **Plugins**, select **+**, name the connection **Kriyan**, enter `https://app.kriyan.app/mcp`, choose OAuth and connect. Review the discovered tools, sign in through Clerk and approve scopes. Add the connection from the conversation's tools menu. Access depends on account and workspace policy. See [OpenAI's current connection instructions](https://developers.openai.com/plugins/deploy/connect-chatgpt). OAuth metadata and tool annotations follow [the plugin reference](https://developers.openai.com/plugins/reference). No ChatGPT UI or live account-linking test was performed in this worktree.
+Open **Settings > Security and login > Developer mode**. Open **Plugins**, select **+**, name the connection **Kriyan**, enter `https://app.kriyan.app/mcp`, choose OAuth and connect. Review the discovered tools, sign in through Clerk and approve access to your planner. Add the connection from the conversation's tools menu. Access depends on account and workspace policy. See [OpenAI's current connection instructions](https://developers.openai.com/plugins/deploy/connect-chatgpt). OAuth metadata and tool annotations follow [the plugin reference](https://developers.openai.com/plugins/reference). No ChatGPT UI or live account-linking test was performed in this worktree.
 
 ### Cursor
 

@@ -30,13 +30,13 @@ Auth-config also supplies the exact REST `resource`, normally `https://app.kriya
 
 Access and refresh tokens go into the OS keychain under service `kriyan`, separated by the Kriyan server's origin. If the keychain is unavailable, the CLI writes `~/.config/kriyan/credentials.json` with mode 600 in a mode-700 directory and tells you. On Windows, the CLI also removes inherited directory permissions and grants the current user an NTFS ACL before writing credentials. Linux requires a persistent Secret Service keychain; an unavailable service uses the file fallback.
 
-A 401 response triggers one refresh and retries the request once. API keys never trigger OAuth refresh. Logout attempts to remove credentials from both the keychain and the file. If the keychain is unavailable, it reports that keychain removal could not be checked. Logout does not revoke tokens at Clerk.
+A missing access token or 401 response triggers one refresh and retries the request once. Logout attempts to remove credentials from both the keychain and the file. If the keychain is unavailable, it reports that keychain removal could not be checked. Logout does not revoke tokens at Clerk.
 
-For scripts or CI, set `KRIYAN_API_KEY` to a user-owned Clerk API key. It takes precedence over saved login credentials. Set `KRIYAN_URL` to a different app origin for self-hosting. The default is `https://app.kriyan.app`; plain HTTP is accepted only for loopback development servers.
+Browser login and silent refresh are the only authentication path. Set `KRIYAN_URL` to a different app origin for self-hosting. The default is `https://app.kriyan.app`; plain HTTP is accepted only for loopback development servers. For scripts, sign in first and add `--json` to commands.
 
 ```sh
 export KRIYAN_URL=http://localhost:3005
-# Set KRIYAN_API_KEY through your shell or CI secret manager.
+kriyan login
 kriyan today --json
 ```
 
@@ -76,15 +76,15 @@ Text output uses aligned columns, dates such as `Tue 29 Sep`, 24-hour times, are
 | 0 | The command completed. |
 | 1 | The arguments, request or response failed. |
 | 2 | The task reference is ambiguous or the candidate limit prevents a safe match. |
-| 3 | There is no valid login or API key. |
+| 3 | There is no valid browser login. |
 
 ## Clerk setup for the owner
 
-Create a public OAuth application named **Kriyan CLI** in the Clerk dashboard. Do not create a client secret. Register `http://127.0.0.1/callback`, enable PKCE required, and allow `tasks:read`, `tasks:write`, `spaces:read`, `spaces:write`, `goals:read`, `goals:write` and `offline_access` for refresh tokens. Clerk accepts the runtime loopback port for this registered redirect. Set the web server's `CLERK_CLI_CLIENT_ID` to that public client id. The server discovers the Clerk issuer from the existing `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, so there is no separate issuer setting. Enable the OAuth consent screen and the API-key feature for script authentication.
+The hosted product uses Clerk development. Kriyan CLI is already configured through the Clerk CLI as a public application with S256 PKCE, consent, the loopback callback and `openid profile email offline_access`. Its client ID comes from the server environment. No dashboard steps remain. Self-hosters can create the same configuration through the Clerk Backend API; see [how Clerk is configured](../../docs/setup/05-development-oauth.md).
 
 This follows [Clerk's CLI authorization guidance](https://clerk.com/blog/adding-clerk-auth-to-your-cli). The native storage adapter follows [the keyring package's documented API](https://github.com/Brooooooklyn/keyring-node). The build uses [tsdown's dependency bundling rules](https://tsdown.dev/options/dependencies) to include `@kriyan/core` in one ESM file while leaving the optional native keyring dependency installable by npm.
 
-See [development OAuth setup](../../docs/setup/05-development-oauth.md) for the verified supervisor payload examples. `MCP_PUBLIC_ORIGIN` supplies the public origin for both REST and MCP behind a proxy. Dynamic-client default scopes exclude `offline_access`; the registered CLI requests it explicitly. Setup is performed by the supervisor, not by this CLI's login command.
+See [development OAuth setup](../../docs/setup/05-development-oauth.md) for the configuration confirmed through the Clerk CLI. `MCP_PUBLIC_ORIGIN` supplies the public origin for both REST and MCP behind a proxy. Dynamic-client default scopes exclude `offline_access`; the registered CLI requests it explicitly. The server operator configures the OAuth application before browser login.
 
 ## Test and release
 

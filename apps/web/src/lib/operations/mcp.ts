@@ -2,6 +2,7 @@ import { createMcpHandler } from "mcp-handler";
 import type { ServerContext } from "@modelcontextprotocol/server";
 import type { Caller } from "./index";
 import { MCP_TOOLS, operations, runOperation } from "./index";
+import { SCOPES } from "./scopes";
 import { OperationError, publicError } from "./errors";
 
 export function createPlannerMcp(execute: typeof runOperation = runOperation) {
@@ -9,22 +10,21 @@ export function createPlannerMcp(execute: typeof runOperation = runOperation) {
     for (const name of MCP_TOOLS) {
       const definition = operations[name];
       server.registerTool(name, {
-        description: `${definition.description} Required scopes: ${definition.scopes.join(", ")}.`, inputSchema: definition.schema,
-        _meta: { securitySchemes: [{ type: "oauth2", scopes: [...definition.scopes] }] },
+        description: definition.description, inputSchema: definition.schema,
+        _meta: { securitySchemes: [{ type: "oauth2", scopes: [...SCOPES] }] },
         annotations: { readOnlyHint: !definition.write, destructiveHint: ["update_task", "move_task", "update_goal", "set_goal_progress", "update_project"].includes(name), idempotentHint: !definition.write || ["update_task", "move_task", "update_goal", "set_goal_progress", "update_project", "complete_milestone"].includes(name), openWorldHint: false },
       }, async (input: unknown, context: ServerContext) => {
         try {
           const auth = context.http?.authInfo;
           const userId = auth?.extra?.userId;
           if (typeof userId !== "string") throw new OperationError("UNAUTHENTICATED", "Authorize Kriyan and try again.", 401);
-          const caller: Caller = { userId, scopes: auth?.scopes ?? [] };
+          const caller: Caller = { userId };
           const result = await execute(name, input, caller);
           return { content: [{ type: "text" as const, text: JSON.stringify(result) }], structuredContent: result };
         } catch (error) {
           const safe = publicError(error);
           const result = { error: { code: safe.code, message: safe.message, ...(safe.candidates ? { candidates: safe.candidates } : {}) } };
           return { isError: true, content: [{ type: "text" as const, text: JSON.stringify(result) }], structuredContent: result,
-            ...(safe.code === "INSUFFICIENT_SCOPE" ? { _meta: { "mcp/www_authenticate": [`Bearer error="insufficient_scope", scope="${definition.scopes.join(" ")}"`] } } : {}),
           };
         }
       });

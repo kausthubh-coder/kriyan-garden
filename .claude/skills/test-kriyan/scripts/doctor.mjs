@@ -3,9 +3,7 @@ import { promisify } from 'node:util';
 import { resolve } from 'node:path';
 import { argumentsFor, main, print } from './lib/output.mjs';
 import { configuration, root, UsageError } from './lib/config.mjs';
-import { createTestUser, deleteTestUser, clerkClient } from './lib/users.mjs';
 import { oauthStatus, oauthFix } from './lib/oauth.mjs';
-import { createApiKey, apiKeyFix } from './apikey.mjs';
 const execute = promisify(execFile);
 await main(async () => {
   argumentsFor({ base: { type: 'string' } });
@@ -33,28 +31,20 @@ await main(async () => {
       return 'Matched development URL; dry-run only; no module, schema, auth or index changes.';
     }, 'Verify packages/backend/.env.local selects the development deployment used by apps/web. Review backend differences with its owner.');
     let status;
-    await check('OAuth settings and scopes', async () => {
+    await check('OAuth instance settings', async () => {
       status = await oauthStatus(configuration().CLERK_CLI_CLIENT_ID);
-      if (status.missing.length) throw new UsageError(`Missing advertised scopes: ${status.missing.join(', ')}.`);
-      if (!status.audience || !status.cimd || !status.dcr) throw new UsageError('Enable audience claims, CIMD publication and DCR using docs/setup/05-development-oauth.md.');
-      return 'Six planner scopes advertised; audience, CIMD and DCR enabled.';
+      if (!status.audience || !status.cimd || !status.dcr) throw new UsageError('Audience claims, CIMD and DCR must be on. See docs/setup/05-development-oauth.md.');
+      return 'Audience claims, client metadata documents and dynamic registration enabled.';
     }, oauthFix);
-    await check('OAuth application', async () => {
-      status ??= await oauthStatus(configuration().CLERK_CLI_CLIENT_ID);
-      if (!status.application) throw new UsageError('Public OAuth application is missing.');
-      if (status.appMissing.length) throw new UsageError(`Application ${status.application.clientId} lacks: ${status.appMissing.join(', ')}.`);
-      if (!status.application.public || !status.application.pkce || !status.application.consent) throw new UsageError('The application needs public PKCE and consent enabled.');
-      if (!configuration().CLERK_CLI_CLIENT_ID) throw new UsageError('Set CLERK_CLI_CLIENT_ID in apps/web/.env.local.');
-      return `Public PKCE application ${status.application.clientId} with consent enabled.`;
+    await check('Kriyan CLI OAuth application', async () => {
+      const clientId = configuration().CLERK_CLI_CLIENT_ID;
+      if (!clientId) throw new UsageError('Set CLERK_CLI_CLIENT_ID in apps/web/.env.local.');
+      status ??= await oauthStatus(clientId);
+      const app = status.application;
+      if (!app || status.appMissing.length || !app.public || !app.pkce || !app.consent || !app.redirectUris.includes('http://127.0.0.1/callback'))
+        throw new UsageError('Kriyan CLI must be public, require PKCE and consent, allow standard scopes and register the loopback callback.');
+      return 'Kriyan CLI exists with public PKCE, consent, standard scopes and the loopback redirect. Client ID withheld.';
     }, oauthFix);
-    await check('User API keys', async () => {
-      const user = await createTestUser({ tag: 'doctor' }); let key;
-      try { key = await createApiKey(user.id, ['tasks:read']); return 'Created a user key, then revoked it and deleted the disposable user.'; }
-      finally {
-        try { if (key) await clerkClient().apiKeys.delete(key.id); }
-        finally { await deleteTestUser(user.id); }
-      }
-    }, apiKeyFix);
   }
   print('| Check | Result | Detail / fix |'); print('| --- | --- | --- |');
   for (const row of checks) print(`| ${row.check} | ${row.status} | ${row.detail}${row.fix ? ` Fix: ${row.fix}` : ''} |`);
