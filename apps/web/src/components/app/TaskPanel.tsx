@@ -331,7 +331,7 @@ export function TaskPanel({
             </span>
           ))}
           {repeat && (
-            <>
+            <div className={s.repeatEvery}>
               <label htmlFor="repeat-every">Every</label>
               <input
                 id="repeat-every"
@@ -348,7 +348,8 @@ export function TaskPanel({
                   else event.target.value = String(repeat.every);
                 }}
               />
-            </>
+              <span>{repeat.every === 1 ? repeat.unit : `${repeat.unit}s`}</span>
+            </div>
           )}
           {repeat?.unit === "week" && (
             <div className={s.opts} aria-label="Repeat weekdays">

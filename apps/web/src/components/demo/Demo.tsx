@@ -58,6 +58,7 @@ function MemoryPlanner({ today }: { today: string }) {
         connected: true,
         loading: false,
         showSkeleton: false,
+        slow: false,
         error: "",
         retry: () => {},
         firstTaskAdded: true,

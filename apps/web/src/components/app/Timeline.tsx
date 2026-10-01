@@ -71,7 +71,8 @@ export function Timeline({
             className={s.hr}
             style={{ top: `calc(${index} * var(--hh))` }}
           >
-            <span>{timeValue(timeOf((index + startHour) * 60), null)}</span>
+            {/* The now label replaces an hour label it would overlap. */}
+            <span style={showNow && Math.abs(now - (index + startHour) * 60) < 16 ? { visibility: "hidden" } : undefined}>{timeValue(timeOf((index + startHour) * 60), null)}</span>
           </div>
         ),
       )}

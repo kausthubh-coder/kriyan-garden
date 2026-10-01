@@ -141,6 +141,12 @@ export function useConvexPlanner(selectedDate: string | null) {
     const timer = setTimeout(() => setShowSkeleton(loading), loading ? 150 : 0);
     return () => clearTimeout(timer);
   }, [loading]);
+  // A planner that never arrives must say so instead of showing skeletons forever.
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setSlow(loading), loading ? 8000 : 0);
+    return () => clearTimeout(timer);
+  }, [loading]);
   return {
     clock,
     profile,
@@ -155,6 +161,7 @@ export function useConvexPlanner(selectedDate: string | null) {
     connected: connected && online,
     loading,
     showSkeleton: loading && showSkeleton,
+    slow: loading && slow,
     error,
     retry: () => setAttempt((attempt) => attempt + 1),
     firstTaskAdded: firstTaskAdded || hasSavedTask,

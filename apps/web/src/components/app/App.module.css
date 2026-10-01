@@ -2736,3 +2736,9 @@ h2.h em {
   .app .bigEmpty { padding-top: var(--space-48); }
   .app .dh .right { gap: var(--space-4); }
 }
+.app .repeatEvery { flex-basis: 100%; display: flex; align-items: center; gap: var(--space-8); color: var(--ink-2); font-size: var(--text-13-5); }
+.app .repeatEvery input { width: 64px; }
+@media (max-width: 820px) {
+  /* Phone rows read like tray cards: title first, details on the line below. */
+  .app .rowOpen .t { flex: 1 0 100%; }
+}

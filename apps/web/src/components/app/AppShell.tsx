@@ -394,6 +394,11 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
             Offline, changes will sync when you reconnect. Keep this tab open.
           </div>
         )}
+        {planner.slow && !planner.error && (
+          <div className={s.status} role="status">
+            Your planner is taking longer than usual to load. Check your connection. Kriyan keeps trying.
+          </div>
+        )}
         {(planner.error || actions.error || goalActions.error) && (
           <div className={s.status} role="alert">
             {planner.error || actions.error || goalActions.error}

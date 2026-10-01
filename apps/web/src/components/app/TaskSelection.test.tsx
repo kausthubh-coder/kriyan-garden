@@ -65,7 +65,7 @@ function fixture(key: string | null, outsideList = false) {
         ...state, tasks: outsideList ? [] : state.tasks,
         goals: state.goals.map((goal) => ({ ...goal, linkedTasks: { total: 0, done: 0 } })),
         clock: { today, minutes: 600 }, habits: [], day: store.day(date ?? today), week: store.week(date ?? today),
-        connected: true, loading: false, showSkeleton: false, error: "", retry: () => {},
+        connected: true, loading: false, showSkeleton: false, slow: false, error: "", retry: () => {},
         firstTaskAdded: true, hintDismissed: true, dismissHint: () => {},
       };
     },
