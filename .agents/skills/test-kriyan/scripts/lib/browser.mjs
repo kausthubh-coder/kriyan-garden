@@ -65,6 +65,7 @@ export async function signInPage(page, email, { base, ui = false, password, dest
   await page.goto(signIn.href, { timeout: 120_000 });
   if (!ui) await clerk.signIn({ page, emailAddress: email });
   else {
+    const verificationInputs = page.locator('input[autocomplete="one-time-code"], input[name="code"], input[data-input-otp], input[name="otp"], input[inputmode="numeric"]');
     async function enterCode() {
       await expect(page.getByText(/Resend\s*\(\d+\)/).first()).toBeVisible({ timeout: 30_000 });
       const otp = page.locator('input[autocomplete="one-time-code"], input[name="code"], input[data-input-otp], input[name="otp"]');
@@ -84,15 +85,15 @@ export async function signInPage(page, email, { base, ui = false, password, dest
       const prepared = page.waitForResponse(response => response.request().method() === 'POST' && /\/sign_ins\/.*\/prepare_(client_trust|second_factor|first_factor)/.test(new URL(response.url()).pathname), { timeout: 30_000 });
       void prepared.catch(() => {});
       await page.getByRole('button', { name: /^continue$/i }).click();
-      await expect.poll(async () => new URL(page.url()).pathname.startsWith('/app') || await page.locator('input[inputmode="numeric"]').first().isVisible(), { timeout: 30_000 }).toBe(true);
-      if (await page.locator('input[inputmode="numeric"]').first().isVisible()) {
+      await expect.poll(async () => new URL(page.url()).pathname.startsWith('/app') || await verificationInputs.first().isVisible(), { timeout: 30_000 }).toBe(true);
+      if (await verificationInputs.first().isVisible()) {
         if (!(await prepared).ok()) throw new UsageError('Clerk could not prepare the new-device email verification.');
         await enterCode();
       }
     } else {
       const alternative = page.getByText('Use another method', { exact: true });
       // Wait for the strategy screen, rather than testing the initial form before it transitions.
-      await expect.poll(async () => await alternative.isVisible() || await page.locator('input[inputmode="numeric"]').first().isVisible(), { timeout: 30_000 }).toBe(true);
+      await expect.poll(async () => await alternative.isVisible() || await verificationInputs.first().isVisible(), { timeout: 30_000 }).toBe(true);
       if (await alternative.isVisible()) {
         await alternative.click();
         const codeOption = page.getByText(/email.*code|code.*email/i);

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ConvexError } from "convex/values";
 
 export class OperationError extends Error {
   constructor(public code: string, message: string, public status = 400, public candidates?: readonly { id: string; name: string; path?: string }[]) { super(message); }
@@ -10,14 +11,17 @@ export function publicError(error: unknown): OperationError {
     const issue = error.issues[0];
     return new OperationError("INVALID_INPUT", `Check ${issue?.path.join(".") || "the request fields"}. ${issue?.message ?? "Enter valid values."}`);
   }
-  const message = error instanceof Error ? error.message : "";
+  // Production hides server stack messages. Expected model errors survive in
+  // ConvexError.data; continue to expose only the allowlisted messages below.
+  const data: unknown = error instanceof ConvexError ? error.data : undefined;
+  const message = typeof data === "string" ? data : data && typeof data === "object" && "code" in data && data.code === "RATE_LIMITED" ? "RATE_LIMITED" : error instanceof Error ? error.message : "";
   if (/RATE_LIMITED|Too many calls/.test(message)) return new OperationError("RATE_LIMITED", "Too many calls. Wait a minute and try again.", 429);
   if (/Could not find|not configured|Service is not configured|Invalid service signature/.test(message)) return new OperationError("SERVICE_UNAVAILABLE", "The planner service is unavailable. Ask the administrator to check its deployment and settings.", 503);
   if (/Record not found/.test(message)) return new OperationError("NOT_FOUND", "Record not found. Read the list and check the ID.", 404);
   if (/ArgumentValidationError|Invalid ID/.test(message)) return new OperationError("INVALID_INPUT", "Check the record ID and request fields, then try again.");
   if (/Invalid goal progress/.test(message)) return new OperationError("INVALID_INPUT", "Use a nonnegative value for a number goal, or complete its linked tasks or milestones.");
   // Only allow messages from the shared model's input rules, never arbitrary SDK text.
-  const known = message.match(/(?:Invalid (?:date|time|repeat interval|weekday|reminder|number)\.|A time needs a date\.|A repeating task needs a date\.|Project belongs to another area\.|No areas available\.|Repeat weekdays need|Limit of \d+ (?:active tasks|areas|projects|goals)|Too many tasks to filter\.)[^\n]*/);
+  const known = message.match(/(?:Invalid (?:date|time|repeat interval|weekday|reminder|number)\.|A time needs a date\.|A task title must be 180 characters or fewer\.|A repeating task needs a date\.|Project belongs to another area\.|No areas available\.|Repeat weekdays need|Limit of \d+ (?:active tasks|areas|projects|goals)|Too many tasks to filter\.)[^\n]*/);
   if (known) return new OperationError("INVALID_INPUT", known[0].replace(/\s+at\s.*$/, "").slice(0, 200));
   return new OperationError("INTERNAL_ERROR", "The request could not be completed. Try again or contact support.", 500);
 }

@@ -14,6 +14,17 @@ function setup() {
 }
 afterEach(() => { vi.unstubAllEnvs(); vi.useRealTimers(); });
 
+test("overlong task titles are refused without truncation or saved changes", async () => {
+  const { a } = setup();
+  await a.mutation(api.profiles.ensure, {});
+  const task = await a.mutation(api.tasks.create, { title: "Keep the full title" });
+  const title = "a".repeat(181);
+  await expect(a.mutation(api.tasks.create, { title })).rejects.toThrow("180 characters or fewer");
+  await expect(a.mutation(api.tasks.update, { id: task._id, patch: { title } })).rejects.toThrow("180 characters or fewer");
+  expect((await a.query(api.tasks.get, { id: task._id })).title).toBe("Keep the full title");
+  expect(await a.query(api.tasks.list, {})).toHaveLength(1);
+});
+
 test("sample data is relative to client today, isolated, complete and idempotent", async () => {
   const { t, a, b } = setup();
   await expect(t.mutation(api.profiles.seedSample, { today: "2026-09-29" })).rejects.toThrow("Not authenticated");

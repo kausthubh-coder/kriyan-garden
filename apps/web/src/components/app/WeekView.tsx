@@ -59,7 +59,7 @@ export function WeekView(
             ].sort((a, b) => a.time.localeCompare(b.time));
             return (
               <section
-                className={`${s.wd} ${date === p.today ? s.t : ""}`}
+                className={`${s.wd} ${date === p.today ? s.t : ""} ${entries.length ? "" : s.emptyWeekDay}`}
                 key={date}
               >
                 <button

@@ -79,10 +79,10 @@ export default defineConfig({
       use: { storageState: "e2e/.auth/user.json" },
     },
   ],
-  webServer: {
+  webServer: new URL(process.env.E2E_BASE_URL ?? "http://localhost:3000").protocol === "http:" ? {
     command: `bun run dev --port ${new URL(process.env.E2E_BASE_URL ?? "http://localhost:3000").port || "3000"}`,
     url: process.env.E2E_BASE_URL ?? "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
-  },
+  } : undefined,
 });

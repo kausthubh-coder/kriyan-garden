@@ -101,7 +101,7 @@ export function DayView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date, startHour]);
   return (
-    <div className={s["view-day"]} data-loading={loading} {...drag}>
+    <div className={s["view-day"]} data-loading={loading} role="region" aria-label="Day planner" tabIndex={0} {...drag}>
       {loading && <DaySkeleton startHour={startHour} endHour={endHour} />}
       <Tray
         anytime={filtered?.anytime ?? []}

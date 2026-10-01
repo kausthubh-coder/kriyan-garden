@@ -348,9 +348,12 @@ test("docs, legal, metadata and Android download page respond", async ({ page, r
     expect(redirect.status()).toBe(307);
     expect(redirect.headers().location).toBe(`https://app.kriyan.app${route}?proof=1`);
   }
-  expect((await request.get("/docs", { headers: { host: "www.kriyan.app" }, maxRedirects: 0 })).status()).toBe(200);
-  const appRoot = await request.get("/", { headers: { host: "app.kriyan.app" }, maxRedirects: 0 });
-  expect(appRoot.headers().location).toBe("https://app.kriyan.app/app");
+  const production = String(info.project.use.baseURL).startsWith("https:");
+  const www = await request.get(production ? "https://www.kriyan.app/docs" : "/docs", { headers: { host: "www.kriyan.app" }, maxRedirects: 0 });
+  expect(www.status()).toBe(production ? 308 : 200);
+  if (production) expect(www.headers().location).toBe("https://kriyan.app/docs");
+  const appRoot = await request.get(production ? "https://app.kriyan.app/" : "/", { headers: { host: "app.kriyan.app" }, maxRedirects: 0 });
+  expect(new URL(appRoot.headers().location, "https://app.kriyan.app").href).toBe("https://app.kriyan.app/app");
 });
 test("desktop drag schedules, moves and resizes the shared Day task", async ({ page }, info) => {
   test.skip(info.project.name === "mobile", "Touch uses task details to set time and length; desktop uses pointer drag.");

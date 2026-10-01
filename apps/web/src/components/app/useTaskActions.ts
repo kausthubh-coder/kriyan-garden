@@ -1,4 +1,5 @@
 "use client";
+import { plannerError } from "@/lib/planner-error";
 import { useCallback, useState } from "react";
 import { useTaskTransport } from "./dataAccess";
 import type { TaskPatch, TaskCreate } from "@kriyan/backend/convex/validators";
@@ -23,9 +24,7 @@ export function useTaskActions(close: () => void) {
       setToast(null);
       setFailedAction(() => retry ?? null);
       setError(
-        error instanceof Error
-          ? error.message
-          : "Your change could not be saved. Try the change again.",
+        plannerError(error, "Your change could not be saved. Try the change again."),
       );
     },
     [],

@@ -1,6 +1,6 @@
 import { nextDate } from "./nextDate";
 import { parse } from "@kriyan/core";
-import { v, type Infer } from "convex/values";
+import { ConvexError, v, type Infer } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
 import type { TaskCreate, TaskPatch } from "../validators";
@@ -121,7 +121,7 @@ export async function filteredList(
   let examined = 0;
   for await (const task of source) {
     if (++examined > 12000)
-      throw new Error(
+      throw new ConvexError(
         "Too many tasks to filter. Narrow the area or date range.",
       );
     if (
@@ -155,23 +155,23 @@ export async function filteredList(
 function cleanRepeat(value: Infer<typeof V.repeat>) {
   if (!value) return null;
   if (!Number.isInteger(value.every) || value.every < 1 || value.every > 1000)
-    throw new Error(
+    throw new ConvexError(
       "Invalid repeat interval. Use a whole number from 1 to 1000.",
     );
   const days =
     value.weekdays === undefined ? undefined : weekdays(value.weekdays);
   if (days && (value.unit !== "week" || days.length === 0))
-    throw new Error("Repeat weekdays need a weekly rule and at least one day.");
+    throw new ConvexError("Repeat weekdays need a weekly rule and at least one day.");
   return { ...value, ...(days ? { weekdays: days } : {}) };
 }
 function cleanReminders(values: Infer<typeof V.reminder>[]) {
   if (values.length > 8)
-    throw new Error("Invalid reminder. Use at most 8 reminders.");
+    throw new ConvexError("Invalid reminder. Use at most 8 reminders.");
   return values.map((value) => {
     if (value.type === "at_time") return { ...value, time: time(value.time) };
     if (value.type === "before") {
       if (finite(value.minutes) < 1)
-        throw new Error("Invalid reminder. Set minutes to at least 1.");
+        throw new ConvexError("Invalid reminder. Set minutes to at least 1.");
       return { ...value, minutes: Math.round(value.minutes) };
     }
     return value;
@@ -183,6 +183,9 @@ async function fields(
   args: TaskCreate | TaskPatch,
   current?: Doc<"tasks">,
 ) {
+  const title = (args.title ?? current?.title ?? "").trim();
+  if (title.length > 180)
+    throw new ConvexError("A task title must be 180 characters or fewer. Shorten the title and try again.");
   let areaId = args.areaId ?? current?.areaId;
   let projectId =
     args.projectId === undefined
@@ -192,7 +195,7 @@ async function fields(
     const project = await owned(ctx, ownerId, args.projectId);
     // An explicitly contradictory pair is an error; choosing only a project selects its area.
     if (args.areaId !== undefined && args.areaId !== project.areaId)
-      throw new Error(
+      throw new ConvexError(
         "Project belongs to another area. Choose its area or another project.",
       );
     areaId = project.areaId;
@@ -201,7 +204,7 @@ async function fields(
     if (project.areaId !== args.areaId) projectId = null;
   }
   if (!areaId) areaId = (await areas.list(ctx, ownerId))[0]?._id;
-  if (!areaId) throw new Error("No areas available. Add an area first.");
+  if (!areaId) throw new ConvexError("No areas available. Add an area first.");
   await owned(ctx, ownerId, areaId);
   const goalId =
     args.goalId === undefined ? (current?.goalId ?? null) : args.goalId;
@@ -214,10 +217,10 @@ async function fields(
   if (taskTime !== null) {
     taskTime = time(taskTime);
     if (!taskDate)
-      throw new Error("A time needs a date. Supply a date in the same call.");
+      throw new ConvexError("A time needs a date. Supply a date in the same call.");
   }
   const result = {
-    title: text(args.title ?? current?.title ?? "", 180, true),
+    title: text(title, 180, true),
     areaId,
     projectId,
     goalId,
@@ -239,18 +242,18 @@ async function fields(
     sortOrder: finite(args.sortOrder ?? current?.sortOrder ?? Date.now()),
   };
   if (result.repeat && !result.date)
-    throw new Error("A repeating task needs a date. Set its first occurrence.");
+    throw new ConvexError("A repeating task needs a date. Set its first occurrence.");
   if (result.reminders.length > 8)
-    throw new Error("Invalid reminder. Use at most 8 reminders.");
+    throw new ConvexError("Invalid reminder. Use at most 8 reminders.");
   if (result.reminders.length && !result.date)
-    throw new Error("Invalid reminder. Set a date before adding reminders.");
+    throw new ConvexError("Invalid reminder. Set a date before adding reminders.");
   if (
     result.reminders.some(
       (reminder) => reminder.type === "at_start" || reminder.type === "before",
     ) &&
     !result.time
   )
-    throw new Error(
+    throw new ConvexError(
       "Invalid reminder. Set a time for at_start or before reminders.",
     );
   return { ...result, searchText: searchText(result.title, result.notes) };
@@ -374,7 +377,7 @@ export async function quickAdd(
     projects.list(ctx, ownerId),
   ]);
   const defaultArea = ownerAreas[0];
-  if (!defaultArea) throw new Error("No areas available. Add an area first.");
+  if (!defaultArea) throw new ConvexError("No areas available. Add an area first.");
   const parsed = parse(args.text, {
     today: date(args.today),
     defaultDate: null,
@@ -392,7 +395,7 @@ export async function quickAdd(
       ? null
       : ownerProjects.find((row) => row._id === parsed.projectId)?._id;
   if (!areaId || projectId === undefined)
-    throw new Error("Task area or project not found. Try adding it again.");
+    throw new ConvexError("Task area or project not found. Try adding it again.");
   return create(ctx, ownerId, {
     ...parsed,
     areaId,

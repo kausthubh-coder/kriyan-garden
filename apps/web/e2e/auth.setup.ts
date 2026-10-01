@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, writeFile, appendFile } from "node:fs/promises";
 import { createTestUser } from "../../../.agents/skills/test-kriyan/scripts/lib/users.mjs";
 import { prepareClerk, signInPage } from "../../../.agents/skills/test-kriyan/scripts/lib/browser.mjs";
 import { test as setup, expect } from "@playwright/test";
@@ -9,6 +9,8 @@ setup("authenticate a dedicated Clerk test user", async ({ page }, testInfo) => 
   let email = process.env.E2E_CLERK_USER_EMAIL;
   if (!email) {
     const user = await createTestUser({ tag: `e2e-${prefix}`.replace(/-$/, "") });
+    await mkdir("../../.agents/test-kriyan", { recursive: true });
+    await appendFile("../../.agents/test-kriyan/21-users.jsonl", JSON.stringify({ id: user.id, email: user.email }) + "\n");
     email = user.email;
     await mkdir("e2e/.auth", { recursive: true });
     await writeFile(

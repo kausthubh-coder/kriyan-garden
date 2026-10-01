@@ -1,5 +1,6 @@
 ﻿"use client";
 import { useState, type ReactNode } from "react";
+import { plannerError } from "@/lib/planner-error";
 import {
   dayValue,
   timeValue,
@@ -76,9 +77,7 @@ export function TaskPanel({
     } catch (failure) {
       setFailedPatch(patch);
       setError(
-        failure instanceof Error
-          ? failure.message
-          : "Task could not be saved. Try saving it again.",
+        plannerError(failure, "Task could not be saved. Try saving it again."),
       );
     }
   };

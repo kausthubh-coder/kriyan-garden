@@ -1,5 +1,6 @@
 "use client";
 import { useRef, useState } from "react";
+import { plannerError } from "@/lib/planner-error";
 export function useFormAction() {
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
@@ -20,7 +21,7 @@ export function useFormAction() {
       return true;
     } catch (failure) {
       setError(
-        `${failure instanceof Error ? failure.message : "The change could not be saved."} Check the fields and try again.`,
+        `${plannerError(failure, "The change could not be saved.")} Check the fields and try again.`,
       );
       return false;
     } finally {

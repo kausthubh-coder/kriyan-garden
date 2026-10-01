@@ -48,6 +48,7 @@ async function axe(page: Page) {
 }
 for (const width of [1440, 390]) {
   test(`QA15 real email signup ${width}`, async ({ page }) => {
+    await mkdir("../../.data/15", { recursive: true });
     const secretKey = process.env.CLERK_SECRET_KEY;
     if (!secretKey?.startsWith("sk_test_")) throw new Error("Development credentials required");
     const sdk = createClerkClient({ secretKey });
@@ -60,10 +61,12 @@ for (const width of [1440, 390]) {
       await page.goto("/sign-up");
       await page.getByRole("textbox",{name:"Email address",exact:true}).fill(email);
       await page.getByRole("textbox",{name:"Password",exact:true}).fill(`Qa15!${crypto.randomUUID()}X7`);
+      const verificationSent = page.waitForResponse(response => response.request().method() === "POST" && response.url().includes("prepare_verification"));
       await page.getByRole("button",{name:"Continue",exact:true}).click();
+      expect((await verificationSent).ok()).toBe(true);
       await page.locator('input[autocomplete="one-time-code"]').fill("424242");
-      await expect(page).toHaveURL(/localhost:3500\/$/);
-      await page.getByRole("navigation",{name:"Website"}).getByRole("link",{name:"Open Kriyan",exact:true}).click();
+      await expect(page).toHaveURL(/\/(?:app)?$/);
+      await page.goto("/app");
       await expect(page.getByRole("heading",{name:"What do you plan for?",exact:true})).toBeVisible();
     } finally {
       await page.close();
@@ -125,6 +128,9 @@ for (const width of [1440, 390]) {
         ["day","No date",{date:null,time:null}],
       ] as const) { await property(id).click(); await panel.getByRole("button",{name:label,exact:true}).click(); await saved(patch); }
       await panel.getByLabel("Notes",{exact:true}).fill(""); await panel.getByLabel("Notes",{exact:true}).press("Tab"); await saved({notes:""});
+      if (await property("day").getAttribute("aria-expanded") !== "true") await property("day").click();
+      await panel.getByRole("group",{name:"Day editor"}).getByRole("button",{name:"Today",exact:true}).click();
+      await saved({date:today});
       await panel.getByRole("button",{name:"Close task details"}).click();
       await expect(panel).not.toBeVisible();
       const trigger = page.getByRole("button",{name:"Open task: QA edited panel",exact:true});

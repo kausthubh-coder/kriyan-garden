@@ -1,4 +1,4 @@
-import { v, type Infer } from "convex/values";
+import { ConvexError, v, type Infer } from "convex/values";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import * as V from "../validators";
@@ -42,15 +42,15 @@ export async function update(ctx: MutationCtx, ownerId: string, args: { id: Id<"
 }
 export async function remove(ctx: MutationCtx, ownerId: string, args: { id: Id<"goals"> }) {
   await owned(ctx, ownerId, args.id);
-  if (await ctx.db.query("tasks").withIndex("by_owner_goal", (q) => q.eq("ownerId", ownerId).eq("goalId", args.id)).first() || await ctx.db.query("milestones").withIndex("by_owner_goal", (q) => q.eq("ownerId", ownerId).eq("goalId", args.id)).first()) throw new Error("Goal has linked tasks or milestones. Remove those links first.");
+  if (await ctx.db.query("tasks").withIndex("by_owner_goal", (q) => q.eq("ownerId", ownerId).eq("goalId", args.id)).first() || await ctx.db.query("milestones").withIndex("by_owner_goal", (q) => q.eq("ownerId", ownerId).eq("goalId", args.id)).first()) throw new ConvexError("Goal has linked tasks or milestones. Remove those links first.");
   await ctx.db.delete(args.id);
   return null;
 }
 export async function setProgress(ctx: MutationCtx, ownerId: string, args: { id: Id<"goals">; current: number }) {
   const goal = await owned(ctx, ownerId, args.id);
-  if (goal.metric.kind !== "number") throw new Error("Invalid goal progress. Complete linked tasks or milestones for this goal.");
+  if (goal.metric.kind !== "number") throw new ConvexError("Invalid goal progress. Complete linked tasks or milestones for this goal.");
   const current = finite(args.current);
-  if (current < 0) throw new Error("Invalid goal progress. Use a nonnegative number.");
+  if (current < 0) throw new ConvexError("Invalid goal progress. Use a nonnegative number.");
   await ctx.db.patch(goal._id, { metric: { ...goal.metric, current }, updatedAt: Date.now() });
   return owned(ctx, ownerId, goal._id);
 }
@@ -76,7 +76,7 @@ export async function deleteForUndo(ctx: MutationCtx, ownerId: string, args: { i
   const goal = await owned(ctx, ownerId, args.id);
   const tasks = await ctx.db.query("tasks").withIndex("by_owner_goal", q => q.eq("ownerId", ownerId).eq("goalId", goal._id)).take(5001);
   const milestones = await ctx.db.query("milestones").withIndex("by_owner_goal", q => q.eq("ownerId", ownerId).eq("goalId", goal._id)).take(1001);
-  if (tasks.length > 5000 || milestones.length > 1000) throw new Error("Goal has too many linked records to delete at once. Remove some links and try again.");
+  if (tasks.length > 5000 || milestones.length > 1000) throw new ConvexError("Goal has too many linked records to delete at once. Remove some links and try again.");
   const updatedAt = Date.now();
   for (const task of tasks) await ctx.db.patch(task._id, { goalId: null, updatedAt });
   for (const milestone of milestones) await ctx.db.delete(milestone._id);
@@ -87,9 +87,9 @@ export async function deleteForUndo(ctx: MutationCtx, ownerId: string, args: { i
 /** Reuse validated operations and never overwrite a task changed since deletion. */
 export async function restore(ctx: MutationCtx, ownerId: string, args: { snapshot: Infer<typeof V.deletedGoal> }) {
   const { goal, milestones, tasks } = args.snapshot;
-  if (goal.ownerId !== ownerId || milestones.some(row => row.ownerId !== ownerId || row.goalId !== goal._id)) throw new Error("Deleted goal not found.");
-  if (tasks.length > 5000 || milestones.length > 1000) throw new Error("Too many records to restore. Try again with fewer records.");
-  if (await ctx.db.get(goal._id)) throw new Error("Goal already exists. Refresh your planner.");
+  if (goal.ownerId !== ownerId || milestones.some(row => row.ownerId !== ownerId || row.goalId !== goal._id)) throw new ConvexError("Deleted goal not found.");
+  if (tasks.length > 5000 || milestones.length > 1000) throw new ConvexError("Too many records to restore. Try again with fewer records.");
+  if (await ctx.db.get(goal._id)) throw new ConvexError("Goal already exists. Refresh your planner.");
   const restored = await create(ctx, ownerId, {
     title: goal.title, areaId: goal.areaId, note: goal.note, startDate: goal.startDate,
     targetDate: goal.targetDate, metric: goal.metric, status: goal.status, sortOrder: goal.sortOrder,
@@ -100,7 +100,7 @@ export async function restore(ctx: MutationCtx, ownerId: string, args: { snapsho
   });
   for (const reference of tasks) {
     const task = await ctx.db.get(reference.id);
-    if (task && task.ownerId !== ownerId) throw new Error("Linked task not found.");
+    if (task && task.ownerId !== ownerId) throw new ConvexError("Linked task not found.");
     if (task && task.goalId === null && task.updatedAt === reference.updatedAt)
       await ctx.db.patch(task._id, { goalId: restored._id, updatedAt: Date.now() });
   }

@@ -10,5 +10,5 @@ export default defineConfig({
   timeout: 90_000,
   expect: { timeout: 20_000 },
   reporter: [["list"]],
-  use: { ...devices["Desktop Chrome"], baseURL: process.env.E2E_BASE_URL ?? "http://localhost:3007", trace: "off" },
+  use: { ...devices["Desktop Chrome"], channel: "chrome", baseURL: process.env.E2E_BASE_URL ?? "http://localhost:3007", trace: "off" },
 });

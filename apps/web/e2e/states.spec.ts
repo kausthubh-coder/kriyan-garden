@@ -56,7 +56,7 @@ test("fresh account empty views, goal validation and number dialog at both sizes
     await expect(page.getByText("Free", { exact: true })).toHaveCount(0);
     const columns = page.locator('section').filter({ has: page.getByRole("button", { name: /^Open (Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),/ }) });
     await expect(columns).toHaveCount(7);
-    for (const column of await columns.all()) await expect(column).toHaveCSS("height", "120px");
+    for (const column of await columns.all()) await expect(column).toHaveCSS("height", width === 390 ? "56px" : "120px");
     await capture(page, "empty-week", width);
     await ready(page, "goals");
     await expect(page.getByRole("heading", { name: "No goals yet", exact: true })).toBeVisible();

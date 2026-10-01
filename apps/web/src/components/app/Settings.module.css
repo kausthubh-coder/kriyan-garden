@@ -79,6 +79,13 @@
 .planning [data-property] {
   min-height: 42px;
 }
+.layout .planning [data-property]:hover:not(:disabled),
+.layout .planning [data-property]:active:not(:disabled) {
+  opacity: 1;
+}
+.layout .planning [data-property]:active:not(:disabled) {
+  background: var(--s3);
+}
 .planning [data-property] > span:first-child {
   width: 150px;
 }
@@ -210,6 +217,12 @@
   .index a,
   .planning [data-property],
   .zones button {
+    min-height: var(--space-44);
+  }
+}
+@media (max-width: 820px), (pointer: coarse) {
+  .body :global(.cl-userProfile-root) :is(button, a) {
+    min-width: var(--space-44);
     min-height: var(--space-44);
   }
 }

@@ -1,4 +1,5 @@
 "use client";
+import { plannerError } from "@/lib/planner-error";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@kriyan/backend/convex/_generated/api";
@@ -34,7 +35,7 @@ export function useInlineSave() {
         setFeedback((old) => ({
           ...old,
           [key]: {
-            error: `${error instanceof Error ? error.message : "This change could not be saved."} Check the field and try again.`,
+            error: `${plannerError(error, "This change could not be saved.")} Check the field and try again.`,
           },
         }));
         return false;

@@ -116,6 +116,8 @@ describe("counts and summary", () => {
 
   test("day summary", () => {
     expect(daySummary({ left: 0, total: 0, plannedMinutes: 0, withoutLength: 0 })).toBe("Nothing planned.");
+    expect(daySummary({ left: 0, total: 2, plannedMinutes: 0, withoutLength: 0, hideEmptyCount: true })).toBe("All tasks done.");
+    expect(daySummary({ left: 0, total: 2, plannedMinutes: 30, withoutLength: 0, hideEmptyCount: true })).toBe("30m planned.");
     expect(daySummary({ left: 1, total: 3, plannedMinutes: 30, withoutLength: 0 })).toBe("1 task left, 30m planned.");
     expect(daySummary({ left: 7, total: 9, plannedMinutes: 245, withoutLength: 2 })).toBe("7 tasks left, 4h 5m planned, 2 with no length.");
     expect(daySummary({ left: 2, total: 2, plannedMinutes: 0, withoutLength: 2 })).toBe("2 tasks left, 2 with no length.");

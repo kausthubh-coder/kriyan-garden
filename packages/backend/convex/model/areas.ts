@@ -1,3 +1,4 @@
+import { ConvexError } from "convex/values";
 import type { Infer } from "convex/values";
 import { v } from "convex/values";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
@@ -30,7 +31,7 @@ export async function remove(ctx: MutationCtx, ownerId: string, args: { id: Id<"
   ]);
   const events = await ctx.db.query("events").withIndex("by_owner", (q) => q.eq("ownerId", ownerId)).take(100);
   const habits = await ctx.db.query("habits").withIndex("by_owner", (q) => q.eq("ownerId", ownerId)).take(50);
-  if (project || goal || task || events.some((row) => row.areaId === args.id) || habits.some((row) => row.areaId === args.id)) throw new Error("Area is in use. Move or remove its records first.");
+  if (project || goal || task || events.some((row) => row.areaId === args.id) || habits.some((row) => row.areaId === args.id)) throw new ConvexError("Area is in use. Move or remove its records first.");
   await ctx.db.delete(args.id);
   return null;
 }
@@ -38,7 +39,7 @@ export async function remove(ctx: MutationCtx, ownerId: string, args: { id: Id<"
 export async function reorder(ctx: MutationCtx, ownerId: string, args: { ids: Id<"areas">[] }) {
   const rows = await list(ctx, ownerId);
   if (args.ids.length !== rows.length || new Set(args.ids).size !== rows.length || args.ids.some((id) => !rows.some((row) => row._id === id)))
-    throw new Error("The areas changed. Reload and try moving the area again.");
+    throw new ConvexError("The areas changed. Reload and try moving the area again.");
   for (const [sortOrder, id] of args.ids.entries()) await update(ctx, ownerId, { id, patch: { sortOrder } });
   return null;
 }

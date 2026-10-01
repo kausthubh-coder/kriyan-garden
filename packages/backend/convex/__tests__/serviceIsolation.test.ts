@@ -90,6 +90,27 @@ test.each(actions)("$name binds the signed owner and cannot access foreign recor
     expect(JSON.stringify(result)).not.toContain("Private task");
     expect(JSON.stringify(result)).not.toContain("Private goal");
   }
+  // Exercise the browser/native wrapper as well as its signed service action.
+  // Service-only operations have no direct user endpoint.
+  if (group !== "planner") {
+    const nativeSource = readFileSync(new URL(`../${group}.ts`, import.meta.url), "utf8");
+    const kind = new RegExp(`export const ${verb} = (query|mutation)\\(`).exec(nativeSource)?.[1];
+    const call = (authenticated: boolean) => {
+      const client = authenticated ? b : t;
+      if (kind === "query") return client.query(makeFunctionReference<"query", Record<string, unknown>, unknown>(`${group}:${verb}`), payload);
+      return client.mutation(makeFunctionReference<"mutation", Record<string, unknown>, unknown>(`${group}:${verb}`), payload);
+    };
+    if (kind) {
+      await expect(call(false)).rejects.toThrow("Not authenticated");
+      if (foreignReference) await expect(call(true)).rejects.toThrow("not found");
+      else {
+        const result = await call(true);
+        expect(JSON.stringify(result)).not.toContain("service-isolation-a");
+        expect(JSON.stringify(result)).not.toContain("Private task");
+        expect(JSON.stringify(result)).not.toContain("Private goal");
+      }
+    }
+  }
   const ownAfter = await t.run(async ctx => {
     const tables = ["profiles", "areas", "projects", "goals", "tasks", "events", "habits", "milestones", "habitLogs"] as const;
     return Promise.all(tables.map(table => ctx.db.query(table).withIndex("by_owner", q => q.eq("ownerId", "service-isolation-a")).collect()));

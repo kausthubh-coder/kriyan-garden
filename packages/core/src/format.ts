@@ -171,10 +171,11 @@ export function daySummary(input: {
   total: number;
   plannedMinutes: number;
   withoutLength: number;
+  hideEmptyCount?: boolean;
 }): string {
   if (input.total === 0) return "Nothing planned.";
-  const bits = [`${countText(input.left, "task")} left`];
+  const bits = input.hideEmptyCount && input.left === 0 ? [] : [`${countText(input.left, "task")} left`];
   if (input.plannedMinutes) bits.push(`${formatMinutes(input.plannedMinutes)} planned`);
   if (input.withoutLength) bits.push(`${input.withoutLength} with no length`);
-  return `${bits.join(", ")}.`;
+  return bits.length ? `${bits.join(", ")}.` : "All tasks done.";
 }

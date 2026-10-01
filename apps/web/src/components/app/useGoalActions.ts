@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useState } from "react";
+import { plannerError } from "@/lib/planner-error";
 import { useGoalTransport } from "./dataAccess";
 import type { Goal } from "./types";
 import type { ToastMessage } from "./Toast";
@@ -33,7 +34,7 @@ export function useGoalActions(close: () => void) {
       .catch((failure: unknown) => {
         setFailedUndo(() => action);
         setError(
-          `${failure instanceof Error ? failure.message : "Goal could not be restored."} Try undoing again.`,
+          `${plannerError(failure, "Goal could not be restored.")} Try undoing again.`,
         );
         setToast({
           id: Date.now(),

@@ -1,10 +1,10 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, writeFile } from "node:fs/promises";
 import { createClerkClient } from "@clerk/backend";
 import { clerk, clerkSetup, setupClerkTestingToken } from "@clerk/testing/playwright";
 import { test, expect, type Page } from "@playwright/test";
 import { api } from "@kriyan/backend/convex/_generated/api";
 import { makeFunctionReference } from "convex/server";
-import { ConvexHttpClient } from "convex/browser";
+import { cleanup as cleanupOwner } from "../../../.agents/scripts/21-common.mjs";
 import { backendFor } from "./backend";
 import { measureRenderedAccount } from "./account-measurements";
 
@@ -17,14 +17,11 @@ async function disposable(page: Page) {
   const client = createClerkClient({ secretKey: secret });
   const email = `kriyan-hardening-${crypto.randomUUID()}+clerk_test@example.com`;
   const user = await client.users.createUser({ emailAddress: [email], skipPasswordRequirement: true });
-  const cleanupSession = await client.sessions.createSession({ userId: user.id });
-  const cleanupBackend = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL ?? "", { logger: false });
+  await mkdir("../../.agents/test-kriyan", { recursive: true });
+  await appendFile("../../.agents/test-kriyan/21-users.jsonl", JSON.stringify({id:user.id,email}) + "\n");
   async function cleanup() {
     if (!page.isClosed()) await page.close();
-    cleanupBackend.setAuth((await client.sessions.getToken(cleanupSession.id, "convex")).jwt);
-    await cleanupBackend.mutation(api.profiles.resetAll, {});
-    await expect.poll(() => cleanupBackend.query(api.profiles.get, {})).toBeNull();
-    await client.users.deleteUser(user.id);
+    await cleanupOwner({id:user.id,email});
   }
   // No credentials or storage state are persisted by this suite.
   let backend: Awaited<ReturnType<typeof backendFor>> | undefined;
@@ -225,6 +222,7 @@ test("signed account cleanup live deployment gate", async ({ page }) => {
   const fixture = await disposable(page);
   try {
     const cleanup = makeFunctionReference<"action", { ownerId: string; timestamp: number; nonce: string; signature: string }, null>("accountDeletion:cleanup");
+    const preserved = await fixture.backend.mutation(api.tasks.create, {title:"Invalid cleanup must preserve this task"});
     try {
       // Intentionally invalid signature: a deployment probe cannot delete data.
       await fixture.backend.action(cleanup, { ownerId: fixture.user.id, timestamp: Date.now(), nonce: crypto.randomUUID(), signature: "0".repeat(64) });
@@ -232,7 +230,10 @@ test("signed account cleanup live deployment gate", async ({ page }) => {
     } catch (failure) {
       const message = failure instanceof Error ? failure.message : "";
       test.skip(message.includes("Could not find public function"), "accountDeletion:cleanup is undeployed. Supervisor deployment and Clerk user.deleted registration are required for live deletion cleanup.");
-      expect(message).toContain("Invalid service signature");
+      // Production sanitizes internal service-auth errors. The invalid request
+      // must still be refused, and it must leave the owner's data untouched.
+      expect(message).toMatch(process.env.E2E_EXPECT_PRODUCTION === "1" ? /^\[Request ID: [0-9a-f]+\] Server Error$/ : /Invalid service signature/);
     }
+    expect(await fixture.backend.query(api.tasks.get, {id:preserved._id})).toEqual(preserved);
   } finally { await fixture.cleanup(); }
 });
