@@ -2,7 +2,19 @@
 
 1 October 2026. Branch `v2`.
 
-Status: verification is still running. This report will be updated with the release, gallery, final commands and cleanup receipts before the three local commits are made.
+Status: PARTIAL, blocked by available host memory. Brief 22 Job 1 has not completed. The release is not published. Jobs 2 to 5 have not started in this continuation.
+
+## Brief 22 continuation
+
+The initial Windows reading was 4,663,860 KB of free virtual memory, below the brief's 5 GB minimum. No Kriyan Gradle, emulator or QA process remained. Five unused Playwright/security helper processes were verified as descendants of this Codex session and stopped. Owner applications and other sessions were left running. The guarded build then refused to start at 4.83 GB free commit, exit 1. Receipt: `.agents/logs/22/local-build-original.log`.
+
+`.agents/scripts/22-local-build.ps1` selects the production profile's public configuration, checks free commit immediately before the existing local build script, and refuses overlap with an emulator or Java process. A separate gate checks memory immediately before Gradle. Windows PowerShell's handling of informational native stderr stopped the first prebuild; OS-level stdout/stderr redirection corrected it. The original source then completed prebuild. Gradle started after a fresh 5.22 GB reading. Its separate Kotlin compiler daemon increased allocation, and free commit fell to about 2.1 GB. That session-owned build and compiler were stopped before native compilation. Its partial output is retained in `gradle-original-memory-stop.stdout.log` and `gradle-original-memory-stop.stderr.log`. This is not a passing local build.
+
+The retry uses one Gradle/Metro worker, Kotlin compilation in the Gradle process, a 1536 MB heap and a 512 MB metaspace limit. It waits for at least 5 GB free commit before starting. No emulator or cloud build has been started, and no test accounts have been created in this continuation. Android and phone-state references were opened in a headless browser and captured in `.agents/logs/22/reference-{android,states}.png`; that browser is closed. The native/splash background configuration is unset and account initialization has no deadline; these are source findings, not an established explanation of the blank launch.
+
+The reduced-memory retry waited about eight minutes without reaching the required threshold. Free commit fluctuated between about 3.3 and 4.5 GB, then measured 3.41 GB at 18:03 America/New_York. The owned waiting helper was stopped. There are no remaining Java/emulator processes from this continuation. The final memory reading is `.agents/logs/22/memory-blocked.json`. Owner applications were not terminated. Continuing requires at least 5 GB free commit, ideally enough margin for prebuild, before invoking `.agents/scripts/22-local-build.ps1` again.
+
+Verification of the preparation: PowerShell parsing reports zero errors for the local build script and both new PowerShell helpers; `node --check` passes for both new JavaScript helpers; `git diff --check` passes. App startup reproduction, native smoke, gallery replacement, cloud build, release, production recheck, final workspace gates and account inventory cleanup remain unrun. This checkpoint does not claim completion of any Brief 22 job.
 
 ## Environments and limits
 

@@ -48,7 +48,7 @@ rootProject.children.each { descriptor ->
 (?m)^    cliFile = file\('[D-Z]:/scripts/expo-cli-local\.cjs'\)\r?\n
 '@
   $gradle = [regex]::Replace($gradle, $oldCli.Trim(), '')
-  $gradle = $gradle.Replace('react {', "react {`n    extraPackagerArgs = ['--max-workers', '2']")
+  $gradle = $gradle.Replace('react {', "react {`n    extraPackagerArgs = ['--max-workers', '1']")
   $gradle = [regex]::Replace($gradle, '(?m)^    bundleCommand = .*export:embed.*$', "    bundleCommand = 'export:embed'`n    cliFile = file('$Drive`:/scripts/expo-cli-local.cjs')")
   Set-Content -LiteralPath $appGradle -Value $gradle
   $initFile = Join-Path $taskRoot '.agents/android-cmake.init.gradle'
@@ -68,7 +68,15 @@ allprojects {
   $env:CI = '1'
   $env:NODE_ENV = 'production'
   Set-Location "$Drive`:/apps/mobile/android"
-  & ./gradlew.bat :app:assembleRelease --console=plain --no-daemon -PreactNativeArchitectures=x86_64 --max-workers=2 '-Dorg.gradle.jvmargs=-Xmx2g -XX:MaxMetaspaceSize=768m' -I "$Drive`:/.agents/android-cmake.init.gradle"
+  $freeCommitKB = (Get-CimInstance Win32_OperatingSystem).FreeVirtualMemory
+  while ($freeCommitKB -lt 5MB) {
+    Write-Output "Waiting before Gradle: $([math]::Round($freeCommitKB / 1MB, 2)) GB free commit; 5 GB required."
+    Start-Sleep -Seconds 10
+    $freeCommitKB = (Get-CimInstance Win32_OperatingSystem).FreeVirtualMemory
+  }
+  Write-Output "Gradle memory gate passed: $([math]::Round($freeCommitKB / 1MB, 2)) GB free commit."
+  if (Get-CimInstance Win32_Process | Where-Object { $_.Name -match '^(emulator|qemu-system)' }) { throw 'Stop our emulator before starting Gradle.' }
+  & ./gradlew.bat :app:assembleRelease --console=plain --no-daemon -PreactNativeArchitectures=x86_64 --max-workers=1 -Pkotlin.compiler.execution.strategy=in-process '-Dorg.gradle.jvmargs=-Xmx1536m -XX:MaxMetaspaceSize=512m' -I "$Drive`:/.agents/android-cmake.init.gradle"
   if ($LASTEXITCODE -ne 0) { throw 'Local APK build failed. Inspect the Gradle output.' }
   $artifactDirectory = Join-Path $taskRoot '.agents/builds'
   New-Item -ItemType Directory -Force -Path $artifactDirectory | Out-Null
