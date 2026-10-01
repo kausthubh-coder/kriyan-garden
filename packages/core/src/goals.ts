@@ -1,3 +1,16 @@
+import { toIsoDate } from "./dates";
+
+/** Presets use the person's calendar date, including month-end clamping. */
+export function goalTargetDates(today: string) {
+  const year = Number(today.slice(0, 4)), month = Number(today.slice(5, 7)), day = Number(today.slice(8, 10));
+  const end = new Date(Date.UTC(year, month, 0));
+  const later = new Date(Date.UTC(year, month + 2, 1));
+  const last = new Date(Date.UTC(later.getUTCFullYear(), later.getUTCMonth() + 1, 0)).getUTCDate();
+  return [toIsoDate(year, month, end.getUTCDate()),
+    toIsoDate(later.getUTCFullYear(), later.getUTCMonth() + 1, Math.min(day, last)),
+    toIsoDate(year, 12, 31)] as const;
+}
+
 type GoalProgress = {
   startDate: string;
   targetDate: string | null;

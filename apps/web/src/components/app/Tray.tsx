@@ -12,6 +12,7 @@ import {
   type Variables,
 } from "./types";
 import s from "./App.module.css";
+import { Icon } from "./Icon";
 export function taskKeys(
   event: React.KeyboardEvent,
   task: Task,
@@ -50,6 +51,8 @@ export function Tray({
   toggle,
   add,
   loading,
+  hint,
+  dismissHint,
 }: {
   anytime: Task[];
   unscheduled: Task[];
@@ -63,6 +66,8 @@ export function Tray({
   toggle: (task: Task) => void;
   add: () => void;
   loading: boolean;
+  hint?: boolean;
+  dismissHint?: () => void;
 }) {
   const card = (task: Task) => (
     <div
@@ -104,9 +109,9 @@ export function Tray({
           {date === today
             ? "Any time today"
             : `Any time on ${weekdayName(date)}`}
-          <em>
+          {anytime.length > 0 && <em>
             {anytime.filter((task) => task.status === "active").length} left
-          </em>
+          </em>}
         </h2>
         {loading ? (
           <>
@@ -122,29 +127,31 @@ export function Tray({
             )
             .map(card)
         ) : (
-          <div className={s.empty}>
-            Nothing waiting. <button onClick={add}>Add a task</button>
-          </div>
+          <p className={s.empty}>{filter !== "all" ? `Nothing in ${areas.find((area) => area._id === filter)?.name}.` : "Tasks for today without a time wait here."}</p>
         )}
+        <button className={s.trayAdd} onClick={add}><Icon name="plus" />Add a task<span className={s.kbd}>N</span></button>
+        {hint && anytime.length > 0 && <div className={s.trayHint}>
+          <span className={s.fineHint}>Drag a task from the tray onto the timeline to give it a time.</span>
+          <span className={s.touchHint}>Tap a task to give it a time.</span>
+          <button className={s.hintDismiss} onClick={dismissHint}>Got it</button>
+        </div>}
       </section>
       <section className={s.later}>
         <h2 className={s.h}>
-          No date yet<em>{unscheduled.length}</em>
+          No date yet{unscheduled.length > 0 && <em>{unscheduled.length}</em>}
         </h2>
         {loading ? (
           <div className={s.skeleton} />
         ) : unscheduled.length ? (
           unscheduled.map(card)
         ) : (
-          <div className={s.empty}>
-            Tasks without a date land here.{" "}
-            <button onClick={add}>Add a task</button>
-          </div>
+          <p className={s.empty}>{filter !== "all" ? `Nothing in ${areas.find((area) => area._id === filter)?.name}.` : "Tasks without a day land here until you schedule them."}</p>
         )}
-        <p className={s.hint}>
-          Drag a task onto the day to give it a time. A length is optional: drag
-          the bottom edge of a block to set one.
-        </p>
+        {hint && !anytime.length && unscheduled.length > 0 && <div className={s.trayHint}>
+          <span className={s.fineHint}>Drag a task from the tray onto the timeline to give it a time.</span>
+          <span className={s.touchHint}>Tap a task to give it a time.</span>
+          <button className={s.hintDismiss} onClick={dismissHint}>Got it</button>
+        </div>}
       </section>
     </aside>
   );

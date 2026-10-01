@@ -22,24 +22,31 @@ test("goals save number progress, milestones and task progress", async ({
       .click();
     const dialog = page.getByRole("dialog", { name: "Add goal", exact: true });
     await dialog.getByLabel("Goal title").fill(title);
-    await dialog.getByLabel("Target date").fill(addDays(target, 14));
-    await dialog.getByLabel("Measure progress").selectOption(kind);
+    await dialog.getByRole("button", { name: "Pick a day", exact: true }).click();
+    await dialog.getByLabel("Target date", { exact: true }).fill(addDays(target, 14));
+    await dialog.getByRole("button", { name: kind === "number" ? "A number" : kind === "milestones" ? "Milestones" : "Tasks done", exact: true }).click();
     if (kind === "number") {
       await dialog.getByLabel("Target value").fill("10");
-      await dialog.getByLabel("Current value").fill("2");
       await dialog.getByLabel("Unit", { exact: true }).fill("books");
     }
     await dialog.getByRole("button", { name: "Add goal", exact: true }).click();
     await expect(dialog).not.toBeVisible();
+    if (kind === "milestones") {
+      const panel = page.getByRole("dialog", { name: "Goal details" });
+      await expect(panel.getByLabel("Add a milestone")).toBeFocused();
+      await panel.getByRole("button", { name: "Close goal details" }).click();
+    }
     return page.locator("section").filter({ hasText: title });
   }
-  const number = await create("Read ten books", "number");
+  // The preceding onboarding test already creates "Read ten books".
+  // Give this independent goal a distinct title so exact locators stay unique.
+  const number = await create("Read ten more books", "number");
   await expect(
-    number.locator("button > span").filter({ hasText: /^2books$/ }),
+    number.locator("button > span").filter({ hasText: /^0books$/ }),
   ).toBeVisible();
   await expect(number.locator("input, select")).toHaveCount(0);
   const trigger = number.getByRole("button", {
-    name: "Read ten books",
+    name: "Read ten more books",
     exact: true,
   });
   await trigger.click();
@@ -312,9 +319,7 @@ test("dialogs and panels close with Escape and restore focus at both sizes", asy
       exact: true,
     });
     await expect(creation).toBeVisible();
-    if (width > 820)
-      await expect(creation.getByLabel("Goal title")).toBeFocused();
-    else await expect(creation).toBeFocused();
+    await expect(creation.getByLabel("Goal title")).toBeFocused();
     await page.keyboard.press("Escape");
     await expect(creation).not.toBeVisible();
     await expect(addGoal).toBeFocused();

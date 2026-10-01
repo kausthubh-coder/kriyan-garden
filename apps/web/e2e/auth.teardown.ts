@@ -5,7 +5,7 @@ import { api } from "@kriyan/backend/convex/_generated/api";
 import { backendFor } from "./backend";
 test("reset the disposable planner and remove its test user", async ({ page }, testInfo) => {
   if (process.env.E2E_CLERK_USER_EMAIL) return;
-  const prefix = testInfo.project.name === "settings-cleanup" ? "settings-" : "";
+  const prefix = testInfo.project.name === "settings-cleanup" ? "settings-" : testInfo.project.name === "states-cleanup" ? "states-" : "";
   const record: unknown = JSON.parse(
     await readFile(`e2e/.auth/${prefix}disposable-user.json`, "utf8"),
   );

@@ -2,31 +2,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@kriyan/backend/convex/_generated/api";
-import { shortDate, toIsoDate } from "@kriyan/core";
+import { shortDate, goalTargetDates } from "@kriyan/core";
 import type { Id } from "@kriyan/backend/convex/_generated/dataModel";
 import { AreaChips } from "./AreaChips";
 import { SaveFeedback, useInlineSave, useSetupDraft } from "./useInlineSave";
 import type { Area, Goal, Profile } from "./types";
 import s from "./Onboarding.module.css";
 
-export function goalTargetDates(today: string) {
-  const year = Number(today.slice(0, 4)),
-    month = Number(today.slice(5, 7)),
-    day = Number(today.slice(8, 10));
-  const end = new Date(Date.UTC(year, month, 0));
-  const later = new Date(Date.UTC(year, month + 2, 1));
-  const last = new Date(
-    Date.UTC(later.getUTCFullYear(), later.getUTCMonth() + 1, 0),
-  ).getUTCDate();
-  return [
-    toIsoDate(year, month, end.getUTCDate()),
-    toIsoDate(
-      later.getUTCFullYear(),
-      later.getUTCMonth() + 1,
-      Math.min(day, last),
-    ),
-  ];
-}
+export { goalTargetDates } from "@kriyan/core";
 export function OnboardingGoal({
   areas,
   goal,
@@ -106,6 +89,10 @@ export function OnboardingGoal({
   function save(patch: Record<string, string> = {}) {
     const values = { ...draft.values, ...patch };
     if (!values.title.trim() || !values.area) return;
+    // A number is a draft until both of its fields are valid. Saving the
+    // empty unit when the chip is chosen rejects the mutation and blocks Continue.
+    if (values.kind === "number" &&
+      (!values.unit.trim() || !Number.isFinite(Number(values.target)) || Number(values.target) <= 0)) return;
     const row = asGoal(values);
     void action.run("goal", async () => {
       const fields = {

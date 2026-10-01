@@ -15,10 +15,14 @@ export default defineConfig({
   expect: { timeout: 15_000 },
   reporter: [["list"]],
   use: {
-    baseURL: process.env.E2E_BASE_URL ?? "http://localhost:3400",
+    baseURL: process.env.E2E_BASE_URL ?? "http://localhost:3000",
     trace: "retain-on-failure",
   },
   projects: [
+    { name: "states-setup", testMatch: /auth\.setup\.ts/, teardown: "states-cleanup" },
+    { name: "states", testMatch: /states\.spec\.ts/, dependencies: ["states-setup"],
+      use: { ...devices["Desktop Chrome"], timezoneId: "America/New_York", storageState: "e2e/.auth/states-user.json" } },
+    { name: "states-cleanup", testMatch: /auth\.teardown\.ts/, use: { storageState: "e2e/.auth/states-user.json" } },
     {
       name: "onboarding-settings",
       use: {
@@ -75,8 +79,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `bun run dev --port ${new URL(process.env.E2E_BASE_URL ?? "http://localhost:3400").port || "3400"}`,
-    url: process.env.E2E_BASE_URL ?? "http://localhost:3400",
+    command: `bun run dev --port ${new URL(process.env.E2E_BASE_URL ?? "http://localhost:3000").port || "3000"}`,
+    url: process.env.E2E_BASE_URL ?? "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },

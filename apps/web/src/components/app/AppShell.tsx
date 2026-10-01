@@ -20,6 +20,8 @@ import { TaskSelectionPanel } from "./TaskSelectionPanel";
 import { taskSelectionArgs } from "./taskSelection";
 import { Toast } from "./Toast";
 import { HelpSheet } from "./HelpSheet";
+import { GoalDialog } from "./GoalDialog";
+import type { GoalDraft } from "./GoalForm";
 import {
   type Area,
   type Task,
@@ -64,23 +66,14 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
   const planner = usePlannerData(validDate),
     clock = planner.clock,
     date = validDate ?? clock?.today ?? null;
-  const [overlay, setOverlay] = useState<"add" | "palette" | "help" | null>(
+  const [overlay, setOverlay] = useState<"add" | "goal" | "palette" | "help" | null>(
       null,
     ),
     [initialText, setInitialText] = useState(""),
     [section, setSection] = useState<PanelSection>();
   const [modality, setModality] = useState("keyboard");
-  const [hint, setHint] = useState(false);
-  useEffect(() => {
-    if (pathname !== "/app") return;
-    const timer = setTimeout(() => {
-      if (sessionStorage.getItem("kriyan-setup-hint") === "1") {
-        sessionStorage.removeItem("kriyan-setup-hint");
-        setHint(true);
-      }
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [pathname]);
+  const [goalDraft, setGoalDraft] = useState<GoalDraft>();
+  const [milestonesFocus, setMilestonesFocus] = useState<string>();
   useEffect(() => {
     if (
       !demo &&
@@ -114,6 +107,7 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
   );
   const close = useCallback(() => {
     setOverlay(null);
+    setMilestonesFocus(undefined);
     setSection(undefined);
     if (
       new URLSearchParams(window.location.search).has("task") ||
@@ -195,6 +189,11 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
     )
       navigateUrl({ task: null, goal: null });
   }, [navigateUrl]);
+  const addGoal = (draft?: GoalDraft) => {
+    setGoalDraft(draft);
+    setOverlay("goal");
+    if (selectedId || selectedGoalId) navigateUrl({ task: null, goal: null });
+  };
   const help = useCallback(() => {
     setOverlay("help");
     if (
@@ -324,7 +323,6 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
     areas.find((area) => area.color === "green") ??
     areas[0];
   const finish = () => {
-    sessionStorage.setItem("kriyan-setup-hint", "1");
     router.replace("/app");
   };
   const viewProps =
@@ -343,6 +341,8 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
           add: () => add(),
           navigate: changeDate,
           loading: planner.loading,
+          addGoal,
+          settings: demo ? undefined : () => navigate("settings"),
         }
       : null;
   if (
@@ -389,15 +389,6 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
         help={help}
       />
       <div className={s.content} aria-busy={planner.loading}>
-        {hint && (
-          <div className={s.status} role="status">
-            Drag a task from the tray onto the timeline to schedule it. Press N
-            to add a task.
-            <button className={s.f} onClick={() => setHint(false)}>
-              Dismiss hint
-            </button>
-          </div>
-        )}
         {!planner.connected && !planner.loading && (
           <div className={s.status} role="status">
             Offline, changes will sync when you reconnect. Keep this tab open.
@@ -454,12 +445,17 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
               setFilter={setFilter}
               open={open}
               toggle={actions.toggle}
-              add={() => add()}
+              add={add}
               navigate={changeDate}
               goDay={goDay}
               goGoals={() => navigate("goals")}
               write={actions.patch}
               loading={planner.loading}
+              firstRun={!planner.firstTaskAdded && !tasks.length}
+              hint={!planner.hintDismissed}
+              dismissHint={planner.dismissHint}
+              addGoal={addGoal}
+              settings={demo ? undefined : () => navigate("settings")}
             />
           ) : view === "list" ? (
             viewProps && (
@@ -541,6 +537,14 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
           open={open}
         />
       )}
+      {overlay === "goal" && clock && <GoalDialog areas={areas} today={clock.today} draft={goalDraft} close={close}
+        saved={(goal) => {
+          setOverlay(null);
+          if (goal.metric.kind === "milestones") {
+            setMilestonesFocus(goal._id);
+            navigateUrl({ goal: goal._id, task: null });
+          }
+        }} />}
       {overlay === "help" && <HelpSheet close={close} />}
       {taskSelectionArgs(selectedId) !== "skip" &&
         !overlay &&
@@ -576,6 +580,7 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
           today={clock?.today ?? date ?? selectedGoal.startDate}
           close={close}
           remove={goalActions.deleteGoal}
+          focusMilestones={milestonesFocus === selectedGoal._id}
         />
       )}
       {goalActions.toast && (

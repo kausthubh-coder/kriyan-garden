@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { Check } from "./Check";
 import { taskKeys } from "./Tray";
 import { Icon } from "./Icon";
+import type { GoalDraft } from "./GoalForm";
 import {
   areaColor,
   projectName,
@@ -30,6 +31,8 @@ export type ViewProps = {
   toggle: (task: Task) => void;
   add: () => void;
   navigate: (offset: number) => void;
+  settings?: () => void;
+  addGoal?: (draft?: GoalDraft) => void;
 };
 export const sortTasks = (a: Task, b: Task) =>
   Number(a.status === "completed") - Number(b.status === "completed") ||
@@ -44,6 +47,7 @@ export function ViewHeader({
   actions,
   phoneDate,
   phoneSummary,
+  settings,
 }: {
   title: string;
   subtitle?: string;
@@ -53,6 +57,7 @@ export function ViewHeader({
   actions?: ReactNode;
   phoneDate?: string;
   phoneSummary?: string;
+  settings?: () => void;
 }) {
   return (
     <header className={s.dh}>
@@ -71,7 +76,7 @@ export function ViewHeader({
           )}
         </p>
       )}
-      {(navigate || actions) && (
+      {(navigate || actions || settings) && (
         <div className={s.right}>
           {navigate && (
             <div className={s.segmented}>
@@ -95,6 +100,7 @@ export function ViewHeader({
             </div>
           )}
           {actions}
+          <button className={`${s.iconButton} ${s.phoneSettings}`} aria-label="Settings" onClick={settings} disabled={!settings}><Icon name="settings" /></button>
         </div>
       )}
     </header>
@@ -105,7 +111,8 @@ export function DateHeader({
   navigate,
   summary,
   phoneSummary,
-}: Pick<ViewProps, "date" | "today" | "navigate"> & {
+  settings,
+}: Pick<ViewProps, "date" | "today" | "navigate" | "settings"> & {
   summary?: string;
   phoneSummary?: string;
 }) {
@@ -117,6 +124,7 @@ export function DateHeader({
       summary={summary}
       phoneDate={longDate(date)}
       phoneSummary={phoneSummary}
+      settings={settings}
     />
   );
 }

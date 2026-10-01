@@ -40,6 +40,11 @@ export function DayView({
   goGoals,
   write,
   loading,
+  firstRun = false,
+  hint,
+  dismissHint,
+  addGoal,
+  settings,
 }: {
   day?: Day;
   week?: Week;
@@ -55,12 +60,17 @@ export function DayView({
   setFilter: (value: string) => void;
   open: (task: Task, section?: PanelSection) => void;
   toggle: (task: Task) => void;
-  add: () => void;
+  add: (text?: string) => void;
   navigate: (offset: number) => void;
   goDay: (date: string) => void;
   goGoals: () => void;
   write: (task: Task, patch: TaskPatch, message: string) => void;
   loading: boolean;
+  firstRun?: boolean;
+  hint?: boolean;
+  dismissHint?: () => void;
+  addGoal?: () => void;
+  settings?: () => void;
 }) {
   const startHour = profile?.dayStartHour ?? 7,
     endHour = profile?.dayEndHour ?? 23;
@@ -106,16 +116,19 @@ export function DayView({
         toggle={toggle}
         add={add}
         loading={loading}
+        hint={hint}
+        dismissHint={dismissHint}
       />
       <main ref={scroll} className={s.day} data-day-scroll="true">
         <DateHeader
           date={date}
           today={today}
           navigate={navigate}
+          settings={settings}
           summary={
             !day || loading
               ? "Loading your day."
-              : daySummary({
+              : !all.length ? (filter !== "all" ? `Nothing in ${areas.find((area) => area._id === filter)?.name}.` : firstRun ? "Nothing planned yet." : "Nothing planned.") : daySummary({
                   left: active.length,
                   total: all.length,
                   plannedMinutes: planned,
@@ -125,7 +138,7 @@ export function DayView({
           phoneSummary={
             !day || loading
               ? "Loading your day."
-              : daySummary({
+              : !all.length ? (filter !== "all" ? `Nothing in ${areas.find((area) => area._id === filter)?.name}.` : firstRun ? "Nothing planned yet." : "Nothing planned.") : daySummary({
                   left: active.length,
                   total: all.length,
                   plannedMinutes: planned,
@@ -146,6 +159,8 @@ export function DayView({
           open={open}
           toggle={toggle}
           loading={loading}
+          firstRun={firstRun}
+          add={add}
         />
       </main>
       <SideRail
@@ -161,6 +176,7 @@ export function DayView({
         goGoals={goGoals}
         open={open}
         loading={loading}
+        addGoal={addGoal}
       />
     </div>
   );

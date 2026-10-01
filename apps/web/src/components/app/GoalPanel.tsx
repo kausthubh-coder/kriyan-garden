@@ -17,12 +17,14 @@ export function GoalPanel({
   today,
   close,
   remove,
+  focusMilestones = false,
 }: {
   goal: Goal;
   areas: Area[];
   today: string;
   close: () => void;
   remove: (goal: Goal) => Promise<void>;
+  focusMilestones?: boolean;
 }) {
   const { update, createMilestone, updateMilestone, removeMilestone } =
     useGoalTransport();
@@ -162,7 +164,7 @@ export function GoalPanel({
             </button>
           ))}
           {numberDraft && (
-            <form
+            <form noValidate
               className={s.form}
               onSubmit={async (event) => {
                 event.preventDefault();
@@ -327,7 +329,8 @@ export function GoalPanel({
       className={s.panel}
       close={close}
       escape={() => (milestoneDate ? setMilestoneDate(null) : open ? setOpen(null) : close())}
-      initialFocus='button[aria-label="Close goal details"]'
+      initialFocus={focusMilestones ? 'input[aria-label="Add a milestone"]' : 'button[aria-label="Close goal details"]'}
+      focusOnTouch={focusMilestones}
     >
       <div
         className={s.panelContent}
@@ -388,7 +391,7 @@ export function GoalPanel({
               </div>}
             </div>
           ))}
-          <form onSubmit={async (event) => {
+          <form noValidate onSubmit={async (event) => {
             event.preventDefault(); const form = event.currentTarget; const title = String(new FormData(form).get("title")).trim(); if (!title) return;
             if (await run(() => createMilestone({goalId: goal._id, title, targetDate: null, sortOrder: goal.milestones.length}))) form.reset();
           }}>

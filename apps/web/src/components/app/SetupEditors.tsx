@@ -530,7 +530,7 @@ function ProjectGroup({
         </div>
       ))}
       {adding ? (
-        <form
+        <form noValidate
           className={s.formRow}
           onSubmit={(e) => {
             e.preventDefault();
@@ -792,7 +792,7 @@ function EventEditor({
     if (event) void save(patch);
   }
   return (
-    <form
+    <form noValidate
       className={s.form}
       onSubmit={(e) => {
         e.preventDefault();
@@ -990,7 +990,7 @@ export function HabitsRows({
         </div>
       ))}
       {adding ? (
-        <form
+        <form noValidate
           className={s.form}
           onSubmit={async (e) => {
             e.preventDefault();

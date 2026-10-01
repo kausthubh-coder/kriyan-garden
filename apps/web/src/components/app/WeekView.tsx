@@ -15,21 +15,23 @@ export function WeekView(
   },
 ) {
   const start = weekStart(p.date);
+  const empty = !p.week?.some((day) => [...day.timed, ...day.anytime, ...day.events].some((item) => p.filter === "all" || item.areaId === p.filter));
   return (
     <main className={s.page}>
       <ViewHeader
         title="Week"
+        settings={p.settings}
         unit="week"
         subtitle={`${longDate(start)} to ${longDate(addDays(start, 6))}`}
         phoneDate={`${longDate(start)} to ${longDate(addDays(start, 6))}`}
-        summary={`${formatMinutes(p.week?.reduce((sum, day) => sum + day.plannedMinutes, 0) ?? 0)} planned.`}
+        summary={p.loading ? "Loading your week." : empty ? (p.filter === "all" ? "Nothing planned this week." : `Nothing in ${p.areas.find((area) => area._id === p.filter)?.name}.`) : `${formatMinutes(p.week?.reduce((sum, day) => sum + day.plannedMinutes, 0) ?? 0)} planned.`}
         navigate={(offset) => p.navigate(offset * 7)}
       />
       <Filters areas={p.areas} filter={p.filter} onChange={p.setFilter} />
       {p.loading ? (
         <ViewSkeleton kind="week" />
       ) : (
-        <div className={s.week}>
+        <div className={`${s.week} ${empty ? s.emptyWeek : ""}`}>
           {Array.from({ length: 7 }, (_, i) => {
             const date = addDays(start, i),
               day = p.week?.[i];
@@ -131,16 +133,6 @@ export function WeekView(
           })}
         </div>
       )}
-      {!p.loading &&
-        !p.week?.some((d) =>
-          [...d.timed, ...d.anytime, ...d.events].some(
-            (t) => p.filter === "all" || t.areaId === p.filter,
-          ),
-        ) && (
-          <div className={s.empty}>
-            Nothing planned this week. <button onClick={p.add}>Add task</button>
-          </div>
-        )}
       <div className={s.weekSummary}>
         <SideRail {...p} loading={p.loading} compact />
       </div>

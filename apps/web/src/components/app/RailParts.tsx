@@ -5,8 +5,9 @@ import s from "./App.module.css";
 
 export function WeekLoadChart({week, areas, date, capacity, filter = "all", goDay, barHeight = 66}: {week?: Week; areas: Area[]; date: string; capacity: number; filter?: string; goDay?: (date: string) => void; barHeight?: number}) {
   const start = weekStart(date);
+  const hasHours = week?.some((day) => Object.entries(day.plannedMinutesByArea).some(([areaId, minutes]) => (filter === "all" || areaId === filter) && minutes > 0));
   return (
-            <div className={s.load}>
+            <div className={`${s.load} ${!hasHours ? s.emptyLoad : ""}`}>
               {Array.from({ length: 7 }, (_, index) => {
                 const day = week?.[index],
                   dayDate = addDays(start, index),
@@ -16,7 +17,7 @@ export function WeekLoadChart({week, areas, date, capacity, filter = "all", goDa
                   ? formatMinutes(total)
                   : day?.taskCount
                     ? `${day.taskCount} ${day.taskCount === 1 ? "task" : "tasks"}`
-                    : "Free";
+                    : "";
                 return (
                   <LoadDay
                     key={dayDate}
@@ -38,7 +39,7 @@ export function WeekLoadChart({week, areas, date, capacity, filter = "all", goDa
                           />
                         ))}
                     </i>
-                    {weekdayName(dayDate)[0]} <small>{loadLabel}</small>
+                    {weekdayName(dayDate)[0]} {hasHours && <small>{loadLabel}</small>}
                   </LoadDay>
                 );
               })}

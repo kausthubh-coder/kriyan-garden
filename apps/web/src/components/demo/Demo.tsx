@@ -36,6 +36,7 @@ function MemoryPlanner({ today }: { today: string }) {
           store.snapshot,
         ),
         clock = useClock();
+      const [hintDismissed, dismissHint] = useState(false);
       return {
         ...state,
         goals: state.goals.map((g) => ({
@@ -59,6 +60,9 @@ function MemoryPlanner({ today }: { today: string }) {
         showSkeleton: false,
         error: "",
         retry: () => {},
+        firstTaskAdded: true,
+        hintDismissed,
+        dismissHint: () => dismissHint(true),
       };
     },
     useTasks: () => store.tasks,

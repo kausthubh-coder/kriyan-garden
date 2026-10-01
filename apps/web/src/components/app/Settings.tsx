@@ -129,7 +129,7 @@ export function Settings({
               )}
               {section[0] === "account" && <AccountSettings />}
               {section[0] === "reset" && (
-                <form
+                <form noValidate
                   className={shared.form}
                   onSubmit={async (e) => {
                     e.preventDefault();

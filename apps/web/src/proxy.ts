@@ -15,6 +15,7 @@ const authenticated = clerkMiddleware(async (auth, request) => {
     const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
     const policy = securityPolicy(policyConfiguration(), nonce);
     const headers = new Headers(request.headers);
+    headers.set("x-kriyan-path", pathname);
     headers.set("x-nonce", nonce);
     headers.set("Content-Security-Policy", policy);
     const response = NextResponse.next({ request: { headers } });
@@ -34,7 +35,10 @@ export default function proxy(request: NextRequest, event: NextFetchEvent) {
   }
   // Public pages and the memory demo do not need Clerk or its browser scripts.
   const needsIdentity = ["/app", "/sign-in", "/sign-up", "/mcp", "/api", "/__clerk", "/.well-known"].some((route) => pathname === route || pathname.startsWith(`${route}/`));
-  return needsIdentity ? authenticated(request, event) : NextResponse.next();
+  if (needsIdentity) return authenticated(request, event);
+  const headers = new Headers(request.headers);
+  headers.set("x-kriyan-path", pathname);
+  return NextResponse.next({ request: { headers } });
 }
 
 export const config = {

@@ -1,5 +1,6 @@
 import { Icon } from "./Icon";
-import type { View } from "./types";
+import type { View, Variables } from "./types";
+import { layout } from "@kriyan/core";
 import s from "./App.module.css";
 export function Rail({
   view,
@@ -33,7 +34,7 @@ export function Rail({
     </button>
   );
   return (
-    <nav className={s.rail} aria-label="Main">
+    <nav className={s.rail} aria-label="Main" style={{ "--phone-add-size": `${layout.phoneAddSize}px` } as Variables}>
       <b>k</b>
       {button("day", "Day", 1)}
       {button("list", "List", 2)}

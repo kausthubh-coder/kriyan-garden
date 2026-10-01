@@ -30,6 +30,7 @@ export function SideRail({
   open,
   loading,
   compact = false,
+  addGoal,
 }: {
   week?: Week;
   tasks: Task[];
@@ -44,6 +45,7 @@ export function SideRail({
   open: (task: Task) => void;
   loading: boolean;
   compact?: boolean;
+  addGoal?: () => void;
 }) {
   const start = weekStart(date),
     shown = (areaId: string | null) => filter === "all" || areaId === filter;
@@ -63,6 +65,8 @@ export function SideRail({
   const activeGoals = goals.filter(
     (goal) => goal.status === "active" && shown(goal.areaId),
   );
+  const hasHours = week?.some((day) => Object.entries(day.plannedMinutesByArea).some(([areaId, minutes]) => shown(areaId) && minutes > 0));
+  const emptyArea = filter !== "all" ? `Nothing in ${areas.find((area) => area._id === filter)?.name}.` : null;
   return (
     <aside
       className={s.side}
@@ -85,7 +89,7 @@ export function SideRail({
         ) : (
           <>
             <WeekLoadChart week={week} areas={areas} date={date} capacity={capacity} filter={filter} goDay={goDay} />
-            {worst ? (
+            {!hasHours ? <p className={s.empty}>{emptyArea ?? "Hours you plan show up here by area."}</p> : worst ? (
               <p className={s.cap}>
                 <b className={s.bad}>
                   {weekdayName(worst.date)} is over capacity
@@ -104,7 +108,7 @@ export function SideRail({
       </div>
       <div>
         <h2 className={s.h}>
-          Deadlines<em>Time needed against time free</em>
+          Deadlines{deadlines.length > 0 && <em>Time needed against time free</em>}
         </h2>
         {loading ? (
           <div className={s.skeleton} />
@@ -121,12 +125,12 @@ export function SideRail({
             );
           })
         ) : (
-          <div className={s.empty}>No deadlines in this area.</div>
+          <p className={s.empty}>{emptyArea ?? "Nothing due in the next two weeks."}</p>
         )}
       </div>
       <div hidden={compact}>
         <h2 className={s.h}>
-          Goals<em>{activeGoals.length} active</em>
+          Goals{activeGoals.length > 0 && <em>{activeGoals.length} active</em>}
         </h2>
         {loading ? (
           <div className={s.skeleton} />
@@ -168,7 +172,7 @@ export function SideRail({
           })
         ) : (
           <div className={s.empty}>
-            No active goals yet. <button onClick={goGoals}>View goals</button>
+            {emptyArea ?? "No goals yet."} <button onClick={addGoal}>Add a goal</button>
           </div>
         )}
       </div>

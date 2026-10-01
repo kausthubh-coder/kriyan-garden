@@ -16,6 +16,8 @@ export function Timeline({
   toggle,
   loading,
   static: isStatic = false,
+  firstRun = false,
+  add,
 }: {
   day?: Day;
   startHour: number;
@@ -30,6 +32,8 @@ export function Timeline({
   toggle?: (task: Task) => void;
   loading: boolean;
   static?: boolean;
+  firstRun?: boolean;
+  add?: (text: string) => void;
 }) {
   const blocks: Omit<Block, "column" | "columns">[] = [
     ...(day?.timed ?? []).map((task) => ({
@@ -48,6 +52,8 @@ export function Timeline({
       block.start < endHour * 60 &&
       Math.max(block.end, block.start + 32) > startHour * 60,
   );
+  const showNow = date === today && now >= startHour * 60 && now < endHour * 60;
+  const promptMinute = showNow ? now : Math.max(startHour * 60, Math.min(9 * 60, endHour * 60));
   return (
     <div
       data-timeline="true"
@@ -112,6 +118,13 @@ export function Timeline({
           <span>{timeOf(now)}</span>
         </div>
       )}
+      {firstRun && !loading && <div className={s.firstRun} data-first-run="true"
+        style={{ top: `calc(${(promptMinute - startHour * 60) / 60} * var(--hh) + ${showNow ? "var(--space-18)" : "0px"})` }}>
+        <b>Your day starts here.</b>
+        <p>Type a task the way you would say it. Give it a time and it lands on this timeline.</p>
+        <div className={s.chips}>{["lunch with Priya 1pm", "gym tomorrow 7am", "essay fri 5pm 2h"].map((text) =>
+          <button type="button" className={s.f} key={text} onClick={() => add?.(text)}>{text}</button>)}</div>
+      </div>}
     </div>
   );
 }

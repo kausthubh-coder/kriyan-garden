@@ -213,6 +213,7 @@ test.describe("Demo goals", () => {
     await adding
       .getByLabel("Goal title", { exact: true })
       .fill("Demo new goal");
+    await adding.getByRole("button", { name: "Pick a day", exact: true }).click();
     await adding.getByLabel("Target date", { exact: true }).fill("2029-12-31");
     await adding.getByRole("button", { name: "Add goal", exact: true }).click();
     await expect(adding).not.toBeVisible();

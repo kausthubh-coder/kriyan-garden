@@ -84,7 +84,7 @@ export function AreasEditor({
     remove = useMutation(api.areas.remove),
     action = useFormAction();
   const addForm = (
-    <form
+    <form noValidate
       className={s.inlineForm}
       onSubmit={async (e) => {
         e.preventDefault();
@@ -124,7 +124,7 @@ export function AreasEditor({
       <fieldset disabled={action.busy}>
         {areas.map((a, i) => {
           const form = (
-            <form
+            <form noValidate
               className={s.inlineForm}
               key={a._id}
               onSubmit={(e) => {
@@ -252,7 +252,7 @@ export function ProjectsEditor({
       </p>
       <fieldset disabled={action.busy}>
         {projects.map((p) => (
-          <form
+          <form noValidate
             className={s.inlineForm}
             key={p._id}
             onSubmit={(e) => {
@@ -298,7 +298,7 @@ export function ProjectsEditor({
           </form>
         ))}
         {!projects.length && <p>No projects or courses yet.</p>}
-        <form
+        <form noValidate
           className={s.inlineForm}
           onSubmit={async (e) => {
             e.preventDefault();
@@ -414,7 +414,7 @@ function EventForm({
     </>
   );
   return (
-    <form
+    <form noValidate
       className={s.form}
       onSubmit={async (e) => {
         e.preventDefault();
@@ -548,7 +548,7 @@ function HabitForm({ areas, habit }: { areas: Area[]; habit?: Doc<"habits"> }) {
     remove = useMutation(api.habits.remove),
     action = useFormAction();
   return (
-    <form
+    <form noValidate
       className={s.inlineForm}
       onSubmit={async (e) => {
         e.preventDefault();

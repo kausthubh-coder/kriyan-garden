@@ -39,7 +39,7 @@ export function QuickAdd({
     area = areas.find((area) => area._id === parsed.areaId),
     project = projects.find((project) => project._id === parsed.projectId);
   const form = (
-    <form
+    <form noValidate
       onSubmit={(event) => {
         event.preventDefault();
         if (!text.trim()) emptyEnter?.();

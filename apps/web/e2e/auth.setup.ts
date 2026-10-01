@@ -19,7 +19,7 @@ setup("authenticate a dedicated Clerk test user", async ({ page }, testInfo) => 
   process.env.CLERK_PUBLISHABLE_KEY = publishable;
   await clerkSetup();
   const client = createClerkClient({ secretKey: secret });
-  const prefix = testInfo.project.name === "settings-setup" ? "settings-" : "";
+  const prefix = testInfo.project.name === "settings-setup" ? "settings-" : testInfo.project.name === "states-setup" ? "states-" : "";
   let email = process.env.E2E_CLERK_USER_EMAIL;
   if (!email) {
     email = `kriyan-e2e-${Date.now()}+clerk_test@example.com`;

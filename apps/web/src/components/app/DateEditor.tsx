@@ -12,6 +12,7 @@ export function DateEditor({
   required = false,
   clearDisabled = false,
   change,
+  pickerOnly = false,
 }: {
   value: string | null;
   today: string;
@@ -20,11 +21,12 @@ export function DateEditor({
   required?: boolean;
   clearDisabled?: boolean;
   change: (value: string | null) => void;
+  pickerOnly?: boolean;
 }) {
-  const [picking, setPicking] = useState(false);
+  const [picking, setPicking] = useState(pickerOnly);
   return (
     <>
-      {[0, 1, 2, 3].map((offset) => {
+      {!pickerOnly && [0, 1, 2, 3].map((offset) => {
         const date = addDays(today, offset);
         return (
           <button
@@ -42,7 +44,7 @@ export function DateEditor({
           </button>
         );
       })}
-      {!required && (
+      {!pickerOnly && !required && (
         <button
           type="button"
           className={`${s.f} ${value === null ? s.on : ""}`}
@@ -53,14 +55,14 @@ export function DateEditor({
           {clearLabel}
         </button>
       )}
-      <button
+      {!pickerOnly && <button
         type="button"
         className={s.f}
         aria-expanded={picking}
         onClick={() => setPicking(!picking)}
       >
         Pick a day
-      </button>
+      </button>}
       {picking && (
         <input
           type="date"

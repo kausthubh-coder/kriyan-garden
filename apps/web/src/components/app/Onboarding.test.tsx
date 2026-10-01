@@ -50,13 +50,17 @@ test("rapid goal edits share one creation and Continue waits for its save", asyn
   await waitFor(() => expect(state.create).toHaveBeenCalledTimes(1));
   fireEvent.click(screen.getByRole("button", { name: "A number" }));
   fireEvent.click(screen.getByRole("button", { name: "In 3 months" }));
+  expect(state.update).not.toHaveBeenCalled();
+  const unit = screen.getByRole("textbox", { name: "Unit" });
+  fireEvent.change(unit, { target: { value: "books" } });
+  fireEvent.blur(unit);
   fireEvent.click(screen.getByRole("button", { name: "Continue" }));
   expect(state.push).not.toHaveBeenCalled();
   await act(async () => { resolveCreate?.({ _id: "created-goal" }); });
   await waitFor(() => expect(state.push).toHaveBeenCalledWith("/app/welcome?step=5", { scroll: false }));
   expect(state.create).toHaveBeenCalledTimes(1);
-  expect(state.update).toHaveBeenCalledTimes(2);
-  expect(state.update.mock.calls[1]?.[0]).toMatchObject({ id: "created-goal", patch: { title: "Read ten books", metric: { kind: "number" } } });
+  expect(state.update).toHaveBeenCalledTimes(1);
+  expect(state.update.mock.calls[0]?.[0]).toMatchObject({ id: "created-goal", patch: { title: "Read ten books", metric: { kind: "number", unit: "books" } } });
 });
 test("the final area stays in place with a recoverable inline explanation", () => {
   const area = fixture().areas[0];

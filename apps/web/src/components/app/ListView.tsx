@@ -1,4 +1,4 @@
-import { relativeDay } from "@kriyan/core";
+import { weekdayName } from "@kriyan/core";
 import { daySummary, formatMinutes, plannedMinutes } from "@kriyan/core";
 import { SideRail } from "./SideRail";
 import type { Week } from "./types";
@@ -96,11 +96,7 @@ export function ListView(
                   ) : null;
                 })}
               {!dated.length && (
-                <div className={s.empty}>
-                  Nothing planned for{" "}
-                  {relativeDay(p.date, p.today).toLowerCase()}.{" "}
-                  <button onClick={p.add}>Add task</button>
-                </div>
+                <p className={s.empty}>{p.filter !== "all" ? `Nothing in ${p.areas.find((area) => area._id === p.filter)?.name}.` : `Nothing planned for ${p.date === p.today ? "today" : weekdayName(p.date)}.`}</p>
               )}
               {later.length > 0 && (
                 <section className={s.sec}>

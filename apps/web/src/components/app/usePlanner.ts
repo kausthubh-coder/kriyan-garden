@@ -25,6 +25,7 @@ export function useConvexPlanner(selectedDate: string | null) {
   const client = useConvex(),
     { isAuthenticated } = useConvexAuth();
   const ensure = useMutation(api.profiles.ensure);
+  const saveGuidance = useMutation(api.profiles.saveOnboarding);
   const [ready, setReady] = useState(false),
     [error, setError] = useState(""),
     [attempt, setAttempt] = useState(0);
@@ -88,6 +89,16 @@ export function useConvexPlanner(selectedDate: string | null) {
     activeTasks && completedTasks
       ? [...activeTasks, ...completedTasks]
       : undefined;
+  const hasSavedTask = tasks?.some((task) => !task._id.startsWith("optimistic-")) ?? false;
+  const firstTaskAdded = profile?.onboardingDraft?.["planner.firstTaskAdded"] === "1";
+  const hintDismissed = profile?.onboardingDraft?.["planner.hintDismissed"] === "1";
+  const profileId = profile?._id;
+  useEffect(() => {
+    if (!profileId || !hasSavedTask || firstTaskAdded) return;
+    void saveGuidance({ drafts: { "planner.firstTaskAdded": "1" } }).catch(() => {
+      setError("Your planner hint could not be saved. Retry loading to try again.");
+    });
+  }, [profileId, hasSavedTask, firstTaskAdded, saveGuidance, attempt]);
   const day = useQuery(api.day.get, skip || !date ? "skip" : { date });
   const week = useQuery(
     api.week.get,
@@ -146,5 +157,12 @@ export function useConvexPlanner(selectedDate: string | null) {
     showSkeleton: loading && showSkeleton,
     error,
     retry: () => setAttempt((attempt) => attempt + 1),
+    firstTaskAdded: firstTaskAdded || hasSavedTask,
+    hintDismissed,
+    dismissHint: () => {
+      void saveGuidance({ drafts: { "planner.hintDismissed": "1" } }).catch(() => {
+        setError("The hint could not be dismissed. Retry loading and try again.");
+      });
+    },
   };
 }
