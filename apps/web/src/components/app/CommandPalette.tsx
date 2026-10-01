@@ -135,13 +135,11 @@ export function CommandPalette({
       >
         {items.map((item, i) => (
           <li
-            id={`command-${i}`}
             key={item.label}
-            role="option"
-            aria-selected={i === selected}
+            role="presentation"
             className={i === selected ? s.on : undefined}
           >
-            <button tabIndex={-1} onClick={() => run(i)}>
+            <button id={`command-${i}`} role="option" aria-selected={i === selected} tabIndex={-1} onClick={() => run(i)}>
               {item.color && (
                 <i
                   className={s.dot}

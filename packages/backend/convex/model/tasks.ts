@@ -210,7 +210,7 @@ async function fields(
     args.date === undefined ? (current?.date ?? null) : args.date,
   );
   let taskTime = args.time === undefined ? (current?.time ?? null) : args.time;
-  if (args.date === null) taskTime = null;
+  if (args.date === null && args.time == null) taskTime = null;
   if (taskTime !== null) {
     taskTime = time(taskTime);
     if (!taskDate)

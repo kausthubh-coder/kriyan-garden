@@ -70,6 +70,25 @@ test("the final area stays in place with a recoverable inline explanation", () =
   expect(screen.getByRole("alert").textContent).toBe("Keep at least one area.");
   expect(screen.getByRole("button", { name: area.name })).toBeTruthy();
 });
+
+test("Continue accepts a corrected goal after an earlier queued save fails", async () => {
+  let rejectEarlier: ((error: Error) => void) | undefined;
+  state.update.mockImplementationOnce(() => new Promise((_resolve, reject) => { rejectEarlier = reject; }));
+  onboarding();
+  const title = screen.getByRole("textbox", { name: "Goal title" });
+  fireEvent.change(title, { target: { value: "Read ten books" } });
+  fireEvent.blur(title);
+  await waitFor(() => expect(state.create).toHaveBeenCalledTimes(1));
+  fireEvent.click(screen.getByRole("button", { name: "A number" }));
+  await waitFor(() => expect(state.update).toHaveBeenCalledTimes(1));
+  const unit = screen.getByRole("textbox", { name: "Unit" });
+  fireEvent.change(unit, { target: { value: "books" } });
+  fireEvent.blur(unit);
+  fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+  await act(async () => rejectEarlier?.(new Error("A number needs a unit")));
+  await waitFor(() => expect(state.update).toHaveBeenCalledTimes(2));
+  await waitFor(() => expect(state.push).toHaveBeenCalledWith("/app/welcome?step=5", { scroll: false }));
+});
 test("Escape cancels an area rename without saving the abandoned text", () => {
   const area = fixture().areas[0];
   if (!area) throw new Error("Missing area fixture.");

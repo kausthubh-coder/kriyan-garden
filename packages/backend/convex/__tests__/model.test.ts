@@ -120,6 +120,16 @@ test("task project/area, patch semantics, time/date and optional rounded duratio
   await expect(a.mutation(api.tasks.create, { title: "Bad time", date: "2026-09-28", time: "25:00" })).rejects.toThrow("Invalid time");
   await expect(a.mutation(api.areas.remove, { id: school._id })).rejects.toThrow("in use");
 });
+test("explicit time with a null date is refused without losing the existing task", async () => {
+  const { a } = setup();
+  await a.mutation(api.profiles.ensure, {});
+  await expect(a.mutation(api.tasks.create, { title: "Call", date: null, time: "10:00" })).rejects.toThrow("A time needs a date");
+  const task = await a.mutation(api.tasks.create, { title: "Call", date: "2026-09-30", time: "10:00" });
+  await expect(a.mutation(api.tasks.update, { id: task._id, patch: { date: null, time: "11:00" } })).rejects.toThrow("A time needs a date");
+  expect(await a.query(api.tasks.get, { id: task._id })).toEqual(task);
+  expect(await a.mutation(api.tasks.update, { id: task._id, patch: { date: null } })).toMatchObject({ date: null, time: null });
+});
+
 test("all owner caps and the active-task cap are enforced", async () => {
   const { t, a } = setup();
   const area = await a.mutation(api.areas.create, { name: "School" });

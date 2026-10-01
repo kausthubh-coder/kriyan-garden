@@ -36,6 +36,7 @@ test("every public planner query rejects an unauthenticated caller before readin
     ["goals.get", () => t.query(api.goals.get, { id: goal._id })],
     ["tasks.list", () => t.query(api.tasks.list, {})],
     ["tasks.get", () => t.query(api.tasks.get, { id: task._id })],
+    ["tasks.lookup", () => t.query(api.tasks.lookup, { key: task._id })],
     ["tasks.search", () => t.query(api.tasks.search, { query: "Confidential" })],
     ["events.list", () => t.query(api.events.list, {})],
     ["events.get", () => t.query(api.events.get, { id: event._id })],
@@ -59,6 +60,7 @@ test("every public planner mutation rejects an unauthenticated caller before wri
     ["areas.create", () => t.mutation(api.areas.create, { name: "Injected" })],
     ["areas.update", () => t.mutation(api.areas.update, { id: area._id, patch: { name: "Injected" } })],
     ["areas.remove", () => t.mutation(api.areas.remove, { id: area._id })],
+    ["areas.reorder", () => t.mutation(api.areas.reorder, { ids: [area._id] })],
     ["projects.create", () => t.mutation(api.projects.create, { areaId: area._id, name: "Injected" })],
     ["projects.update", () => t.mutation(api.projects.update, { id: project._id, patch: { name: "Injected" } })],
     ["projects.remove", () => t.mutation(api.projects.remove, { id: project._id })],
@@ -76,6 +78,9 @@ test("every public planner mutation rejects an unauthenticated caller before wri
     ["tasks.complete", () => t.mutation(api.tasks.complete, { id: task._id })],
     ["tasks.reopen", () => t.mutation(api.tasks.reopen, { id: task._id })],
     ["tasks.quickAdd", () => t.mutation(api.tasks.quickAdd, { text: "Injected today", today: date })],
+    ["profiles.saveOnboarding", () => t.mutation(api.profiles.saveOnboarding, { step: 3 })],
+    ["pushTokens.register", () => t.mutation(api.pushTokens.register, { token: "ExpoPushToken[disposable]", platform: "android" })],
+    ["pushTokens.unregister", () => t.mutation(api.pushTokens.unregister, { token: "ExpoPushToken[disposable]" })],
     ["events.create", () => t.mutation(api.events.create, { title: "Injected", weekdays: [1], startTime: "12:00", endTime: "13:00", fromDate: date })],
     ["events.update", () => t.mutation(api.events.update, { id: event._id, patch: { title: "Injected" } })],
     ["events.remove", () => t.mutation(api.events.remove, { id: event._id })],
@@ -91,8 +96,9 @@ test("every public planner mutation rejects an unauthenticated caller before wri
 });
 
 test("profile, search, day and week never expose another owner's records", async () => {
-  const { a, b, task, habit } = await fixture();
+  const { a, b, area, task, habit } = await fixture();
   expect(await b.query(api.profiles.get, {})).toBeNull();
+  await expect(b.mutation(api.areas.reorder, { ids: [area._id] })).rejects.toThrow("The areas changed");
   expect(await b.query(api.tasks.search, { query: "Confidential" })).toEqual([]);
   await expect(b.query(api.habits.listLogs, { habitId: habit._id })).rejects.toThrow("not found");
   await b.mutation(api.profiles.ensure, { timezone: "Europe/London" });

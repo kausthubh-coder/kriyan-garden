@@ -92,7 +92,8 @@ export function Onboarding({
   const action = useInlineSave();
   const heading = useRef<HTMLHeadingElement>(null);
   const pendingSaves = useRef(new Set<Promise<boolean>>());
-  function registerSave(promise: Promise<boolean>) {
+  function registerSave(promise: Promise<boolean>, superseded?: Promise<boolean>) {
+    if (superseded) pendingSaves.current.delete(superseded);
     pendingSaves.current.add(promise);
     void promise.then(() => pendingSaves.current.delete(promise));
   }

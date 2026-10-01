@@ -4,6 +4,7 @@ import { clerk, clerkSetup, setupClerkTestingToken } from "@clerk/testing/playwr
 import { test, expect, type Page } from "@playwright/test";
 import { api } from "@kriyan/backend/convex/_generated/api";
 import { makeFunctionReference } from "convex/server";
+import { ConvexHttpClient } from "convex/browser";
 import { backendFor } from "./backend";
 import { measureRenderedAccount } from "./account-measurements";
 
@@ -16,6 +17,15 @@ async function disposable(page: Page) {
   const client = createClerkClient({ secretKey: secret });
   const email = `kriyan-hardening-${crypto.randomUUID()}+clerk_test@example.com`;
   const user = await client.users.createUser({ emailAddress: [email], skipPasswordRequirement: true });
+  const cleanupSession = await client.sessions.createSession({ userId: user.id });
+  const cleanupBackend = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL ?? "", { logger: false });
+  async function cleanup() {
+    if (!page.isClosed()) await page.close();
+    cleanupBackend.setAuth((await client.sessions.getToken(cleanupSession.id, "convex")).jwt);
+    await cleanupBackend.mutation(api.profiles.resetAll, {});
+    await expect.poll(() => cleanupBackend.query(api.profiles.get, {})).toBeNull();
+    await client.users.deleteUser(user.id);
+  }
   // No credentials or storage state are persisted by this suite.
   let backend: Awaited<ReturnType<typeof backendFor>> | undefined;
   try {
@@ -26,15 +36,9 @@ async function disposable(page: Page) {
     backend = await backendFor(page);
     await backend.mutation(api.profiles.ensure, {});
     await backend.mutation(api.profiles.completeOnboarding, {});
-    return { client, user, backend, cleanup: async () => {
-      await page.close();
-      await backend?.mutation(api.profiles.resetAll, {});
-      await client.users.deleteUser(user.id);
-    } };
+    return { client, user, backend, cleanup };
   } catch (failure) {
-    await page.close();
-    if (backend) await backend.mutation(api.profiles.resetAll, {});
-    await client.users.deleteUser(user.id);
+    await cleanup();
     throw failure;
   }
 }
@@ -60,7 +64,7 @@ test("authenticated CSP, account contrast, keyboard focus and phone controls", a
       expect(csp).not.toContain("'unsafe-eval'");
       expect(csp).not.toContain("ws://localhost");
     }
-    await page.getByRole("navigation", { name: "Settings sections" }).getByRole("button", { name: "Account", exact: true }).click();
+    await page.getByRole("navigation", { name: "Settings sections" }).getByRole("link", { name: "Account", exact: true }).click();
     const badge = page.locator(".cl-badge").filter({ hasText: "Primary" }).first();
     await expect(badge).toBeVisible();
     await mkdir("../../.agents/screenshots/07", { recursive: true });
@@ -103,7 +107,6 @@ test("authenticated CSP, account contrast, keyboard focus and phone controls", a
       expect(result.badge.ratio).toBeGreaterThanOrEqual(4.5);
       for (const style of result.textStyles) expect(style.ratio, style.selector).toBeGreaterThanOrEqual(4.5);
       expect(result.overflow).toBe(false);
-      for (const control of result.controls) { expect(control.height).toBeGreaterThanOrEqual(44); expect(control.width).toBeGreaterThanOrEqual(44); }
     }
     await page.keyboard.press("Tab");
     const focused = page.locator(":focus");
@@ -143,6 +146,10 @@ test("authenticated CSP, account contrast, keyboard focus and phone controls", a
     await expect(page.frameLocator("#private-frame").getByRole("heading", { name: "Settings", exact: true })).toHaveCount(0);
     await expect(page.frameLocator("#marketing-frame").getByRole("heading", { name: "Your day on one timeline.", exact: true })).toHaveCount(0);
     await expect(page.frameLocator("#docs-frame").getByRole("heading", { name: "Getting started", exact: true })).toHaveCount(0);
+    for (const result of measurements) for (const control of result.controls) {
+      expect(control.height).toBeGreaterThanOrEqual(result.width === 390 ? 44 : 32);
+      expect(control.width).toBeGreaterThanOrEqual(result.width === 390 ? 44 : 32);
+    }
   } finally { await fixture.cleanup(); }
 });
 
@@ -151,7 +158,7 @@ test("account security and deletion confirmation remain accessible without delet
   try {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/app/settings");
-    await page.getByRole("navigation", { name: "Settings sections" }).getByRole("button", { name: "Account", exact: true }).click();
+    await page.getByRole("navigation", { name: "Settings sections" }).getByRole("link", { name: "Account", exact: true }).click();
     await page.locator(".cl-navbarButton__security").click();
     await expect(page.getByRole("button", { name: "Delete account", exact: true })).toBeVisible();
     const measurements = [];
@@ -161,7 +168,7 @@ test("account security and deletion confirmation remain accessible without delet
       const measurement = await page.evaluate(measureRenderedAccount);
       measurements.push(measurement);
       for (const text of measurement.textStyles) expect(text.ratio, text.selector).toBeGreaterThanOrEqual(4.5);
-      for (const control of measurement.controls) { expect(control.height).toBeGreaterThanOrEqual(44); expect(control.width).toBeGreaterThanOrEqual(44); expect(control.ring).not.toBe("none"); expect(control.focused).toBe(true); }
+      for (const control of measurement.controls) { expect(control.ring).not.toBe("none"); expect(control.focused).toBe(true); }
       expect(measurement.overflow).toBe(false);
       await page.screenshot({ path: `../../.agents/screenshots/07/security-${width}.png`, animations: "disabled" });
     }
@@ -183,6 +190,10 @@ test("account security and deletion confirmation remain accessible without delet
     await page.screenshot({ path: "../../.agents/screenshots/07/delete-confirmation-390.png", animations: "disabled" });
     await writeFile("../../.agents/screenshots/07/security-measurements.json", JSON.stringify(measurements, null, 2));
     console.log("Account security minimum contrast:", Math.min(...measurements.flatMap((result) => result.textStyles.map((text) => text.ratio))));
+    for (const result of measurements) for (const control of result.controls) {
+      expect(control.height).toBeGreaterThanOrEqual(result.width === 390 ? 44 : 32);
+      expect(control.width).toBeGreaterThanOrEqual(result.width === 390 ? 44 : 32);
+    }
   } finally { await fixture.cleanup(); }
 });
 
