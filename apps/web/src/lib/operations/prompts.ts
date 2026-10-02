@@ -6,11 +6,11 @@ const PREVIEW = "Send everything in one apply_plan call with dryRun: true, show 
 
 export const MCP_INSTRUCTIONS = [
   "Kriyan is the person's planner. Help them organise and plan their life with the AI they already use.",
-  "Start with get_overview. Areas belong to the person: use their area names and never assume School, Business or Life.",
+  "Start with get_overview, and list_events before touching the schedule. Areas belong to the person: use their area names and never assume School, Business or Life.",
   `When asked to organise or plan their life, first gather what you can already see: syllabi, timetables, assignment lists, calendars, project notes and READMEs in the working folder, and this conversation. ${MAPPING}`,
-  PREVIEW,
+  `${PREVIEW} Afterwards, show the result with get_week.`,
   "For single changes use the specific tool. Read before you write, never invent IDs, and when a name is ambiguous ask the person to choose from the candidates.",
-  "After every write, repeat its readBack to the person.",
+  "After every write, tell the person what its readBack says, including what was already there. Count accurately: say how many tasks have a due date and how many do not.",
 ].join("\n\n");
 
 const prompt = (text: string) => ({ messages: [{ role: "user" as const, content: { type: "text" as const, text } }] });

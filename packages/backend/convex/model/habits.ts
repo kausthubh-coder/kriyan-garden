@@ -26,7 +26,7 @@ export async function update(ctx: MutationCtx, ownerId: string, args: { id: Id<"
 }
 export async function remove(ctx: MutationCtx, ownerId: string, args: { id: Id<"habits"> }) {
   await owned(ctx, ownerId, args.id);
-  if (await ctx.db.query("habitLogs").withIndex("by_owner_habit", (q) => q.eq("ownerId", ownerId).eq("habitId", args.id)).first()) throw new ConvexError("Habit has logs. Remove its logs or archive it first.");
+  if (await ctx.db.query("habitLogs").withIndex("by_owner_habit", (q) => q.eq("ownerId", ownerId).eq("habitId", args.id)).first()) throw new ConvexError("Habit has logs. Archive it instead to keep its history.");
   await ctx.db.delete(args.id); return null;
 }
 export async function listLogs(ctx: QueryCtx, ownerId: string, args: { habitId: Id<"habits"> }) {
