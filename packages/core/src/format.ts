@@ -1,6 +1,7 @@
 import { addDays, getWeekday } from "./dates";
 import { formatMinutes, minutesOf, timeOf } from "./planning";
 import type { Reminder } from "./reminders";
+import { repeatRuleText, type RepeatRule } from "./repeat";
 
 /**
  * Text shown to people for dates, times, repeats and reminders.
@@ -15,11 +16,6 @@ const MONTHS = [
   "July", "August", "September", "October", "November", "December",
 ] as const;
 
-export type RepeatRule = {
-  every: number;
-  unit: "day" | "week" | "month" | "year";
-  weekdays?: readonly number[];
-};
 
 const parts = (date: string) => ({
   day: Number(date.slice(8, 10)),
@@ -98,28 +94,12 @@ export function deadlineValue(
   return { text: `${shortDate(deadline)}, ${when}`, urgent: days <= 7 };
 }
 
-const joinWords = (words: readonly string[]): string =>
-  words.length <= 1
-    ? (words[0] ?? "")
-    : `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}`;
-
-/** "Does not repeat", "Every day", "Every 2 weeks on Mon and Thu", "Every month". */
-export function repeatText(repeat: RepeatRule | null): string {
-  if (!repeat) return "Does not repeat";
-  const unit = repeat.every === 1 ? repeat.unit : `${repeat.every} ${repeat.unit}s`;
-  const days =
-    repeat.unit === "week" && repeat.weekdays?.length
-      ? ` on ${joinWords(
-          [...repeat.weekdays]
-            // Monday first, Sunday last.
-            .sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7))
-            .map((day) => (WEEKDAYS[day] ?? "").slice(0, 3)),
-        )}`
-      : "";
-  return `Every ${unit}${days}`;
+/** "Does not repeat", "Every day", "Every 2 weeks on Mon and Thu", "Every month on the last Fri". */
+export function repeatText(repeat: RepeatRule | null, date?: string | null): string {
+  return repeat ? repeatRuleText(repeat, date) : "Does not repeat";
 }
 
-/** One reminder in words: "At start", "10 min before", "1 hour before", "Morning of", "Day before", "At 08:00". */
+/** One reminder in words: "At start", "10 min before", "1 hour before", "Morning of", "Day before", "At 08:00", "2 days before the deadline at 18:00". */
 export function reminderText(reminder: Reminder): string {
   switch (reminder.type) {
     case "at_start":
@@ -136,6 +116,10 @@ export function reminderText(reminder: Reminder): string {
       return "Day before";
     case "at_time":
       return `At ${reminder.time}`;
+    case "deadline":
+      return reminder.daysBefore === 0
+        ? `On the deadline at ${reminder.time}`
+        : `${reminder.daysBefore} ${reminder.daysBefore === 1 ? "day" : "days"} before the deadline at ${reminder.time}`;
   }
 }
 
@@ -146,6 +130,14 @@ export function remindersValue(reminders: readonly Reminder[]): string {
     .map(reminderText)
     .map((text, index) => (index === 0 ? text : text.charAt(0).toLowerCase() + text.slice(1)))
     .join(", ");
+}
+
+/** A reminder notification's body: "Today 14:30", "Tomorrow, any time" or "Due Thu 1 Oct". */
+export function reminderBody(task: { date: string | null; time: string | null; deadline: string | null }, about: "date" | "deadline" | "snooze", today: string): string {
+  const due = task.deadline ? `Due ${relativeDay(task.deadline, today)}` : null;
+  if (about === "deadline" && due) return due;
+  if (task.date) return `${relativeDay(task.date, today)}${task.time ? ` ${task.time}` : ", any time"}`;
+  return due ?? "No date yet";
 }
 
 /** "1 task", "3 tasks". */

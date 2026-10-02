@@ -48,8 +48,8 @@ beforeEach(() => {
 });
 afterEach(() => { vi.unstubAllEnvs(); vi.useRealTimers(); });
 test("all parity tools share schemas and reject non-user identities before any backend call", async () => {
-  expect(MCP_TOOLS).toHaveLength(42);
-  expect(MCP_TOOLS).toEqual(expect.arrayContaining(["apply_plan", "create_event", "log_habit", "delete_task", "update_settings"]));
+  expect(MCP_TOOLS).toHaveLength(43);
+  expect(MCP_TOOLS).toEqual(expect.arrayContaining(["apply_plan", "create_event", "log_habit", "delete_task", "update_settings", "skip_occurrence"]));
   for (const name of MCP_TOOLS) {
     expect(operations[name].schema.shape.today).toBeDefined();
     expect(operations[name].schema.shape.timezone).toBeDefined();
@@ -89,6 +89,14 @@ test("apply_plan sends one batch with the caller's today and reads back counts b
   const applied = await runOperation("apply_plan", { ...plan, dryRun: false }, caller);
   expect(applied.readBack).toBe("Added 1 course and 1 schedule block. Already in Kriyan: 1 task.");
   await expect(runOperation("apply_plan", { tasks: [{ title: "Bad", deadline: "2 Oct" }] }, caller)).rejects.toThrow("YYYY-MM-DD");
+});
+test("repeat rules and deadline reminders validate and read back in words", async () => {
+  const repeat = { every: 1, unit: "month", monthDay: { kind: "weekday", nth: 2, weekday: 2 }, ends: { kind: "on", date: "2026-12-18" } };
+  const added = await runOperation("create_task", { title: "Club", date: "2026-10-13", repeat, reminders: [{ type: "deadline", daysBefore: 2, time: "18:00" }], deadline: "2026-10-20", today: "2026-09-29" }, caller);
+  expect(added.readBack).toContain("repeating every month on the 2nd Tue until Fri 18 Dec");
+  expect(added.readBack).toContain("reminders: 2 days before the deadline at 18:00");
+  await expect(runOperation("create_task", { title: "Bad", date: "2026-10-13", repeat: { every: 1, unit: "day", weekdays: [1] } }, caller)).rejects.toThrow("weekly rule");
+  await expect(runOperation("create_task", { title: "Bad", date: "2026-10-13", repeat: { every: 1, unit: "week", monthDay: { kind: "last_day" } } }, caller)).rejects.toThrow("monthly or yearly");
 });
 test("move forwards date/time only and update omission differs from explicit null", async () => {
   await runOperation("move_task", { id: "task", date: null, today: "2026-09-29" }, caller);

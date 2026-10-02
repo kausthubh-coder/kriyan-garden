@@ -70,20 +70,21 @@ async function taskPatch(input: z.output<typeof schemas.update_task> | z.output<
   return patch;
 }
 const line = (value: string) => value.replace(/\s+/g, " ").trim();
+const lowerFirst = (value: string) => value.charAt(0).toLocaleLowerCase() + value.slice(1);
 function taskReadBack(task: Doc<"tasks">, context: Context, verb: string) {
   const area = context.areas.find(row => row._id === task.areaId)?.name ?? "Area";
   const project = context.projects.find(row => row._id === task.projectId)?.name;
   const parts = [`${verb} task "${line(task.title)}" in ${line(area)}${project ? ` / ${line(project)}` : ""}`, task.date ? `scheduled for ${relativeDay(task.date, context.today)}${task.time ? ` at ${task.time}` : " at any time"}` : "with no planned date"];
   if (task.durationMinutes !== null) parts.push(`length ${task.durationMinutes} minutes`);
   if (task.deadline) parts.push(`deadline ${relativeDay(task.deadline, context.today)}`);
-  if (task.repeat) parts.push(`repeating ${repeatText(task.repeat).toLocaleLowerCase()}`);
-  if (task.reminders.length) parts.push(`reminders: ${remindersValue(task.reminders).toLocaleLowerCase()}`);
+  if (task.repeat) parts.push(`repeating ${lowerFirst(repeatText(task.repeat, task.date))}`);
+  if (task.reminders.length) parts.push(`reminders: ${lowerFirst(remindersValue(task.reminders))}`);
   return `${parts.join("; ")}.`;
 }
 const taskWrite = (task: Doc<"tasks">, context: Context, verb: string) => ({ ok: true, id: task._id, task: identify(task), readBack: taskReadBack(task, context, verb) });
 const capacity = (context: Context) => context.profile?.dailyCapacityMinutes ?? 360;
 const rowWrite = <T extends { _id: string; ownerId: string }>(kind: string, row: T, readBack: string) => ({ ok: true, id: row._id, [kind]: identify(row), readBack });
-const plannerSettings = ({ timezone, dailyCapacityMinutes, dayStartHour, dayEndHour }: Doc<"profiles">) => ({ timezone, dailyCapacityMinutes, dayStartHour, dayEndHour });
+const plannerSettings = ({ timezone, dailyCapacityMinutes, dayStartHour, dayEndHour, dailySummaryTime }: Doc<"profiles">) => ({ timezone, dailyCapacityMinutes, dayStartHour, dayEndHour, dailySummaryTime: dailySummaryTime ?? null });
 async function eventRef(ctx: Context, reference: string) {
   return resolveReference((await ctx.call(api.service.eventsList, ctx.userId, "events.list", {})).map(row => ({ ...row, name: row.title })), reference, "event");
 }
@@ -213,10 +214,10 @@ export const operations = {
   get_settings: operation(schemas.get_settings, false, "Read timezone, daily capacity and day hours before proposing a realistic schedule.", async (_input, ctx) => {
     const profile = await ctx.call(api.service.profilesGet, ctx.userId, "profiles.get", {}); return { settings: profile ? plannerSettings(profile) : null };
   }),
-  update_settings: operation(schemas.update_settings, { write: true, destructive: true, idempotent: true }, "Change planner timezone, daily capacity or day hours when the person asks to adjust their schedule preferences.", async (input, ctx) => {
+  update_settings: operation(schemas.update_settings, { write: true, destructive: true, idempotent: true }, "Change planner timezone, daily capacity, day hours or the daily summary time (a push at HH:MM with the day's tasks; null turns it off) when the person asks.", async (input, ctx) => {
     const { today, ...patch } = input; void today;
     const profile = await ctx.call(api.service.profilesUpdate, ctx.userId, "profiles.update", { patch });
-    return { ok: true, id: profile._id, settings: plannerSettings(profile), readBack: `Planner uses ${profile.timezone}, ${profile.dailyCapacityMinutes} minutes of daily capacity and the saved day hours.` };
+    return { ok: true, id: profile._id, settings: plannerSettings(profile), readBack: `Planner uses ${profile.timezone}, ${profile.dailyCapacityMinutes} minutes of daily capacity and the saved day hours${profile.dailySummaryTime ? `, with a daily summary at ${profile.dailySummaryTime}` : ""}.` };
   }),
   me: operation(schemas.me, false, "Read the caller's profile and local calendar.", async (_input, ctx) => ({ userId: ctx.userId, profile: ctx.profile ? identify(ctx.profile) : null })),
   get_overview: operation(schemas.get_overview, false, "Start here: user-defined areas, projects, courses, active goals and today's summary. Use the person's area names and never assume the defaults.", async (_input, ctx) => {
@@ -262,7 +263,7 @@ export const operations = {
     const { title, areaId, projectId, date, time, durationMinutes } = task;
     return { ...taskWrite(task, ctx, "Added"), parsed: { title, areaId, projectId, date, time, durationMinutes } };
   }),
-  create_task: operation(schemas.create_task, true, "Add one task: homework, a to-do, an errand or a deliverable. date is the day it is planned for; deadline is when it is due; both are optional, as is its length, so never invent them. repeat makes it recur ({ every, unit, weekdays } with Sunday=0 to Saturday=6; a repeating task needs a date). reminders need a date, and at_start or before need a time. For many items at once use apply_plan.", async (input, ctx) => {
+  create_task: operation(schemas.create_task, true, "Add one task: homework, a to-do, an errand or a deliverable. date is the day it is planned for; deadline is when it is due; both are optional, as is its length, so never invent them. repeat makes it recur: { every, unit } with optional weekdays for weekly rules (Sunday=0 to Saturday=6; [1,2,3,4,5] is every weekday), monthDay for monthly or yearly rules ({ kind: \"weekday\", nth: 2, weekday: 2 } is the 2nd Tuesday, nth -1 the last; { kind: \"day\", day: 15 }; { kind: \"last_day\" }), basis: \"completion\" to count from when it is done, and ends ({ kind: \"on\", date } or { kind: \"after\", count }). A repeating task needs a date. reminders: at_start and before (minutes) need a time; morning_of, day_before and at_time need a date; { type: \"deadline\", daysBefore: 2, time: \"18:00\" } reminds before the deadline, even with no planned date. For many items at once use apply_plan.", async (input, ctx) => {
     const fields = await taskPatch(input, ctx);
     const task = await ctx.call(api.service.tasksCreate, ctx.userId, "tasks.create", { ...fields, title: input.title });
     return taskWrite(task, ctx, "Added");
@@ -273,6 +274,7 @@ export const operations = {
     const result = await ctx.call(api.service.tasksCompleteWithNext, ctx.userId, "tasks.completeWithNext", { id: input.id as Id<"tasks"> });
     return { ...taskWrite(result.task, ctx, "Completed"), nextOccurrence: result.nextOccurrence ? identify(result.nextOccurrence) : null, readBack: result.nextOccurrence ? `${taskReadBack(result.task, ctx, "Completed").slice(0, -1)}; next occurrence "${line(result.nextOccurrence.title)}" is scheduled for ${result.nextOccurrence.date ? relativeDay(result.nextOccurrence.date, ctx.today) : "no date"}${result.nextOccurrence.time ? ` at ${result.nextOccurrence.time}` : ""}.` : taskReadBack(result.task, ctx, "Completed") };
   }),
+  skip_occurrence: operation(schemas.skip_occurrence, { write: true, destructive: true }, "Skip this time for a repeating task: move it to its next occurrence without marking it done.", async (input, ctx) => taskWrite(await ctx.call(api.service.tasksSkip, ctx.userId, "tasks.skip", { id: input.id as Id<"tasks"> }), ctx, "Skipped")),
   move_task: operation(schemas.move_task, { write: true, destructive: true, idempotent: true }, "Reschedule a task to another day or time (or date: null to unschedule it) without touching anything else.", async (input, ctx) => taskWrite(await ctx.call(api.service.tasksUpdate, ctx.userId, "tasks.update", { id: input.id as Id<"tasks">, patch: { date: input.date, ...(input.time !== undefined ? { time: input.time } : {}) } }), ctx, "Moved")),
   search: operation(schemas.search, false, "Find active tasks by words in their title or notes.", async (input, ctx) => ({ tasks: (await ctx.call(api.service.tasksSearch, ctx.userId, "tasks.search", { query: input.query, limit: input.limit })).map(identify) })),
   list_goals: operation(schemas.list_goals, false, "Read goals with progress, pace, linked task counts and milestones.", async (input, ctx) => {

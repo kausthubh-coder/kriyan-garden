@@ -1,5 +1,4 @@
-import { nextDate } from "./nextDate";
-import { parse } from "@kriyan/core";
+import { anchorRepeat, localClock, nextOccurrence as nextRepeatDate, parse, reminderProblem, repeatProblem } from "@kriyan/core";
 import { ConvexError, v, type Infer } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
@@ -152,23 +151,21 @@ export async function filteredList(
   }
   return result;
 }
-function cleanRepeat(value: Infer<typeof V.repeat>) {
+function cleanRepeat(value: Infer<typeof V.repeat>, taskDate: string | null) {
   if (!value) return null;
-  if (!Number.isInteger(value.every) || value.every < 1 || value.every > 1000)
-    throw new ConvexError(
-      "Invalid repeat interval. Use a whole number from 1 to 1000.",
-    );
+  const problem = repeatProblem(value);
+  if (problem) throw new ConvexError(problem);
   const days =
     value.weekdays === undefined ? undefined : weekdays(value.weekdays);
-  if (days && (value.unit !== "week" || days.length === 0))
-    throw new ConvexError("Repeat weekdays need a weekly rule and at least one day.");
-  return { ...value, ...(days ? { weekdays: days } : {}) };
+  const ends = value.ends?.kind === "on" ? { kind: "on" as const, date: date(value.ends.date) } : value.ends;
+  const rule = { ...value, ...(days ? { weekdays: days } : {}), ...(ends ? { ends } : {}) };
+  return taskDate ? anchorRepeat(rule, taskDate) : rule;
 }
 function cleanReminders(values: Infer<typeof V.reminder>[]) {
   if (values.length > 8)
     throw new ConvexError("Invalid reminder. Use at most 8 reminders.");
   return values.map((value) => {
-    if (value.type === "at_time") return { ...value, time: time(value.time) };
+    if (value.type === "at_time" || value.type === "deadline") return { ...value, time: time(value.time) };
     if (value.type === "before") {
       if (finite(value.minutes) < 1)
         throw new ConvexError("Invalid reminder. Set minutes to at least 1.");
@@ -236,6 +233,7 @@ async function fields(
     ),
     repeat: cleanRepeat(
       args.repeat === undefined ? (current?.repeat ?? null) : args.repeat,
+      taskDate,
     ),
     reminders: cleanReminders(args.reminders ?? current?.reminders ?? []),
     notes: text(args.notes ?? current?.notes ?? "", 100_000),
@@ -243,19 +241,8 @@ async function fields(
   };
   if (result.repeat && !result.date)
     throw new ConvexError("A repeating task needs a date. Set its first occurrence.");
-  if (result.reminders.length > 8)
-    throw new ConvexError("Invalid reminder. Use at most 8 reminders.");
-  if (result.reminders.length && !result.date)
-    throw new ConvexError("Invalid reminder. Set a date before adding reminders.");
-  if (
-    result.reminders.some(
-      (reminder) => reminder.type === "at_start" || reminder.type === "before",
-    ) &&
-    !result.time
-  )
-    throw new ConvexError(
-      "Invalid reminder. Set a time for at_start or before reminders.",
-    );
+  const reminderIssue = reminderProblem(result);
+  if (reminderIssue) throw new ConvexError(reminderIssue);
   return { ...result, searchText: searchText(result.title, result.notes) };
 }
 export async function create(
@@ -311,7 +298,9 @@ export async function completeWithNext(
     searchText: searchText(current.title, current.notes),
   });
   let nextOccurrence: Doc<"tasks"> | null = null;
-  if (current.repeat && current.date) {
+  const index = current.repeatIndex ?? 1;
+  const next = current.repeat && current.date ? nextRepeatDate(current.repeat, { date: current.date, completedOn: await localToday(ctx, ownerId), index }) : null;
+  if (next) {
     const {
       _id,
       _creationTime,
@@ -321,6 +310,7 @@ export async function completeWithNext(
       status,
       completedAt,
       searchText: ignoredSearch,
+      repeatIndex,
       ...copy
     } = current;
     void [
@@ -332,13 +322,36 @@ export async function completeWithNext(
       status,
       completedAt,
       ignoredSearch,
+      repeatIndex,
     ];
-    nextOccurrence = await create(ctx, ownerId, {
-      ...copy,
-      date: nextDate(current.date, current.repeat),
-    });
+    const created = await create(ctx, ownerId, { ...copy, date: next });
+    await ctx.db.patch(created._id, { repeatIndex: index + 1 });
+    nextOccurrence = await owned(ctx, ownerId, created._id);
   }
   return { task: await owned(ctx, ownerId, args.id), nextOccurrence };
+}
+/** The person's day, from their profile timezone, never the server's UTC date. */
+async function localToday(ctx: QueryCtx, ownerId: string) {
+  const profile = await ctx.db.query("profiles").withIndex("by_owner", (q) => q.eq("ownerId", ownerId)).unique();
+  return localClock(new Date(), profile?.timezone).today;
+}
+/** Move a repeating task to its next occurrence without completing it. */
+export async function skip(
+  ctx: MutationCtx,
+  ownerId: string,
+  args: { id: Id<"tasks"> },
+) {
+  const current = await owned(ctx, ownerId, args.id);
+  if (current.status !== "active" || !current.repeat || !current.date)
+    throw new ConvexError("Only an open repeating task can be skipped. Reopen it or set a repeat first.");
+  const index = current.repeatIndex ?? 1;
+  const next = nextRepeatDate(current.repeat, { date: current.date, completedOn: await localToday(ctx, ownerId), index });
+  if (!next)
+    throw new ConvexError("This is the last time this task repeats. Complete or delete it instead.");
+  await ctx.db.patch(args.id, { date: next, repeatIndex: index + 1, updatedAt: Date.now() });
+  const task = await owned(ctx, ownerId, args.id);
+  await reminders.schedule(ctx, task);
+  return task;
 }
 export async function complete(
   ctx: MutationCtx,

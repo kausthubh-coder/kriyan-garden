@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { addDays } from "@kriyan/core";
+import { addDays, repeatProblem } from "@kriyan/core";
 
 export const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD.").refine(value => addDays(value, 0) === value, "Use a valid calendar date.");
 export const clock = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use 24-hour HH:MM.");
@@ -10,13 +10,27 @@ export const calendar = {
     try { new Intl.DateTimeFormat("en", { timeZone: value }); return true; } catch { return false; }
   }, "Use an IANA timezone such as America/New_York.").optional(),
 };
-export const repeat = z.object({ every: z.number().int().min(1).max(1000), unit: z.enum(["day", "week", "month", "year"]), weekdays: z.array(z.number().int().min(0).max(6)).min(1).max(7).optional() }).strict();
+const weekday = z.number().int().min(0).max(6);
+export const monthDay = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("day"), day: z.number().int().min(1).max(31) }).strict(),
+  z.object({ kind: z.literal("weekday"), nth: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(-1)]), weekday }).strict(),
+  z.object({ kind: z.literal("last_day") }).strict(),
+]);
+export const repeat = z.object({
+  every: z.number().int().min(1).max(1000), unit: z.enum(["day", "week", "month", "year"]), weekdays: z.array(weekday).min(1).max(7).optional(),
+  monthDay: monthDay.optional(), basis: z.enum(["schedule", "completion"]).optional(),
+  ends: z.discriminatedUnion("kind", [z.object({ kind: z.literal("on"), date: isoDate }).strict(), z.object({ kind: z.literal("after"), count: z.number().int().min(1).max(1000) }).strict()]).optional(),
+}).strict().superRefine((rule, context) => {
+  const problem = repeatProblem(rule);
+  if (problem) context.addIssue({ code: "custom", message: problem });
+});
 export const reminder = z.discriminatedUnion("type", [
   z.object({ type: z.literal("at_start") }).strict(),
   z.object({ type: z.literal("before"), minutes: z.number().int().min(1).max(10080) }).strict(),
   z.object({ type: z.literal("morning_of") }).strict(),
   z.object({ type: z.literal("day_before") }).strict(),
   z.object({ type: z.literal("at_time"), time: clock }).strict(),
+  z.object({ type: z.literal("deadline"), daysBefore: z.number().int().min(0).max(30), time: clock }).strict(),
 ]);
 export const taskFields = {
   title: z.string().trim().min(1).max(180), area: ref.optional(), areaId: ref.optional(),
@@ -39,7 +53,7 @@ export const filters = {
 export const color = z.enum(["blue", "orange", "green", "red", "yellow", "purple", "teal", "grey"]);
 export const eventFields = { title: z.string().trim().min(1).max(180), area: ref.nullable().optional(), location: z.string().max(80).optional(), weekdays: z.array(z.number().int().min(0).max(6)).min(1).max(7), startTime: clock, endTime: clock, fromDate: isoDate, untilDate: isoDate.nullable().optional() };
 export const habitFields = { title: z.string().trim().min(1).max(180), area: ref, weeklyTarget: z.number().int().min(1).max(7) };
-const settingsFields = { timezone: calendar.timezone, dailyCapacityMinutes: z.number().int().min(1).max(1440).optional(), dayStartHour: z.number().min(0).max(24).optional(), dayEndHour: z.number().min(0).max(24).optional() };
+const settingsFields = { timezone: calendar.timezone, dailyCapacityMinutes: z.number().int().min(1).max(1440).optional(), dayStartHour: z.number().min(0).max(24).optional(), dayEndHour: z.number().min(0).max(24).optional(), dailySummaryTime: clock.nullable().optional() };
 const planRef = z.string().trim().min(1).max(60).optional();
 const nullableRef = ref.nullable().optional();
 export const planFields = {
@@ -80,6 +94,7 @@ export const schemas = {
   quick_add: z.object({ ...calendar, text: z.string().trim().min(1).max(1000) }).strict(),
   create_task: z.object({ ...calendar, ...taskFields }).strict(), update_task: z.object({ ...calendar, ...taskPatch.shape, id: ref }).strict(),
   complete_task: z.object({ ...calendar, id: ref, completed: z.boolean().default(true) }).strict(),
+  skip_occurrence: z.object({ ...calendar, id: ref }).strict(),
   move_task: z.object({ ...calendar, id: ref, date: isoDate.nullable(), time: clock.nullable().optional() }).strict(),
   search: z.object({ ...calendar, query: z.string().trim().min(1).max(200), limit: z.number().int().min(1).max(100).default(20) }).strict(),
   list_goals: z.object({ ...calendar, status: z.enum(["active", "done", "archived", "all"]).default("active"), area: ref.optional(), areaId: ref.optional() }).strict(),

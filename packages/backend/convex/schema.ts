@@ -22,6 +22,7 @@ export default defineSchema({
       v.literal("cancelled"),
       v.literal("failed"),
     ),
+    about: v.optional(v.union(v.literal("date"), v.literal("deadline"), v.literal("snooze"))),
   })
     .index("by_owner", ["ownerId"])
     .index("by_owner_task_state", ["ownerId", "taskId", "state"]),
@@ -47,6 +48,8 @@ export default defineSchema({
   tasks: defineTable({
     ...V.common,
     ...V.taskFields,
+    /** Occurrence number within a repeating series, starting at 1. */
+    repeatIndex: v.optional(V.nullableNumber),
     status: V.taskStatus,
     completedAt: V.nullableNumber,
     searchText: V.task.fields.searchText,

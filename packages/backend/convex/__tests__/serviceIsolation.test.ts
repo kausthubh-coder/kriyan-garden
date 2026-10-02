@@ -56,7 +56,7 @@ test.each(actions)("$name binds the signed owner and cannot access foreign recor
     const payloads: Record<string, Record<string, unknown>> = {
       "planner.context": {}, "profiles.ensure": {}, "profiles.completeOnboarding": {}, "profiles.resetAll": {},
       "profiles.update": { patch: { dailyCapacityMinutes: 90 } },
-      "tasks.complete": { id: task._id }, "tasks.completeWithNext": { id: task._id }, "tasks.reopen": { id: task._id },
+      "tasks.complete": { id: task._id }, "tasks.skip": { id: task._id }, "tasks.completeWithNext": { id: task._id }, "tasks.reopen": { id: task._id },
       "tasks.quickAdd": { text: "Own capture today", today: "2026-09-30" }, "tasks.search": { query: "Private" },
       "tasks.filteredList": { projectId: project._id },
       "goals.setProgress": { id: goal._id, current: 3 },

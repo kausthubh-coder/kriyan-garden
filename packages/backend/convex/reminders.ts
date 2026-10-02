@@ -3,6 +3,7 @@ import { internalAction, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { push } from "./pushClient";
 import * as model from "./model/reminders";
+import { localClock, reminderBody } from "@kriyan/core";
 export const rescheduleOwner = internalMutation({
   args: { ownerId: v.string(), cursor: v.union(v.string(), v.null()) }, returns: v.null(),
   handler: async (ctx, args) => model.rescheduleOwner(ctx, args.ownerId, args.cursor),
@@ -21,12 +22,13 @@ export const dispatch = internalMutation({
       !task ||
       task.ownerId !== ownerId ||
       task.status !== "active" ||
-      !task.date ||
-      !task.reminders.length
+      (job.about !== "snooze" && !task.reminders.length)
     ) {
       await ctx.db.patch(jobId, { state: "cancelled" });
       return null;
     }
+    const profile = await ctx.db.query("profiles").withIndex("by_owner", (q) => q.eq("ownerId", ownerId)).unique();
+    const today = localClock(new Date(), profile?.timezone).today;
     const tokens = await ctx.db
       .query("pushTokens")
       .withIndex("by_owner", (q) => q.eq("ownerId", ownerId))
@@ -36,8 +38,10 @@ export const dispatch = internalMutation({
         userId: token._id,
         notification: {
           title: task.title,
-          body: `${task.date}, ${task.time ?? "any time"}`,
+          body: reminderBody(task, job.about ?? "date", today),
           channelId: "Reminders",
+          // Android shows Done and snooze actions for this category.
+          categoryId: "task-reminder",
           data: { taskId: task._id },
         },
       });

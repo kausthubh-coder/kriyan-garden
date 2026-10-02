@@ -3,9 +3,10 @@ import type { Infer } from "convex/values";
 import { makeFunctionReference } from "convex/server";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
 import type { profilePatch } from "../validators";
-import { stamps, text, finite } from "./shared";
+import { stamps, text, finite, time } from "./shared";
 import * as areas from "./areas";
 import * as reminders from "./reminders";
+import * as summary from "./summary";
 import { push } from "../pushClient";
 
 export const get = (ctx: QueryCtx, ownerId: string, _args = {}) =>
@@ -59,6 +60,7 @@ export async function update(
     throw new ConvexError("Profile not found. Initialize your profile first.");
   const patch = { ...args.patch, updatedAt: Date.now() };
   if (patch.timezone !== undefined) patch.timezone = timezone(patch.timezone);
+  if (patch.dailySummaryTime) patch.dailySummaryTime = time(patch.dailySummaryTime);
   const next = { ...current, ...patch };
   if (finite(next.dailyCapacityMinutes) < 1 || next.dailyCapacityMinutes > 1440)
     throw new ConvexError("Invalid capacity. Choose 1 to 1440 minutes.");
@@ -76,7 +78,9 @@ export async function update(
   if (patch.timezone !== undefined && patch.timezone !== current.timezone) {
     await reminders.rescheduleOwner(ctx, ownerId, null);
   }
-  return { ...current, ...patch };
+  if ((patch.timezone !== undefined && patch.timezone !== current.timezone) || (patch.dailySummaryTime !== undefined && patch.dailySummaryTime !== (current.dailySummaryTime ?? null)))
+    await summary.schedule(ctx, ownerId);
+  return (await get(ctx, ownerId)) ?? { ...current, ...patch };
 }
 export const completeOnboarding = (
   ctx: MutationCtx,

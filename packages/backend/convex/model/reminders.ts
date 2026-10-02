@@ -1,4 +1,5 @@
-import { reminderTimes } from "@kriyan/core";
+import { reminderFires } from "@kriyan/core";
+import { ConvexError } from "convex/values";
 import { makeFunctionReference } from "convex/server";
 import type { MutationCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -33,25 +34,39 @@ export async function cancel(
 }
 export async function schedule(ctx: MutationCtx, task: Doc<"tasks">) {
   await cancel(ctx, task.ownerId, task._id);
-  if (task.status !== "active" || !task.date || !task.reminders.length) return;
+  if (task.status !== "active" || !task.reminders.length) return;
   const profile = await ctx.db
     .query("profiles")
     .withIndex("by_owner", (q) => q.eq("ownerId", task.ownerId))
     .unique();
   // A missing profile must not silently schedule in a server timezone.
   if (!profile) throw new Error("Reminders need your timezone. Initialize your profile before adding reminders.");
-  for (const fireAt of reminderTimes(task, profile.timezone, Date.now())) {
-    const jobId = await ctx.db.insert("reminderJobs", {
-      ownerId: task.ownerId,
-      taskId: task._id,
-      fireAt,
-      scheduledId: null,
-      state: "pending",
-    });
-    const scheduledId = await ctx.scheduler.runAt(fireAt, deliver, {
-      ownerId: task.ownerId,
-      jobId,
-    });
-    await ctx.db.patch(jobId, { scheduledId });
-  }
+  for (const fire of reminderFires(task, profile.timezone, Date.now()))
+    await queue(ctx, task, fire.at, fire.about);
+}
+async function queue(ctx: MutationCtx, task: Doc<"tasks">, fireAt: number, about: "date" | "deadline" | "snooze") {
+  const jobId = await ctx.db.insert("reminderJobs", {
+    ownerId: task.ownerId,
+    taskId: task._id,
+    fireAt,
+    scheduledId: null,
+    state: "pending",
+    about,
+  });
+  const scheduledId = await ctx.scheduler.runAt(fireAt, deliver, {
+    ownerId: task.ownerId,
+    jobId,
+  });
+  await ctx.db.patch(jobId, { scheduledId });
+}
+/** Remind again later from a notification. The task itself does not change. */
+export async function snooze(ctx: MutationCtx, ownerId: string, args: { taskId: Id<"tasks">; until: number }) {
+  const task = await ctx.db.get(args.taskId);
+  if (!task || task.ownerId !== ownerId) throw new ConvexError("Record not found. Check the ID and try again.");
+  if (task.status !== "active") return null;
+  const now = Date.now();
+  if (!Number.isFinite(args.until) || args.until <= now || args.until > now + 7 * 86_400_000)
+    throw new ConvexError("Invalid reminder. Snooze for up to 7 days.");
+  await queue(ctx, task, args.until, "snooze");
+  return null;
 }

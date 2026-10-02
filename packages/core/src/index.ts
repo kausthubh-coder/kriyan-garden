@@ -4,6 +4,7 @@ export * from "./tokens";
 export * from "./planning";
 export * from "./goals";
 export * from "./reminders";
+export * from "./repeat";
 export * from "./format";
 export * from "./timeInput";
 export * from "./plannerCopy";

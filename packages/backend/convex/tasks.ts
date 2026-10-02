@@ -3,6 +3,7 @@ import { query, mutation } from "./_generated/server";
 import * as V from "./validators";
 import * as model from "./model/tasks";
 import { requireOwnerId } from "./model/shared";
+import * as reminders from "./model/reminders";
 
 export const list = query({
   args: { status: v.optional(V.taskStatus), limit: v.optional(v.number()) },
@@ -66,6 +67,23 @@ export const reopen = mutation({
   handler: async (ctx, args) => {
     const ownerId = await requireOwnerId(ctx);
     return model.reopen(ctx, ownerId, args);
+  },
+});
+export const skip = mutation({
+  args: { id: v.id("tasks") },
+  returns: V.task,
+  handler: async (ctx, args) => {
+    const ownerId = await requireOwnerId(ctx);
+    return model.skip(ctx, ownerId, args);
+  },
+});
+/** A notification's snooze action: remind again at `until` without changing the task. */
+export const snoozeReminder = mutation({
+  args: { id: v.id("tasks"), until: v.number() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const ownerId = await requireOwnerId(ctx);
+    return reminders.snooze(ctx, ownerId, { taskId: args.id, until: args.until });
   },
 });
 export const quickAdd = mutation({

@@ -1,6 +1,5 @@
-import { addDays, weekStart } from "@kriyan/core";
+import { addDays, localClock, nextOccurrence, weekStart } from "@kriyan/core";
 import { assemble } from "@kriyan/backend/convex/model/assemble";
-import { nextDate } from "@kriyan/backend/convex/model/nextDate";
 import { text, date, nullableDate, finite, caps } from "@kriyan/backend/convex/model/shared";
 import type { Doc } from "@kriyan/backend/convex/_generated/dataModel";
 import type { TaskCreate } from "@kriyan/backend/convex/validators";
@@ -46,7 +45,8 @@ export function createDemoStore(today: string) {
       const now = stamp();
       const row: Task = { ...current, status: "completed", completedAt: now, updatedAt: now };
       state.tasks = state.tasks.map((task) => task._id === id ? row : task);
-      if (current.repeat && current.date) await create({ ...current, date: nextDate(current.date, current.repeat) });
+      const next = current.repeat && current.date ? nextOccurrence(current.repeat, { date: current.date, completedOn: localClock(new Date()).today, index: current.repeatIndex }) : null;
+      if (next) await create({ ...current, date: next });
       notify(); return row;
     },
     reopen: async ({ id }) => {

@@ -1,6 +1,6 @@
 # Kriyan MCP
 
-Kriyan gives assistants the same reach as the app: tasks, goals and milestones, areas, projects and courses, the class schedule and other weekly blocks, habits and planner settings. Plan with the AI you already use in your own areas. Your assistant uses your area names and never assumes the suggested defaults. It uses the same operations and backend rules as the REST API. There are 42 tools and 5 prompts. Account deletion, reset, sample data, onboarding and push registration stay in the app. The server's instructions (`apps/web/src/lib/operations/prompts.ts`) ask assistants to read before writing, preview larger changes, use returned IDs and repeat the stored result's `readBack` sentence.
+Kriyan gives assistants the same reach as the app: tasks, goals and milestones, areas, projects and courses, the class schedule and other weekly blocks, habits and planner settings. Plan with the AI you already use in your own areas. Your assistant uses your area names and never assumes the suggested defaults. It uses the same operations and backend rules as the REST API. There are 43 tools and 5 prompts. Account deletion, reset, sample data, onboarding and push registration stay in the app. The server's instructions (`apps/web/src/lib/operations/prompts.ts`) ask assistants to read before writing, preview larger changes, use returned IDs and repeat the stored result's `readBack` sentence.
 
 The production endpoint is `https://app.kriyan.app/mcp`, using Streamable HTTP. Protected-resource metadata is at `https://app.kriyan.app/.well-known/oauth-protected-resource/mcp`. These URLs describe the hosted endpoint. This brief verifies the local server against the development backend with real Clerk OAuth and does not deploy the web app. See [the auth report](reports/18-auth.md).
 
@@ -39,7 +39,11 @@ Every tool accepts optional `today` in `YYYY-MM-DD` and `timezone` as an IANA na
 
 Areas and projects accept IDs or case-insensitive exact names. A project may also use a full path such as `School / Economics`. Ambiguous names return `AMBIGUOUS` with ID/name/path candidates. Use one returned ID for the next request. Quick-add hashtags use the shared parser and reject ambiguous known names.
 
-Task length is optional. Omitted lengths remain unknown. Repeat input is `{ "every": 1, "unit": "week", "weekdays": [1, 3] }`, where weekdays run Sunday 0 through Saturday 6. Reminder forms are `at_start`, `before` with minutes, `morning_of`, `day_before`, or `at_time` with `HH:MM`. Reminders require a task date; start and before reminders also require a time.
+Task length is optional. Omitted lengths remain unknown.
+
+Repeats: `{ "every": 1, "unit": "week", "weekdays": [1, 3] }`, where weekdays run Sunday 0 through Saturday 6 (`[1,2,3,4,5]` is every weekday). Monthly and yearly rules take `monthDay`: `{ "kind": "weekday", "nth": 2, "weekday": 2 }` is the 2nd Tuesday (`nth: -1` is the last), `{ "kind": "day", "day": 31 }` falls back to the last day in short months without drifting, and `{ "kind": "last_day" }`. `"basis": "completion"` counts the next date from the day it was done. `ends` is `{ "kind": "on", "date": "2026-12-18" }` or `{ "kind": "after", "count": 10 }`. A repeating task needs a date. `skip_occurrence` moves a repeat to its next date without completing it.
+
+Reminders: `at_start`, `before` with minutes (up to 7 days), `morning_of`, `day_before`, `at_time` with `HH:MM`, and `{ "type": "deadline", "daysBefore": 2, "time": "18:00" }`, which counts back from the deadline and works without a planned date. Date reminders require a task date; start and before reminders also require a time. Notifications read like "Today 14:30" or "Due Thu 1 Oct". `update_settings` also sets `dailySummaryTime` (`HH:MM`, or null to turn it off), a daily push with the day's tasks and this week's deadlines.
 
 Writes return `{ "ok": true, "id": "...", "readBack": "...", "today": "...", "timezone": "..." }` plus the saved entity. Stored fields stay ISO; `readBack` sentences use people's dates such as "Today" or "Thu 1 Oct". Complete returns the actual next occurrence for a repeat, when one was created. `quick_add` also returns parsed fields. Patches preserve omitted values and clear nullable fields only when explicitly given `null`. Moving changes date/time only; clearing the date clears time. Errors contain a short code and actionable sentence, without private backend details.
 
@@ -69,6 +73,7 @@ Writing:
 | `quick_add` | Parse the app's text grammar and save a task |
 | `create_task`, `update_task` | Structured task fields: dates, deadline, optional length, repeat, reminders, notes |
 | `complete_task` | Complete or reopen; reports a repeat's next occurrence |
+| `skip_occurrence` | Move a repeating task to its next date without completing it |
 | `move_task` | Change only a task's date and time |
 | `delete_task` | Remove a task and cancel its reminders |
 | `create_event`, `update_event`, `delete_event` | Classes, lectures, labs, shifts and other weekly blocks |
@@ -78,7 +83,7 @@ Writing:
 | `create_project`, `update_project`, `delete_project` | Projects and courses; `update_project` moves, renames, switches kind and archives |
 | `create_goal`, `update_goal`, `delete_goal`, `set_goal_progress` | Goals and number progress |
 | `add_milestone`, `update_milestone`, `complete_milestone`, `delete_milestone` | Goal milestones |
-| `update_settings` | Timezone, daily capacity and day hours |
+| `update_settings` | Timezone, daily capacity, day hours and the daily summary time |
 
 Deletes keep the app's rules: an area, project, goal or habit still in use is refused with a sentence saying what to move or archive first. Every tool declares MCP annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`) from one definition in `apps/web/src/lib/operations/index.ts`.
 

@@ -429,6 +429,16 @@ export const tasksReopen = action({
   },
 });
 
+const tasksSkipRef = makeFunctionReference<"mutation", { ownerId: string; id: Infer<typeof V.task>["_id"] }, Infer<typeof V.task>>("serviceInternal:tasksSkip");
+export const tasksSkip = action({
+  args: { ...envelope, id: v.id("tasks") },
+  returns: V.task,
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof V.task>> => {
+    await verify(ctx, "tasks.skip", { ownerId, timestamp, nonce, signature, invocation }, payload);
+    return ctx.runMutation(tasksSkipRef, { ownerId, ...payload });
+  },
+});
+
 const tasksQuickAddArgs = v.object({ text: v.string(), today: v.string() });
 const tasksQuickAddReturn = V.task;
 const tasksQuickAddRef = makeFunctionReference<"mutation", { ownerId: string } & Infer<typeof tasksQuickAddArgs>, Infer<typeof tasksQuickAddReturn>>("serviceInternal:tasksQuickAdd");

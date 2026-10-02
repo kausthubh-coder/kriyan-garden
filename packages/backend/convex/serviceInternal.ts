@@ -222,6 +222,12 @@ export const tasksComplete = internalMutation({
   handler: (ctx, { ownerId, ...args }) => tasks.complete(ctx, ownerId, args),
 });
 
+export const tasksSkip = internalMutation({
+  args: { ownerId: v.string(), id: v.id("tasks") },
+  returns: V.task,
+  handler: (ctx, { ownerId, ...args }) => tasks.skip(ctx, ownerId, args),
+});
+
 export const tasksReopen = internalMutation({
   args: { ownerId: v.string(), ...{ id: v.id("tasks") } },
   returns: V.task,
