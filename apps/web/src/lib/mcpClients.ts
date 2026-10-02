@@ -2,6 +2,9 @@ import { KRIYAN_APP_ORIGIN } from "./origins";
 
 export const KRIYAN_MCP_URL = `${KRIYAN_APP_ORIGIN}/mcp`;
 
+/** Pasted into an AI app that can edit its own settings, this sets Kriyan up. */
+export const KRIYAN_SETUP_PROMPT = `Set up the Kriyan MCP server for me. It is a remote MCP server at ${KRIYAN_MCP_URL} that uses streamable HTTP and OAuth, with no API key. Add it to this app's MCP settings with the name kriyan. Then tell me how to sign in and approve access, and once it is connected, show me my plan for today.`;
+
 export type McpClient = {
   name: string;
   /** Opens the client, or installs Kriyan into it in one step. */

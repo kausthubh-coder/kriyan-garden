@@ -319,6 +319,8 @@ test("landing parser, iframe, keyboard tabs and copy are usable", async ({ page,
   await expect(page.getByRole("button", { name: "Copied", exact: true })).toBeVisible();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("claude mcp add --transport http kriyan https://app.kriyan.app/mcp");
   await expect(page.getByRole("button", { name: "Copy command", exact: true })).toBeVisible({ timeout: 3000 });
+  await page.getByRole("button", { name: "Copy prompt", exact: true }).click();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toContain("Set up the Kriyan MCP server for me. It is a remote MCP server at https://app.kriyan.app/mcp");
   await page.getByRole("tab", { name: "Cursor", exact: true }).click();
   const cursor = new URL(await page.getByRole("link", { name: /Add to Cursor/ }).getAttribute("href") ?? "");
   expect(JSON.parse(atob(cursor.searchParams.get("config") ?? ""))).toEqual({ url: "https://app.kriyan.app/mcp" });

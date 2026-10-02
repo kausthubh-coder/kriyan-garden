@@ -6,6 +6,14 @@ Clerk development is the hosted identity provider. Dynamic registration, client 
 
 The [Kriyan home page](https://kriyan.app/#connect) has one-click install buttons for Cursor and VS Code and copyable setup for the other clients.
 
+## Set up with a prompt
+
+Paste this into an AI app that can change its own settings, such as Claude Code, Cursor or Codex:
+
+```text
+Set up the Kriyan MCP server for me. It is a remote MCP server at https://app.kriyan.app/mcp that uses streamable HTTP and OAuth, with no API key. Add it to this app's MCP settings with the name kriyan. Then tell me how to sign in and approve access, and once it is connected, show me my plan for today.
+```
+
 ## Claude
 
 ```text

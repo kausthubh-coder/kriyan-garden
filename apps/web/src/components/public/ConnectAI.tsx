@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { KRIYAN_MCP_URL, mcpClients } from "@/lib/mcpClients";
+import { KRIYAN_MCP_URL, KRIYAN_SETUP_PROMPT, mcpClients } from "@/lib/mcpClients";
 import s from "./Public.module.css";
 
 function CopyButton({ text, label }: { text: string; label: string }) {
@@ -49,6 +49,14 @@ export function ConnectAI() {
   if (!client) return null;
   return (
     <div>
+      <div className={`${s.field} ${s.starter}`}>
+        <span className={s.fieldLabel}>Paste this into your AI and it sets Kriyan up for you</span>
+        <div className={s.fieldRow}>
+          <p className={s.promptText}>{KRIYAN_SETUP_PROMPT}</p>
+          <CopyButton text={KRIYAN_SETUP_PROMPT} label="Copy prompt" />
+        </div>
+      </div>
+      <p className={s.manualLabel}>Or set it up yourself</p>
       <div className={s.tabs} role="tablist" aria-label="AI client">
         {mcpClients.map((item, i) => (
           <button

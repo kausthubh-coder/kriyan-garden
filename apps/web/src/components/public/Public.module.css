@@ -74,6 +74,10 @@
 .copyInline { flex: none; display: inline-flex; align-items: center; justify-content: center; min-height: var(--ctl); padding: 0 var(--space-10); border-radius: var(--radius-9); background: var(--s1); color: var(--ink-2); border: 1px solid var(--line); font-size: var(--text-13-5); font-weight: 500; }
 @media (hover: hover) { .copyInline:hover { background: var(--s3); color: var(--ink); } }
 .copyInline:active { opacity: .8; }
+.starter .fieldLabel { color: var(--ink-2); font-size: var(--text-14); }
+.manualLabel { margin: var(--space-24) 0 var(--space-10) !important; font-size: var(--text-14); color: var(--ink-2); }
+.starter .fieldRow { background: var(--s1); box-shadow: inset 0 0 0 1px var(--line); padding-block: var(--space-8); }
+.promptText { flex: 1; min-width: 0; font-size: var(--text-15); line-height: 1.5; color: var(--ink); }
 .connectNote { font-size: var(--text-13-5); color: var(--ink-3); line-height: 1.5; }
 .section p.label { font-size: var(--text-13-5); color: var(--ink-3); margin: var(--space-22) 0 var(--space-10); line-height: 1.55; }
 .aiCli .label { margin-top: var(--space-28); }
@@ -122,7 +126,7 @@
   .aiIntro, .aiConnect, .aiCli { grid-column: auto; grid-row: auto; }
   .aiCli .label { margin-top: 0; }
   .fieldRow { flex-wrap: wrap; padding: var(--space-10) var(--space-12); }
-  .fieldRow code { flex-basis: 100%; }
+  .fieldRow code, .fieldRow .promptText { flex-basis: 100%; }
   .flip .featureCopy { order: 0; }
   .visual.visual, .visual.timelineVisual { padding: var(--space-20); }
   .quick input { font-size: var(--text-17); height: 56px; }
