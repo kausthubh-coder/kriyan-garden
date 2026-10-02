@@ -2,7 +2,7 @@
 
 1 October 2026. Branch `v2`.
 
-Status: PARTIAL, Brief 22 Job 1 is running under the revised memory rules. The release is not published. Jobs 2 to 5 have not started in this continuation.
+Status: PARTIAL, Brief 22 Job 1 is blocked by its mandatory memory start gate. The retry correction is saved but not yet proven on a rebuilt APK. The release is not published. Jobs 2 to 5 have not started in this continuation.
 
 ## Brief 22 continuation
 
@@ -23,6 +23,8 @@ After the API 36 guest settled, that APK's signed-out form laid out 1,562 ms aft
 The reconnection check exposed a remaining defect: the device returned HTTP 204 after leaving airplane mode, but tapping "Try again" did not recover sign-in. Source inspection found that the public Clerk `load()` call without options restores its browser defaults. Retry now supplies Expo's native headless options. Verification of that correction is pending the rebuild. During its first rebuild, Ninja launched 18 C++ compilers independently of Gradle's one-worker setting. The owned build was stopped before the memory floor; no owner process was stopped. The build helper now defines one-compiler and one-linker CMake job pools. Receipt: `gradle-ninja-memory-stop.{stdout,stderr}.log`.
 
 At 19:58:36 America/New_York, the following guarded rebuild was stopped by the watchdog at 1,036,200 KB free commit. Its daemon-disappeared error is the expected result of that stop, not a passing build. Free commit recovered to only 1.98 GB after the stop, and the largest owner browser process measured 18.01 GB private memory. No Java or emulator process remained. The owner was asked to free commit again, and the next build must wait for the existing 3 GB gate. Receipts: `gradle-job-pool-watchdog-stop.{stdout,stderr}.log` and `gradle-memory.jsonl`. The latest preparation checks pass: three mobile tests, fourteen assertions, JavaScript syntax and zero PowerShell parser errors. Job 1 remains incomplete until retry recovery and signed-in relaunch pass on the rebuilt APK.
+
+The guarded helper then waited from 19:59 to 20:06 without reaching 3 GB free commit. The final reading was 915,292 KB. It was stopped without starting Gradle; no owned emulator or compiler remained. Source checkpoint: `694e972`. Latest receipt: `.agents/logs/22/memory-gate-blocked-latest.json`. Continuing requires memory to become available before rerunning `.agents/scripts/22-local-build.ps1`; the gate and watchdog must remain enabled. The one final EAS build has not been requested.
 
 The paragraphs below describe the earlier attempt under the superseded 5 GB rule.
 
