@@ -1,6 +1,7 @@
 param(
   [Parameter(Mandatory=$true)][ValidatePattern('^\d+\.\d+\.\d+$')][string]$Version,
-  [string]$Apk
+  [string]$Apk,
+  [ValidatePattern('^[a-f0-9]{40}$')][string]$TargetCommit
 )
 $ErrorActionPreference = 'Stop'
 $taskRoot = Split-Path $PSScriptRoot -Parent
@@ -8,9 +9,14 @@ $previousLocation = Get-Location
 try {
   Set-Location $taskRoot
   $repository = (& gh repo view --json nameWithOwner --jq .nameWithOwner).Trim()
-  if ($LASTEXITCODE -ne 0 -or $repository -notmatch '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$') { throw 'Could not resolve the current GitHub repository.' }
-  $targetCommit = (& git rev-parse HEAD).Trim()
+  if ($LASTEXITCODE -ne 0 -or $repository -ne 'kausthubh-coder/kriyan-garden') { throw 'Android releases are permitted only on kausthubh-coder/kriyan-garden.' }
+  $sourceCommit = (& git rev-parse HEAD).Trim()
   if ($LASTEXITCODE -ne 0) { throw 'Could not resolve the release commit.' }
+  if (-not $TargetCommit) { $TargetCommit = $sourceCommit }
+  # A no-push release may point to a published baseline while EAS builds the
+  # local source. Never create an unrelated commit or push to make a tag work.
+  $publishedCommit = (& gh api "repos/$repository/commits/$TargetCommit" --jq .sha 2>$null)
+  if ($LASTEXITCODE -ne 0 -or $publishedCommit.Trim() -ne $TargetCommit) { throw 'The release target is not published. Pass an existing published commit with -TargetCommit when pushing is not authorized.' }
   $artifactDirectory = Join-Path $taskRoot '.agents/builds'
   New-Item -ItemType Directory -Force -Path $artifactDirectory | Out-Null
   $config = Get-Content apps/mobile/app.json -Raw | ConvertFrom-Json
@@ -52,7 +58,10 @@ Android will warn about installing outside the Play Store; tap Settings and allo
 
 SHA-256: $sha256
 Size: $((Get-Item -LiteralPath $stable).Length) bytes.
+
+Source checkpoint: $sourceCommit. Android version code: $($config.expo.android.versionCode).
+Release tag target: $TargetCommit.
 "@ | Set-Content -LiteralPath $notes
-  & gh release create "android-v$Version" $stable $versioned --repo $repository --target $targetCommit --title "Kriyan Android $Version" --notes-file $notes
+  & gh release create "android-v$Version" $stable $versioned --repo $repository --target $TargetCommit --title "Kriyan Android $Version" --notes-file $notes
   if ($LASTEXITCODE -ne 0) { throw 'GitHub release failed. The APK remains in .agents/builds.' }
 } finally { Set-Location $previousLocation }

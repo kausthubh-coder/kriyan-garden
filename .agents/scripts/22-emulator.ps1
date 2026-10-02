@@ -27,6 +27,7 @@ hw.lcd.width=540
 hw.lcd.height=1200
 hw.lcd.density=210
 hw.keyboard=yes
+hw.mainKeys=no
 hw.gpu.enabled=yes
 hw.gpu.mode=swiftshader
 disk.dataPartition.size=3G

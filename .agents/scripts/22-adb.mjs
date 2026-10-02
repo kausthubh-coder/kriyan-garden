@@ -21,7 +21,7 @@ export async function nodes() { return (await xml()).match(/<node\b[^>]*>/g) ?? 
 export async function tap(label) {
   for (let attempt = 0; attempt < 10; attempt++) {
     const rows = await nodes();
-    const node = rows.find(n => attr(n, 'content-desc') === label) ?? rows.find(n => attr(n, 'text') === label);
+    const matches=rows.filter(n=>attr(n,'content-desc')===label||attr(n,'text')===label);const node=matches.find(n=>attr(n,'clickable')==='true')??matches[0];
     const bounds = node && attr(node, 'bounds').match(/\[(\d+),(\d+)\]\[(\d+),(\d+)\]/);
     if (bounds && +bounds[3] > +bounds[1] && +bounds[4] > +bounds[2]) {
       await adb('shell', 'input', 'tap', String((+bounds[1] + +bounds[3]) / 2), String((+bounds[2] + +bounds[4]) / 2));

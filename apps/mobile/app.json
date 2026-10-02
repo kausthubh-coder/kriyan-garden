@@ -10,7 +10,7 @@
     "userInterfaceStyle": "dark",
     "android": {
       "package": "app.kriyan.android",
-      "versionCode": 2,
+      "versionCode": 3,
       "backgroundColor": "#110f0d"
     },
     "plugins": [

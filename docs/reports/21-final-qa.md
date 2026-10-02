@@ -2,7 +2,7 @@
 
 1 October 2026. Branch `v2`.
 
-Status: PARTIAL, Brief 22 Job 1 passes on the local APK. Job 2 is next. The release is not published; jobs 3 to 5 remain.
+Status: PARTIAL, Brief 22 Job 1 passes on the local APK. Job 2's Android gallery and native checks are in progress. The release is not published; jobs 3 to 5 remain.
 
 ## Brief 22 continuation
 
@@ -35,6 +35,8 @@ Job 1 accepted artifact: the following local build passed in 5m 40s, with 27 tas
 Two harness corrections were necessary: dismiss the first-run notification prompt before looking for Settings, and clear/read back non-password inputs after ADB typing. One injected email had an extra first character and was correctly refused by Clerk. The corrected run passed without rebuilding the product. No owner process was stopped and no heavy units overlapped.
 
 Earlier attempts under the superseded 5 GB gate did not produce a passing APK. Windows PowerShell first treated informational Expo stderr as a terminating error; OS-level redirection fixed that. A later build spawned a separate Kotlin daemon and was stopped under memory pressure. The helper now keeps Kotlin in Gradle, limits the JVM to a 1536 MB heap and 512 MB metaspace, and limits Metro, Gradle and native compilation to one worker. Historical receipts remain in .agents/logs/22/; they are superseded by the successful local build and the current 3 GB start / 1 GB stop policy.
+
+Job 2 progress: real Android account creation and email verification, five onboarding steps, four empty views, 48 dp Day/List add rows, hidden zero counters, quick-add at 13:00 with no invented duration, completion, goal creation and signed-in cold start pass. The sample setup reads exactly 25 tasks; notes saved on closing the task sheet and an edited 45-minute duration are verified through production. All nine task property editors and eight Settings destinations have captures. Area editing, account-deletion confirmation and goal-note persistence pass. Separate injected DOWN/MOVE/UP calls did not produce swipe completion or timeline movement; continuous swipe now completes the task, and its mid-swipe capture and production read-back pass. Timeline input is being rechecked with the live accessibility label, which includes the task time. Font scale 1.3 captures and hardware Back checks pass. The optional edge-swipe injection could not reliably invoke OS Back in Android Settings either, so it is unverified. Account isolation checks are continuing. A fresh account created through the production web sign-up UI has added its web task for the native cross-surface check.
 
 ## Environments and limits
 
