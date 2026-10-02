@@ -61,3 +61,26 @@ export const habitPatch = v.object({ areaId: v.optional(v.id("areas")), title: v
 const taskCreateObject = v.object(taskCreate);
 export type TaskCreate = Infer<typeof taskCreateObject>;
 export type TaskPatch = Infer<typeof taskPatch>;
+
+/** One batch from an assistant. Items point at each other with `ref`, or at stored rows by ID or name. */
+const planRef = v.optional(v.string());
+export const planInput = {
+  today: v.string(),
+  dryRun: v.boolean(),
+  onExisting: v.union(v.literal("skip"), v.literal("update")),
+  areas: v.optional(v.array(v.object({ ref: planRef, name: v.string(), color: v.optional(color) }))),
+  projects: v.optional(v.array(v.object({ ref: planRef, name: v.string(), area: v.string(), kind: v.optional(projectFields.kind), note: v.optional(v.string()) }))),
+  events: v.optional(v.array(v.object({ ref: planRef, title: v.string(), area: v.optional(nullableString), location: v.optional(v.string()), weekdays: v.array(v.number()), startTime: v.string(), endTime: v.string(), fromDate: v.string(), untilDate: v.optional(nullableString) }))),
+  goals: v.optional(v.array(v.object({ ref: planRef, title: v.string(), area: v.string(), note: v.optional(v.string()), targetDate: v.optional(nullableString), metric: v.optional(metric) }))),
+  tasks: v.optional(v.array(v.object({ ref: planRef, title: v.string(), area: v.optional(v.string()), project: v.optional(nullableString), goal: v.optional(nullableString), date: v.optional(nullableString), time: v.optional(nullableString), durationMinutes: v.optional(nullableNumber), deadline: v.optional(nullableString), repeat: v.optional(repeat), reminders: v.optional(v.array(reminder)), notes: v.optional(v.string()) }))),
+  habits: v.optional(v.array(v.object({ ref: planRef, title: v.string(), area: v.string(), weeklyTarget: v.number() }))),
+};
+export const planKind = v.union(v.literal("area"), v.literal("project"), v.literal("event"), v.literal("goal"), v.literal("task"), v.literal("habit"));
+export const planStatus = v.union(v.literal("created"), v.literal("exists"), v.literal("updated"), v.literal("would_create"), v.literal("would_update"));
+export const planResult = v.object({
+  dryRun: v.boolean(),
+  items: v.array(v.object({ kind: planKind, index: v.number(), ref: nullableString, name: v.string(), status: planStatus, id: nullableString })),
+});
+const planInputObject = v.object(planInput);
+export type PlanInput = Infer<typeof planInputObject>;
+export type PlanResult = Infer<typeof planResult>;

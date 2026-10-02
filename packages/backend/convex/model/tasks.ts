@@ -264,6 +264,14 @@ export async function create(
   args: TaskCreate,
 ) {
   await taskCap(ctx, ownerId);
+  return insert(ctx, ownerId, args);
+}
+/** Create without the per-call cap scan; callers check the cap once for a whole batch. */
+export async function insert(
+  ctx: MutationCtx,
+  ownerId: string,
+  args: TaskCreate,
+) {
   const cleaned = await fields(ctx, ownerId, args);
   const id = await ctx.db.insert("tasks", {
     ...stamps(ownerId),

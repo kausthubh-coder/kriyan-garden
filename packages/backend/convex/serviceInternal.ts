@@ -13,6 +13,7 @@ import * as habits from "./model/habits";
 import * as day from "./model/day";
 import * as week from "./model/week";
 import * as profiles from "./model/profiles";
+import * as plan from "./model/plan";
 
 export const areasList = internalQuery({
   args: { ownerId: v.string(), ...{} },
@@ -366,4 +367,12 @@ export const cleanupNonces = internalMutation({
     if (rows.length === 100 || invocations.length === 100) await ctx.scheduler.runAfter(0, cleanupRef, {});
     return null;
   },
+});
+export const areasReorder = internalMutation({
+  args: { ownerId: v.string(), ids: v.array(v.id("areas")) }, returns: v.null(),
+  handler: (ctx, { ownerId, ...args }) => areas.reorder(ctx, ownerId, args),
+});
+export const planApply = internalMutation({
+  args: { ownerId: v.string(), ...V.planInput }, returns: V.planResult,
+  handler: (ctx, { ownerId, ...args }) => plan.apply(ctx, ownerId, args),
 });

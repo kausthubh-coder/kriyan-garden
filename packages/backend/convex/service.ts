@@ -1,8 +1,9 @@
-import { v, type Infer } from "convex/values";
+import { ConvexError, v, type Infer } from "convex/values";
 import { makeFunctionReference } from "convex/server";
 import { action } from "./_generated/server";
 import * as V from "./validators";
 import { envelope, verify } from "./serviceAuth";
+import { isPreview } from "./model/plan";
 const goalsSetProgressRef = makeFunctionReference<"mutation", { ownerId: string; id: Infer<typeof V.goal>["_id"]; current: number }, Infer<typeof V.goal>>("serviceInternal:goalsSetProgress");
 export const goalsSetProgress = action({
   args: { ...envelope, id: v.id("goals"), current: v.number() }, returns: V.goal,
@@ -605,5 +606,26 @@ export const habitsRemoveLog = action({
   handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof habitsRemoveLogReturn>> => {
     await verify(ctx, "habits.removeLog", { ownerId, timestamp, nonce, signature, invocation }, payload);
     return ctx.runMutation(habitsRemoveLogRef, { ownerId, ...payload });
+  },
+});
+const areasReorderRef = makeFunctionReference<"mutation", { ownerId: string; ids: Infer<typeof V.area>["_id"][] }, null>("serviceInternal:areasReorder");
+export const areasReorder = action({
+  args: { ...envelope, ids: v.array(v.id("areas")) }, returns: v.null(),
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<null> => {
+    await verify(ctx, "areas.reorder", { ownerId, timestamp, nonce, signature, invocation }, payload);
+    return ctx.runMutation(areasReorderRef, { ownerId, ...payload });
+  },
+});
+const planApplyRef = makeFunctionReference<"mutation", { ownerId: string } & V.PlanInput, Infer<typeof V.planResult>>("serviceInternal:planApply");
+export const planApply = action({
+  args: { ...envelope, ...V.planInput }, returns: V.planResult,
+  handler: async (ctx, { ownerId, timestamp, nonce, signature, invocation, ...payload }): Promise<Infer<typeof V.planResult>> => {
+    await verify(ctx, "planner.apply", { ownerId, timestamp, nonce, signature, invocation }, payload);
+    try { return await ctx.runMutation(planApplyRef, { ownerId, ...payload }); }
+    catch (error) {
+      // A dry run rolls its writes back by throwing; its preview travels in the error data.
+      if (error instanceof ConvexError && isPreview(error.data)) return error.data.result;
+      throw error;
+    }
   },
 });

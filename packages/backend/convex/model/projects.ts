@@ -1,4 +1,4 @@
-import { v, type Infer } from "convex/values";
+import { ConvexError, v, type Infer } from "convex/values";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import * as V from "../validators";
@@ -17,7 +17,7 @@ export async function update(ctx: MutationCtx, ownerId: string, args: { id: Id<"
   const patch = { ...args.patch, updatedAt: Date.now() };
   if (patch.areaId !== undefined) {
     await owned(ctx, ownerId, patch.areaId);
-    if (patch.areaId !== current.areaId && await ctx.db.query("tasks").withIndex("by_owner_project", (q) => q.eq("ownerId", ownerId).eq("projectId", args.id)).first()) throw new Error("Project has linked tasks. Move or unlink them before changing its area.");
+    if (patch.areaId !== current.areaId && await ctx.db.query("tasks").withIndex("by_owner_project", (q) => q.eq("ownerId", ownerId).eq("projectId", args.id)).first()) throw new ConvexError("Project has linked tasks. Move or unlink them before changing its area.");
   }
   if (patch.name !== undefined) patch.name = text(patch.name, 48, true);
   if (patch.note !== undefined) patch.note = text(patch.note, 180);
@@ -27,7 +27,7 @@ export async function update(ctx: MutationCtx, ownerId: string, args: { id: Id<"
 }
 export async function remove(ctx: MutationCtx, ownerId: string, args: { id: Id<"projects"> }) {
   await owned(ctx, ownerId, args.id);
-  if (await ctx.db.query("tasks").withIndex("by_owner_project", (q) => q.eq("ownerId", ownerId).eq("projectId", args.id)).first()) throw new Error("Project has linked tasks. Unlink them before removing the project.");
+  if (await ctx.db.query("tasks").withIndex("by_owner_project", (q) => q.eq("ownerId", ownerId).eq("projectId", args.id)).first()) throw new ConvexError("Project has linked tasks. Unlink them before removing the project.");
   await ctx.db.delete(args.id);
   return null;
 }

@@ -4,6 +4,7 @@ import type { Caller } from "./index";
 import { MCP_TOOLS, operations, runOperation } from "./index";
 import { SCOPES } from "./scopes";
 import { OperationError, publicError } from "./errors";
+import { MCP_INSTRUCTIONS, MCP_PROMPTS } from "./prompts";
 
 export function createPlannerMcp(execute: typeof runOperation = runOperation) {
   return createMcpHandler(server => {
@@ -12,7 +13,7 @@ export function createPlannerMcp(execute: typeof runOperation = runOperation) {
       server.registerTool(name, {
         description: definition.description, inputSchema: definition.schema,
         _meta: { securitySchemes: [{ type: "oauth2", scopes: [...SCOPES] }] },
-        annotations: { readOnlyHint: !definition.write, destructiveHint: ["update_task", "move_task", "update_goal", "set_goal_progress", "update_project"].includes(name), idempotentHint: !definition.write || ["update_task", "move_task", "update_goal", "set_goal_progress", "update_project", "complete_milestone"].includes(name), openWorldHint: false },
+        annotations: definition.annotations,
       }, async (input: unknown, context: ServerContext) => {
         try {
           const auth = context.http?.authInfo;
@@ -29,8 +30,10 @@ export function createPlannerMcp(execute: typeof runOperation = runOperation) {
         }
       });
     }
+    for (const [name, { title, description, argsSchema, build }] of Object.entries(MCP_PROMPTS))
+      server.registerPrompt(name, { title, description, argsSchema }, args => build(args));
   }, {
-    serverInfo: { name: "kriyan", version: "0.2.0" }, supportedProtocolVersions: ["2026-07-28", "2025-11-25"], maxSubscriptions: 0,
-    instructions: "Help the person organise and plan their life with the AI they already use. Areas are user-defined; use the person's area names and never assume the defaults. Read the relevant tasks, goals and spaces before writing, and repeat each write's readBack sentence to the user. Never invent IDs; use returned IDs or resolve a unique name and ask the user to choose when names are ambiguous.",
+    serverInfo: { name: "kriyan", version: "0.3.0" }, supportedProtocolVersions: ["2026-07-28", "2025-11-25"], maxSubscriptions: 0,
+    instructions: MCP_INSTRUCTIONS,
   });
 }

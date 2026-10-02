@@ -1,3 +1,4 @@
+import { ConvexError } from "convex/values";
 import type { Infer } from "convex/values";
 import { makeFunctionReference } from "convex/server";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
@@ -17,7 +18,7 @@ function timezone(value: string) {
   try {
     new Intl.DateTimeFormat("en", { timeZone: cleaned });
   } catch {
-    throw new Error(
+    throw new ConvexError(
       "Invalid timezone. Choose an IANA timezone such as America/New_York.",
     );
   }
@@ -45,7 +46,7 @@ export async function ensure(
   ] as const)
     await areas.create(ctx, ownerId, { name, color });
   const row = await ctx.db.get(id);
-  if (!row) throw new Error("Profile could not be created. Try again.");
+  if (!row) throw new ConvexError("Profile could not be created. Try again.");
   return row;
 }
 export async function update(
@@ -55,12 +56,12 @@ export async function update(
 ) {
   const current = await get(ctx, ownerId);
   if (!current)
-    throw new Error("Profile not found. Initialize your profile first.");
+    throw new ConvexError("Profile not found. Initialize your profile first.");
   const patch = { ...args.patch, updatedAt: Date.now() };
   if (patch.timezone !== undefined) patch.timezone = timezone(patch.timezone);
   const next = { ...current, ...patch };
   if (finite(next.dailyCapacityMinutes) < 1 || next.dailyCapacityMinutes > 1440)
-    throw new Error("Invalid capacity. Choose 1 to 1440 minutes.");
+    throw new ConvexError("Invalid capacity. Choose 1 to 1440 minutes.");
   if (
     !Number.isInteger(next.dayStartHour * 60) ||
     !Number.isInteger(next.dayEndHour * 60) ||
@@ -68,7 +69,7 @@ export async function update(
     next.dayEndHour > 24 ||
     next.dayStartHour >= next.dayEndHour
   )
-    throw new Error(
+    throw new ConvexError(
       "Invalid day hours. Choose a start before the end, between 0 and 24.",
     );
   await ctx.db.patch(current._id, patch);
@@ -85,12 +86,12 @@ export const completeOnboarding = (
 
 export async function saveOnboarding(ctx: MutationCtx, ownerId: string, args: { step?: number; drafts?: Record<string, string> }) {
   const current = await get(ctx, ownerId);
-  if (!current) throw new Error("Profile not found. Reload setup and try again.");
+  if (!current) throw new ConvexError("Profile not found. Reload setup and try again.");
   if (args.step !== undefined && (!Number.isInteger(args.step) || args.step < 1 || args.step > 5))
-    throw new Error("Invalid setup step. Choose a step from 1 to 5.");
+    throw new ConvexError("Invalid setup step. Choose a step from 1 to 5.");
   const draft = { ...current.onboardingDraft, ...args.drafts };
   if (Object.keys(draft).length > 100 || Object.entries(draft).some(([key, value]) => key.length > 100 || value.length > 1000))
-    throw new Error("Setup answer is too long. Shorten it and try again.");
+    throw new ConvexError("Setup answer is too long. Shorten it and try again.");
   await ctx.db.patch(current._id, { onboardingDraft: draft, ...(args.step !== undefined ? { onboardingStep: args.step } : {}), updatedAt: Date.now() });
   return { ...current, onboardingDraft: draft, ...(args.step !== undefined ? { onboardingStep: args.step } : {}) };
 }

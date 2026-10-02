@@ -20,6 +20,11 @@ export function publicError(error: unknown): OperationError {
   if (/Record not found/.test(message)) return new OperationError("NOT_FOUND", "Record not found. Read the list and check the ID.", 404);
   if (/ArgumentValidationError|Invalid ID/.test(message)) return new OperationError("INVALID_INPUT", "Check the record ID and request fields, then try again.");
   if (/Invalid goal progress/.test(message)) return new OperationError("INVALID_INPUT", "Use a nonnegative value for a number goal, or complete its linked tasks or milestones.");
+  const rule = message.match(/(?:Area is in use\.|Project has linked tasks\.|Habit has logs\.|Goal has linked tasks or milestones\.|The areas changed\.|Event ends before it starts\.|Event date range is reversed\.|Invalid weekly target\.|Invalid capacity\.|Invalid day hours\.|Profile not found\.|Invalid timezone\.)[^\n]*/);
+  if (rule) return new OperationError("INVALID_INPUT", rule[0].slice(0, 240));
+  // Plan items prefix a model rule (or a reference miss) with the item's position.
+  const plan = message.match(/(?:(?:areas|projects|events|goals|tasks|habits)\[\d+\]: |Plan (?:has|ref) )[^\n]*/);
+  if (plan) return new OperationError("INVALID_INPUT", plan[0].slice(0, 300));
   // Only allow messages from the shared model's input rules, never arbitrary SDK text.
   const known = message.match(/(?:Invalid (?:date|time|repeat interval|weekday|reminder|number)\.|A time needs a date\.|A task title must be 180 characters or fewer\.|A repeating task needs a date\.|Project belongs to another area\.|No areas available\.|Repeat weekdays need|Limit of \d+ (?:active tasks|areas|projects|goals)|Too many tasks to filter\.)[^\n]*/);
   if (known) return new OperationError("INVALID_INPUT", known[0].replace(/\s+at\s.*$/, "").slice(0, 200));

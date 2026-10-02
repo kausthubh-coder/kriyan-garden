@@ -62,6 +62,8 @@ test.each(actions)("$name binds the signed owner and cannot access foreign recor
       "goals.setProgress": { id: goal._id, current: 3 },
       "goals.createMilestone": { goalId: goal._id, title: "Blocked milestone" },
       "goals.updateMilestone": { id: milestone._id, patch: {} }, "goals.removeMilestone": { id: milestone._id },
+      "areas.reorder": { ids: (await b.query(api.areas.list, {})).map(row => row._id) },
+      "planner.apply": { today: "2026-09-30", dryRun: false, onExisting: "skip", tasks: [{ title: "Blocked task", project: project._id }] },
       "habits.listLogs": { habitId: habit._id }, "habits.log": { habitId: habit._id, date: "2026-09-30" }, "habits.removeLog": { id: log._id },
     };
     if (operation === "day.get") payload = { date: "2026-09-30" };
@@ -70,7 +72,7 @@ test.each(actions)("$name binds the signed owner and cannot access foreign recor
       if (!(operation in payloads)) throw new Error(`Add isolation input for ${operation}`);
       payload = payloads[operation];
     }
-    foreignReference = "id" in payload || "goalId" in payload || "habitId" in payload || "projectId" in payload;
+    foreignReference = "id" in payload || "goalId" in payload || "habitId" in payload || "projectId" in payload || "tasks" in payload;
   }
   const ref = makeFunctionReference<"action", Record<string, unknown>, unknown>(`service:${name}`);
   const sign = (ownerId: string) => {

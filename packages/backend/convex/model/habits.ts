@@ -1,11 +1,11 @@
-import { v, type Infer } from "convex/values";
+import { ConvexError, v, type Infer } from "convex/values";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import * as V from "../validators";
 import { checkCap, owned, stamps, text, date } from "./shared";
 const createArgs = v.object(V.habitCreate);
 function target(value: number) {
-  if (!Number.isInteger(value) || value < 1 || value > 7) throw new Error("Invalid weekly target. Choose a whole number from 1 to 7.");
+  if (!Number.isInteger(value) || value < 1 || value > 7) throw new ConvexError("Invalid weekly target. Choose a whole number from 1 to 7.");
   return value;
 }
 export const list = (ctx: QueryCtx, ownerId: string, _args = {}) => ctx.db.query("habits").withIndex("by_owner", (q) => q.eq("ownerId", ownerId)).take(50);
@@ -26,7 +26,7 @@ export async function update(ctx: MutationCtx, ownerId: string, args: { id: Id<"
 }
 export async function remove(ctx: MutationCtx, ownerId: string, args: { id: Id<"habits"> }) {
   await owned(ctx, ownerId, args.id);
-  if (await ctx.db.query("habitLogs").withIndex("by_owner_habit", (q) => q.eq("ownerId", ownerId).eq("habitId", args.id)).first()) throw new Error("Habit has logs. Remove its logs or archive it first.");
+  if (await ctx.db.query("habitLogs").withIndex("by_owner_habit", (q) => q.eq("ownerId", ownerId).eq("habitId", args.id)).first()) throw new ConvexError("Habit has logs. Remove its logs or archive it first.");
   await ctx.db.delete(args.id); return null;
 }
 export async function listLogs(ctx: QueryCtx, ownerId: string, args: { habitId: Id<"habits"> }) {

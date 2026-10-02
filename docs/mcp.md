@@ -1,6 +1,6 @@
 # Kriyan MCP
 
-Kriyan gives assistants access to the signed-in user's tasks, goals, areas, projects and courses. Plan with the AI you already use in your own areas. Your assistant uses your area names and never assumes the suggested defaults. It uses the same operations and backend rules as the REST API. There are 21 tools and no delete tools. The server asks assistants to read before writing, use returned IDs and repeat the stored result's `readBack` sentence.
+Kriyan gives assistants the same reach as the app: tasks, goals and milestones, areas, projects and courses, the class schedule and other weekly blocks, habits and planner settings. Plan with the AI you already use in your own areas. Your assistant uses your area names and never assumes the suggested defaults. It uses the same operations and backend rules as the REST API. There are 42 tools and 5 prompts. Account deletion, reset, sample data, onboarding and push registration stay in the app. The server's instructions (`apps/web/src/lib/operations/prompts.ts`) ask assistants to read before writing, preview larger changes, use returned IDs and repeat the stored result's `readBack` sentence.
 
 The production endpoint is `https://app.kriyan.app/mcp`, using Streamable HTTP. Protected-resource metadata is at `https://app.kriyan.app/.well-known/oauth-protected-resource/mcp`. These URLs describe the hosted endpoint. This brief verifies the local server against the development backend with real Clerk OAuth and does not deploy the web app. See [the auth report](reports/18-auth.md).
 
@@ -41,33 +41,100 @@ Areas and projects accept IDs or case-insensitive exact names. A project may als
 
 Task length is optional. Omitted lengths remain unknown. Repeat input is `{ "every": 1, "unit": "week", "weekdays": [1, 3] }`, where weekdays run Sunday 0 through Saturday 6. Reminder forms are `at_start`, `before` with minutes, `morning_of`, `day_before`, or `at_time` with `HH:MM`. Reminders require a task date; start and before reminders also require a time.
 
-Writes return `{ "ok": true, "id": "...", "readBack": "...", "today": "...", "timezone": "..." }` plus the saved entity. Complete returns the actual next occurrence for a repeat, when one was created. `quick_add` also returns parsed fields. Patches preserve omitted values and clear nullable fields only when explicitly given `null`. Moving changes date/time only; clearing the date clears time. Errors contain a short code and actionable sentence, without private backend details.
+Writes return `{ "ok": true, "id": "...", "readBack": "...", "today": "...", "timezone": "..." }` plus the saved entity. Stored fields stay ISO; `readBack` sentences use people's dates such as "Today" or "Thu 1 Oct". Complete returns the actual next occurrence for a repeat, when one was created. `quick_add` also returns parsed fields. Patches preserve omitted values and clear nullable fields only when explicitly given `null`. Moving changes date/time only; clearing the date clears time. Errors contain a short code and actionable sentence, without private backend details.
 
 ## Tools
 
+Reading:
+
 | Tool | Purpose |
 | --- | --- |
-| `get_overview` | Areas, projects/courses, active goals and today's summary |
-| `get_day` | Timed/any-time tasks, events, unscheduled tasks and capacity |
-| `get_week` | Per-day area loads and the next 14 days' deadlines |
-| `list_tasks` | Filter by area, project, goal, status, dates, deadlines or title text, up to 100 |
+| `get_overview` | Start here: areas, projects and courses, active goals and today's summary |
+| `get_day` | Timed and any-time tasks, schedule blocks, unscheduled tasks and free capacity for a date |
+| `get_week` | Per-day area loads and the next 14 days' deadlines against free time |
+| `list_tasks` | Filter by area, project, goal, status, dates, deadlines, due or title text, up to 100 |
 | `get_task` | A task with notes, repeat and reminders |
+| `search` | Full-text search over active task titles and notes |
+| `list_goals`, `get_goal` | Goals with progress, pace and milestones |
+| `list_spaces` | Areas, projects and courses, including archived ones |
+| `list_events` | The class schedule and other fixed weekly blocks |
+| `list_habits` | Habits with weekly targets and this week's logged dates |
+| `get_settings` | Timezone, daily capacity and day hours |
+
+Writing:
+
+| Tool | Purpose |
+| --- | --- |
+| `apply_plan` | Set up or refresh many records at once, with a dry run and no duplicates (below) |
 | `quick_add` | Parse the app's text grammar and save a task |
-| `create_task` | Save structured task fields with optional length |
-| `update_task` | Patch task fields |
-| `complete_task` | Complete or reopen and report a repeat's next occurrence |
+| `create_task`, `update_task` | Structured task fields: dates, deadline, optional length, repeat, reminders, notes |
+| `complete_task` | Complete or reopen; reports a repeat's next occurrence |
 | `move_task` | Change only a task's date and time |
-| `search` | Full-text search over titles and notes |
-| `list_goals` | List goals, filtered by status or area |
-| `get_goal` | Read a goal with progress and milestones |
-| `create_goal` | Add a goal and its metric |
-| `update_goal` | Patch a goal |
-| `set_goal_progress` | Set a number metric's current value atomically |
-| `add_milestone` | Add a goal milestone |
-| `complete_milestone` | Complete or reopen a milestone |
-| `list_spaces` | Read areas, projects and courses |
-| `create_project` | Create a project or course in an area |
-| `update_project` | Rename a project/course or edit its note |
+| `delete_task` | Remove a task and cancel its reminders |
+| `create_event`, `update_event`, `delete_event` | Classes, lectures, labs, shifts and other weekly blocks |
+| `create_habit`, `update_habit`, `delete_habit` | Habits; `update_habit` archives and unarchives |
+| `log_habit` | Mark a habit done on a date, or undo it with `done: false` |
+| `create_area`, `update_area`, `delete_area`, `reorder_areas` | The person's areas and their colours and order |
+| `create_project`, `update_project`, `delete_project` | Projects and courses; `update_project` moves, renames, switches kind and archives |
+| `create_goal`, `update_goal`, `delete_goal`, `set_goal_progress` | Goals and number progress |
+| `add_milestone`, `update_milestone`, `complete_milestone`, `delete_milestone` | Goal milestones |
+| `update_settings` | Timezone, daily capacity and day hours |
+
+Deletes keep the app's rules: an area, project, goal or habit still in use is refused with a sentence saying what to move or archive first. Every tool declares MCP annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`) from one definition in `apps/web/src/lib/operations/index.ts`.
+
+## Organise a whole life in one call: `apply_plan`
+
+`apply_plan` takes optional arrays of `areas`, `projects`, `events`, `goals`, `tasks` and `habits`, at most 200 items in total. Each item may carry a `ref` so later items in the same call can point at it; otherwise references resolve by ID, name or `Area / Name` path, as in the single tools.
+
+- **No duplicates.** Before creating, each item is matched against what is stored, ignoring case and extra spaces: areas by name, projects by area and name, events by title, weekdays and start time, goals and habits by title, active tasks by title, area and the same date or deadline (a repeating task by title and area alone). A match is reported as `exists`. With `onExisting: "update"` the stored record is patched with the fields given and reported as `updated`. Applying the same plan twice creates nothing the second time.
+- **All or nothing.** The whole plan runs in one Convex mutation. If any item fails, nothing is saved and the error names the item, for example `tasks[3]: Project "Chemistry" not found. Add it to the plan or use an existing name or ID.`
+- **Dry run.** `dryRun: true` performs every step, including validation, then rolls back and reports `would_create` and `would_update`. Assistants are told to preview first and apply only after the person agrees.
+- **Limits.** One call counts as one write against the rate limit. A plan reads every active task once (up to 5000) and each create reads its table's cap, which stays inside Convex's per-transaction read limits at 200 items.
+
+The result lists `{ kind, index, ref, name, status, id }` for each item and a `readBack` such as "Added 3 courses, 6 schedule blocks and 4 tasks. Already in Kriyan: 2 tasks."
+
+```json
+{
+  "dryRun": true,
+  "projects": [
+    { "ref": "cs101", "name": "CS 101", "area": "School", "kind": "course" },
+    { "ref": "hist", "name": "Modern history", "area": "School", "kind": "course" },
+    { "ref": "site", "name": "Portfolio site", "area": "Projects" }
+  ],
+  "events": [
+    { "title": "CS 101 lecture", "area": "School", "weekdays": [1, 3], "startTime": "09:00", "endTime": "10:15", "fromDate": "2026-09-01", "untilDate": "2026-12-11", "location": "Hall 2" },
+    { "title": "CS 101 lab", "area": "School", "weekdays": [4], "startTime": "14:00", "endTime": "15:50", "fromDate": "2026-09-01", "untilDate": "2026-12-11" },
+    { "title": "Modern history seminar", "area": "School", "weekdays": [2], "startTime": "11:00", "endTime": "12:30", "fromDate": "2026-09-01" }
+  ],
+  "tasks": [
+    { "title": "Problem set 3", "project": "cs101", "deadline": "2026-10-09" },
+    { "title": "Essay: causes of the First World War", "project": "hist", "deadline": "2026-10-16", "notes": "1500 words, Chicago citations." },
+    { "title": "Ship the about page", "project": "site", "date": "2026-10-03" }
+  ]
+}
+```
+
+## Prompts
+
+Clients that show MCP prompts list these (Claude Code shows them as `/mcp__kriyan__<name>`). The server instructions carry the same guidance for clients that do not.
+
+| Prompt | What it does |
+| --- | --- |
+| `organize_my_life` | Reads classes, homework and projects from the workspace and conversation, previews one `apply_plan`, applies after approval. Optional `focus`. |
+| `add_class_schedule` | Turns a timetable into courses and weekly class times. Optional `source`. |
+| `plan_my_week` | Proposes days for unscheduled work with deadlines within each day's capacity. |
+| `plan_today` | Fixed commitments, overdue work and an order that fits free time. |
+| `weekly_review` | What got done, what slipped, goal and habit progress, and what to move. |
+
+## Organise your life from your work folder
+
+Connect Kriyan to Codex, Claude Code or another assistant that can read your files, open it in the folder where your syllabi, assignment lists and projects live, and paste:
+
+```text
+Use the Kriyan MCP server to organise my life. Read my class schedule, assignments and projects from this folder and our conversation, show me the plan, and add it to Kriyan once I agree.
+```
+
+The assistant maps classes to schedule blocks and courses, homework to tasks with deadlines, longer efforts to projects or goals, and routines to habits or repeating tasks. It never invents a length or a due date. Run the same sentence again after new work arrives; existing items are recognised and left alone.
 
 ## Client setup
 

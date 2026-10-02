@@ -1,4 +1,4 @@
-import { v, type Infer } from "convex/values";
+import { ConvexError, v, type Infer } from "convex/values";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import * as V from "../validators";
@@ -7,8 +7,8 @@ const createArgs = v.object(V.eventCreate);
 export const list = (ctx: QueryCtx, ownerId: string, _args = {}) => ctx.db.query("events").withIndex("by_owner", (q) => q.eq("ownerId", ownerId)).take(100);
 export const get = (ctx: QueryCtx, ownerId: string, args: { id: Id<"events"> }) => owned(ctx, ownerId, args.id);
 function validateRange(value: { startTime: string; endTime: string; fromDate: string; untilDate: string | null }) {
-  if (value.endTime <= value.startTime) throw new Error("Event ends before it starts. Set a later end time.");
-  if (value.untilDate !== null && value.untilDate < value.fromDate) throw new Error("Event date range is reversed. Set a later end date.");
+  if (value.endTime <= value.startTime) throw new ConvexError("Event ends before it starts. Set a later end time.");
+  if (value.untilDate !== null && value.untilDate < value.fromDate) throw new ConvexError("Event date range is reversed. Set a later end date.");
 }
 export async function create(ctx: MutationCtx, ownerId: string, args: Infer<typeof createArgs>) {
   await checkCap(ctx, ownerId, "events");

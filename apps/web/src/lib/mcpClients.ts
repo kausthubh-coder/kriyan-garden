@@ -4,6 +4,8 @@ export const KRIYAN_MCP_URL = `${KRIYAN_APP_ORIGIN}/mcp`;
 
 /** Pasted into an AI app that can edit its own settings, this sets Kriyan up. */
 export const KRIYAN_SETUP_PROMPT = `Set up the Kriyan MCP server for me. It is a remote MCP server at ${KRIYAN_MCP_URL} that uses streamable HTTP and OAuth, with no API key. Add it to this app's MCP settings with the name kriyan. Then tell me how to sign in and approve access, and once it is connected, show me my plan for today.`;
+/** Pasted into Codex, Claude Code or another assistant opened in the folder where the person works. */
+export const KRIYAN_ORGANIZE_PROMPT = "Use the Kriyan MCP server to organise my life. Read my class schedule, assignments and projects from this folder and our conversation, show me the plan, and add it to Kriyan once I agree.";
 
 export type McpClient = {
   name: string;

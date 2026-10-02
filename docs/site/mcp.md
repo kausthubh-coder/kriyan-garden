@@ -14,6 +14,16 @@ Paste this into an AI app that can change its own settings, such as Claude Code,
 Set up the Kriyan MCP server for me. It is a remote MCP server at https://app.kriyan.app/mcp that uses streamable HTTP and OAuth, with no API key. Add it to this app's MCP settings with the name kriyan. Then tell me how to sign in and approve access, and once it is connected, show me my plan for today.
 ```
 
+## Organise your life
+
+Once Kriyan is connected, open your assistant in the folder where your schoolwork and projects live (Codex, Claude Code and Cursor can read it) and paste:
+
+```text
+Use the Kriyan MCP server to organise my life. Read my class schedule, assignments and projects from this folder and our conversation, show me the plan, and add it to Kriyan once I agree.
+```
+
+Your assistant turns classes into weekly class times and courses, homework into tasks with deadlines, and longer work into projects and goals. It shows you the plan first and saves it only when you agree. Run it again when new work arrives; anything already in Kriyan is left alone. In Claude Code the same flow is the `/mcp__kriyan__organize_my_life` command, alongside `plan_my_week`, `plan_today`, `weekly_review` and `add_class_schedule`.
+
 ## Claude
 
 ```text
@@ -67,4 +77,4 @@ Connect and approve access through Clerk.
 
 ## What to expect
 
-Ask your AI to show your day, find a task or add a task in plain language. Your AI client may need a paid plan or developer features for remote MCP. Review the access you approve. Disconnect clients in Settings or revoke authorization through your identity provider. Start with `get_overview` or `get_day`, then use `quick_add` and `complete_task`. Your assistant reads your planner before writing and repeats the stored result after each write. API-resource, expired and missing tokens are refused by MCP. Clerk development has a 100-user limit and shows a development banner on its hosted pages.
+Ask your AI to show your day, find a task or add a task in plain language. Your AI client may need a paid plan or developer features for remote MCP. Review the access you approve. Disconnect clients in Settings or revoke authorization through your identity provider. Start with `get_overview` or `get_day`. Your assistant can do everything the app can, from tasks, repeats and reminders to class times, habits, goals and areas. Your assistant reads your planner before writing and repeats the stored result after each write. API-resource, expired and missing tokens are refused by MCP. Clerk development has a 100-user limit and shows a development banner on its hosted pages.

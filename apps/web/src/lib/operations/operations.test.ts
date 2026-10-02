@@ -38,13 +38,18 @@ beforeEach(() => {
     if (name === "service:tasksCompleteWithNext") return { task: { ...task, status: "completed" }, nextOccurrence: { ...task, _id: "next", date: "2026-09-30" } };
     if (name === "service:tasksCreate" || name === "service:tasksQuickAdd") return { ...task, ...payload };
     if (name === "service:tasksUpdate") return { ...task, ...payload.patch };
+    if (name === "service:planApply") return { dryRun: payload.dryRun, items: [
+      { kind: "project", index: 0, ref: "cs101", name: "CS 101", status: payload.dryRun ? "would_create" : "created", id: payload.dryRun ? null : "p1" },
+      { kind: "event", index: 0, ref: null, name: "CS 101 lecture", status: payload.dryRun ? "would_create" : "created", id: payload.dryRun ? null : "e1" },
+      { kind: "task", index: 0, ref: null, name: "Problem set 1", status: "exists", id: "task" },
+    ] };
     throw new Error("Unexpected mock service operation");
   });
 });
 afterEach(() => { vi.unstubAllEnvs(); vi.useRealTimers(); });
-test("all 21 tools share schemas and reject non-user identities before any backend call", async () => {
-  expect(MCP_TOOLS).toHaveLength(21);
-  expect(MCP_TOOLS.some(name => name.includes("delete"))).toBe(false);
+test("all parity tools share schemas and reject non-user identities before any backend call", async () => {
+  expect(MCP_TOOLS).toHaveLength(42);
+  expect(MCP_TOOLS).toEqual(expect.arrayContaining(["apply_plan", "create_event", "log_habit", "delete_task", "update_settings"]));
   for (const name of MCP_TOOLS) {
     expect(operations[name].schema.shape.today).toBeDefined();
     expect(operations[name].schema.shape.timezone).toBeDefined();
@@ -71,7 +76,19 @@ test("writes preserve optional length, use one sentence and return the actual ne
   expect(added.task).not.toHaveProperty("ownerId");
   const completed = await runOperation("complete_task", { id: "task", today: "2026-09-29" }, caller);
   expect(completed).toMatchObject({ ok: true, nextOccurrence: { id: "next" } });
-  expect(completed.readBack).toContain("next occurrence \"Essay\" is scheduled for 2026-09-30");
+  expect(completed.readBack).toContain("next occurrence \"Essay\" is scheduled for Tomorrow");
+  expect(added.readBack).toContain("scheduled for Today");
+});
+test("apply_plan sends one batch with the caller's today and reads back counts by kind", async () => {
+  const plan = { today: "2026-09-29", dryRun: true, projects: [{ ref: "cs101", name: "CS 101", area: "School", kind: "course" }], events: [{ title: "CS 101 lecture", area: "School", weekdays: [1, 3], startTime: "09:00", endTime: "10:15", fromDate: "2026-09-01" }], tasks: [{ title: "Problem set 1", project: "cs101", deadline: "2026-10-02" }] };
+  const preview = await runOperation("apply_plan", plan, caller);
+  const { today, ...sent } = plan; void today;
+  expect(fake.call.mock.calls.at(-1)?.[3]).toEqual({ ...sent, onExisting: "skip", today: "2026-09-29" });
+  expect(preview).toMatchObject({ ok: true, dryRun: true });
+  expect(preview.readBack).toBe("Would add 1 course and 1 schedule block. Already in Kriyan: 1 task. Nothing is saved yet. Apply the same plan without dryRun to save it.");
+  const applied = await runOperation("apply_plan", { ...plan, dryRun: false }, caller);
+  expect(applied.readBack).toBe("Added 1 course and 1 schedule block. Already in Kriyan: 1 task.");
+  await expect(runOperation("apply_plan", { tasks: [{ title: "Bad", deadline: "2 Oct" }] }, caller)).rejects.toThrow("YYYY-MM-DD");
 });
 test("move forwards date/time only and update omission differs from explicit null", async () => {
   await runOperation("move_task", { id: "task", date: null, today: "2026-09-29" }, caller);
@@ -219,7 +236,7 @@ test("public audience and challenges ignore internal proxy URLs and untrusted fo
 async function rpc(handler: ReturnType<typeof createPlannerMcp>, method: string, version: string, params: Record<string, unknown> = {}) {
   const modern = version === "2026-07-28";
   const headers: Record<string, string> = { "content-type": "application/json", accept: "application/json, text/event-stream", "MCP-Protocol-Version": version };
-  if (modern) { headers["Mcp-Method"] = method; if (method === "tools/call") headers["Mcp-Name"] = String(params.name); }
+  if (modern) { headers["Mcp-Method"] = method; if (method === "tools/call" || method === "prompts/get") headers["Mcp-Name"] = String(params.name); }
   const request = new Request("http://localhost:3005/mcp", { method: "POST", headers, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params: modern ? { ...params, _meta: { "io.modelcontextprotocol/protocolVersion": version, "io.modelcontextprotocol/clientCapabilities": {}, "io.modelcontextprotocol/clientInfo": { name: "offline-test", version: "1" } } } : params }) });
   request.auth = { token: "offline-fixture", clientId: "fixture", scopes: [...SCOPES], extra: { userId: caller.userId } };
   const response = await handler(request);
@@ -235,6 +252,11 @@ for (const version of ["2025-11-25", "2026-07-28"]) test(`real MCP SDK serves li
   const listed = await rpc(handler, "tools/list", version);
   expect(listed.response.status).toBe(200);
   expect(listed.json).toMatchObject({ result: { tools: expect.arrayContaining([expect.objectContaining({ name: "quick_add", _meta: { securitySchemes: [{ type: "oauth2", scopes: [...SCOPES] }] } })]) } });
+  const prompts = await rpc(handler, "prompts/list", version);
+  expect(prompts.json).toMatchObject({ result: { prompts: expect.arrayContaining([expect.objectContaining({ name: "organize_my_life" }), expect.objectContaining({ name: "plan_my_week" })]) } });
+  const organise = await rpc(handler, "prompts/get", version, { name: "organize_my_life", arguments: { focus: "this semester" } });
+  expect(JSON.stringify(organise.json)).toContain("apply_plan call with dryRun: true");
+  expect(JSON.stringify(organise.json)).toContain("Focus: this semester");
   const called = await rpc(handler, "tools/call", version, { name: "get_overview", arguments: { today: "2026-09-29" } });
   expect(called.response.status).toBe(200);
   expect(JSON.stringify(called.json)).toContain("active tasks today");
