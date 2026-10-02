@@ -1,5 +1,5 @@
 "use client";
-import { relativeDay } from "@kriyan/core";
+import { relativeDay, remindersValue, repeatText } from "@kriyan/core";
 import { useState } from "react";
 import {
   parse,
@@ -93,13 +93,28 @@ export function QuickAdd({
                   ? "No length"
                   : formatMinutes(parsed.durationMinutes)}
               </span>
+              {parsed.deadline && (
+                <span className={s.chip}>
+                  Due {relativeDay(parsed.deadline, context.today)}
+                </span>
+              )}
+              {parsed.repeat && (
+                <span className={s.chip}>
+                  {repeatText(parsed.repeat, parsed.date)}
+                </span>
+              )}
+              {parsed.reminders.length > 0 && (
+                <span className={s.chip}>
+                  {remindersValue(parsed.reminders)}
+                </span>
+              )}
             </>
           )}
         </div>
       )}
       {!inline && (
         <div className={s["qa-foot"]}>
-          <span>Type a day, a time, a length or a #tag. All optional.</span>
+          <span>Type a day, time, length, #tag, due date, repeat or reminder. All optional.</span>
           <button className={s.btn} disabled={!parsed.title || !area}>
             Add task
           </button>

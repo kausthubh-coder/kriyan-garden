@@ -568,6 +568,7 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
             toggle={actions.toggle}
             remove={actions.deleteTask}
             update={actions.edit}
+            skip={actions.skip}
             toast={
               <Toast
                 message={actions.toast}

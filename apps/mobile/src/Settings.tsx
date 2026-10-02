@@ -11,7 +11,9 @@ import {
   EventsEditor,
   useAction,
 } from "./Editors";
+import { DateField } from "./DateField";
 import {
+  Chip,
   Field,
   Header,
   ListRow,
@@ -31,6 +33,7 @@ type Screen =
   | "Habits"
   | "Daily capacity"
   | "Day starts and ends"
+  | "Daily summary"
   | "Notifications"
   | "Account"
   | "Delete account and data";
@@ -129,6 +132,11 @@ export function Settings({
             onPress={() => setScreen("Day starts and ends")}
           />
           <ListRow
+            label="Daily summary"
+            value={profile.dailySummaryTime ?? "Off"}
+            onPress={() => setScreen("Daily summary")}
+          />
+          <ListRow
             label="Notifications"
             value={notifications.registered ? "On" : "Off"}
             onPress={() => setScreen("Notifications")}
@@ -189,6 +197,42 @@ export function Settings({
               )
             }
           />
+        </>
+      )}
+      {screen === "Daily summary" && (
+        <>
+          <T quiet>
+            A notification at this time with today&apos;s tasks and this
+            week&apos;s deadlines.
+          </T>
+          <View style={s.wrap}>
+            {[null, "07:00", "08:00", "09:00"].map((time) => (
+              <Chip
+                key={time ?? "off"}
+                label={time ?? "Off"}
+                selected={(profile.dailySummaryTime ?? null) === time}
+                disabled={action.busy}
+                onPress={() =>
+                  void action.run(() =>
+                    update({ patch: { dailySummaryTime: time } }),
+                  )
+                }
+              />
+            ))}
+            <DateField
+              label="Other time"
+              mode="time"
+              value={null}
+              change={(time) =>
+                void action.run(() =>
+                  update({ patch: { dailySummaryTime: time } }),
+                )
+              }
+            />
+          </View>
+          {!notifications.registered && (
+            <T quiet>Turn on notifications to receive the summary.</T>
+          )}
         </>
       )}
       {screen === "Day starts and ends" && (

@@ -184,6 +184,7 @@ function Planning({ profile }: { profile: Profile }) {
     [capacity, setCapacity] = useState(String(profile.dailyCapacityMinutes)),
     [start, setStart] = useState(timeOf(profile.dayStartHour * 60)),
     [end, setEnd] = useState(timeOf(profile.dayEndHour * 60)),
+    [summary, setSummary] = useState(profile.dailySummaryTime ?? ""),
     [search, setSearch] = useState("");
   const zones = [
     ...new Set([
@@ -309,6 +310,53 @@ function Planning({ profile }: { profile: Profile }) {
                   }
                 />
                 <SaveFeedback state={action.feedback.end} />
+              </>
+            ),
+          },
+          {
+            id: "summary",
+            label: "Daily summary",
+            value: (
+              <>
+                {profile.dailySummaryTime ?? "Off"}{" "}
+                <SaveFeedback state={action.feedback.summary} />
+              </>
+            ),
+            editor: (
+              <>
+                <div className={shared.chips}>
+                  {[null, "07:00", "08:00", "09:00"].map((time) => (
+                    <button
+                      type="button"
+                      key={time ?? "off"}
+                      className={`${shared.chip} ${(profile.dailySummaryTime ?? null) === time ? shared.chipOn : ""}`}
+                      aria-pressed={(profile.dailySummaryTime ?? null) === time}
+                      onClick={() => {
+                        setSummary(time ?? "");
+                        void action.run("summary", () =>
+                          update({ patch: { dailySummaryTime: time } }),
+                        );
+                      }}
+                    >
+                      {time ?? "Off"}
+                    </button>
+                  ))}
+                </div>
+                <TimeField
+                  label="Summary time"
+                  value={summary}
+                  change={setSummary}
+                  save={(value) =>
+                    void action.run("summary", () =>
+                      update({ patch: { dailySummaryTime: value || null } }),
+                    )
+                  }
+                />
+                <p>
+                  A notification on your Android phone at this time with
+                  today&apos;s tasks and this week&apos;s deadlines.
+                </p>
+                <SaveFeedback state={action.feedback.summary} />
               </>
             ),
           },

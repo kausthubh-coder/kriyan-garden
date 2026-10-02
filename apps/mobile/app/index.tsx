@@ -91,7 +91,8 @@ function Planner() {
     complete = useMutation(api.tasks.complete),
     reopen = useMutation(api.tasks.reopen),
     remove = useMutation(api.tasks.remove),
-    create = useMutation(api.tasks.create);
+    create = useMutation(api.tasks.create),
+    skip = useMutation(api.tasks.skip);
   const openNotification = useCallback((id: string) => setTaskId(id), []);
   const notifications = useNotifications(
     !!profile?.onboardingComplete,
@@ -521,6 +522,7 @@ function Planner() {
             router.setParams({ taskId: undefined });
           }}
           save={(patch) => update({ id: selected._id, patch })}
+          skip={() => skip({ id: selected._id })}
           toggle={() =>
             selected.status === "completed"
               ? reopen({ id: selected._id })

@@ -10,6 +10,11 @@ import {
   repeatText,
   timeValue,
   weekdayName,
+  repeatPresets,
+  monthDayChoices,
+  sameRule,
+  deadlineReminderPresets,
+  type RepeatRule,
 } from "@kriyan/core";
 import type { TaskPatch } from "@kriyan/backend/convex/validators";
 import {
@@ -54,6 +59,7 @@ export function TaskSheet({
   save,
   remove,
   toggle,
+  skip,
   initialProperty = null,
 }: {
   task: Task;
@@ -65,6 +71,7 @@ export function TaskSheet({
   save: (patch: TaskPatch) => Promise<unknown>;
   remove: () => Promise<unknown>;
   toggle: () => Promise<unknown>;
+  skip?: () => Promise<Task>;
   initialProperty?: Property | null;
 }) {
   const [draft, setDraft] = useState(task),
@@ -73,6 +80,10 @@ export function TaskSheet({
     [notes, setNotes] = useState(task.notes),
     [customLength, setCustomLength] = useState(""),
     [every, setEvery] = useState(String(task.repeat?.every ?? 1)),
+    [times, setTimes] = useState(
+      String(task.repeat?.ends?.kind === "after" ? task.repeat.ends.count : 10),
+    ),
+    [before, setBefore] = useState("30"),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const pending = useRef<Promise<unknown>>(Promise.resolve());
@@ -92,7 +103,12 @@ export function TaskSheet({
       if (pending.current === write) setBusy(false);
     }
   }
-  function commit(patch: TaskPatch) {
+  function commit(change: TaskPatch) {
+    // Clearing the day keeps only reminders that count back from the deadline.
+    const patch: TaskPatch =
+      change.date === null && change.reminders === undefined
+        ? { ...change, reminders: draft.reminders.filter((r) => r.type === "deadline") }
+        : change;
     return run(async () => {
       await save(patch);
       setDraft((previous) => ({ ...previous, ...patch }));
@@ -115,7 +131,18 @@ export function TaskSheet({
   }
   const area = areas.find((a) => a._id === draft.areaId),
     project = projects.find((p) => p._id === draft.projectId),
-    deadline = deadlineValue(draft.deadline, today);
+    deadline = deadlineValue(draft.deadline, today),
+    repeat = draft.repeat,
+    anchor = draft.date ?? today;
+  /** The current rule with `change` applied and `drop` removed. */
+  const rule = (
+    change: Partial<RepeatRule>,
+    drop: ("weekdays" | "monthDay" | "basis" | "ends")[] = [],
+  ): RepeatRule => {
+    const next: RepeatRule = { every: 1, unit: "day", ...repeat, ...change };
+    for (const key of drop) delete next[key];
+    return next;
+  };
   const choice = (
     label: string,
     selected: boolean,
@@ -158,7 +185,7 @@ export function TaskSheet({
         ? { deadline: date }
         : date
           ? { date }
-          : { date: null, time: null, reminders: [] };
+          : { date: null, time: null };
     return (
       <View style={s.wrap}>
         {[0, 1, 2, 3].map((offset) => {
@@ -394,67 +421,151 @@ export function TaskSheet({
         )}
         {row(
           "Repeat",
-          repeatText(draft.repeat),
+          repeatText(draft.repeat, draft.date),
           <>
             <View style={s.wrap}>
               {choice("Does not repeat", !draft.repeat, { repeat: null })}
-              {(
-                [
-                  { unit: "day", label: "Daily" },
-                  { unit: "week", label: "Weekly" },
-                  { unit: "month", label: "Monthly" },
-                  { unit: "year", label: "Yearly" },
-                ] as const
-              ).map((item) =>
-                choice(item.label, draft.repeat?.unit === item.unit, {
-                  repeat: { unit: item.unit, every: 1 },
-                  date: draft.date ?? today,
+              {repeatPresets(anchor).map((preset) =>
+                choice(preset.label, sameRule(draft.repeat, preset.rule), {
+                  repeat: preset.rule,
+                  date: anchor,
                 }),
               )}
             </View>
-            {draft.repeat && (
-              <Field
-                label="Repeat every"
-                value={every}
-                onChangeText={setEvery}
-                keyboardType="number-pad"
-                onBlur={() => {
-                  const interval = Number(every);
-                  if (
-                    !Number.isInteger(interval) ||
-                    interval < 1 ||
-                    interval > 1000
-                  ) {
-                    setError(
-                      "Repeat interval is invalid. Enter a whole number from 1 to 1000.",
-                    );
-                    return;
-                  }
-                  if (draft.repeat)
-                    void commit({
-                      repeat: { ...draft.repeat, every: interval },
-                    });
-                }}
-              />
-            )}
-            {draft.repeat?.unit === "week" && (
-              <View style={s.wrap}>
-                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
-                  (label, day) => {
-                    const repeat = draft.repeat;
-                    if (!repeat) return null;
-                    const selected = repeat.weekdays?.includes(day) ?? false;
-                    return choice(label, selected, {
-                      repeat: {
-                        ...repeat,
-                        weekdays: selected
+            {repeat && (
+              <>
+                <Field
+                  label="Repeat every"
+                  value={every}
+                  onChangeText={setEvery}
+                  keyboardType="number-pad"
+                  onBlur={() => {
+                    const interval = Number(every);
+                    if (
+                      !Number.isInteger(interval) ||
+                      interval < 1 ||
+                      interval > 1000
+                    ) {
+                      setError(
+                        "Repeat interval is invalid. Enter a whole number from 1 to 1000.",
+                      );
+                      return;
+                    }
+                    void commit({ repeat: rule({ every: interval }) });
+                  }}
+                />
+                <View style={s.wrap}>
+                  {(["day", "week", "month", "year"] as const).map((unit) =>
+                    choice(
+                      repeat.every === 1 ? unit : `${unit}s`,
+                      repeat.unit === unit,
+                      { repeat: rule({ unit }, ["weekdays", "monthDay"]) },
+                    ),
+                  )}
+                </View>
+                {repeat.unit === "week" && (
+                  <View style={s.wrap}>
+                    {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                      (label, day) => {
+                        const selected = repeat.weekdays?.includes(day) ?? false;
+                        const weekdays = selected
                           ? repeat.weekdays?.filter((d) => d !== day)
-                          : [...(repeat.weekdays ?? []), day],
+                          : [...(repeat.weekdays ?? []), day];
+                        return choice(label, selected, {
+                          repeat: weekdays?.length
+                            ? rule({ weekdays })
+                            : rule({}, ["weekdays"]),
+                        });
                       },
-                    });
-                  },
+                    )}
+                  </View>
                 )}
-              </View>
+                {(repeat.unit === "month" || repeat.unit === "year") && (
+                  <View style={s.wrap}>
+                    {monthDayChoices(anchor).map((option) =>
+                      choice(
+                        option.label,
+                        JSON.stringify(repeat.monthDay) ===
+                          JSON.stringify(option.monthDay),
+                        { date: anchor, repeat: rule({ monthDay: option.monthDay }) },
+                      ),
+                    )}
+                  </View>
+                )}
+                <T quiet>Next date from</T>
+                <View style={s.wrap}>
+                  {choice("Its day", repeat.basis !== "completion", {
+                    repeat: rule({}, ["basis"]),
+                  })}
+                  {choice("When done", repeat.basis === "completion", {
+                    repeat: rule({ basis: "completion" }),
+                  })}
+                </View>
+                <T quiet>Ends</T>
+                <View style={s.wrap}>
+                  {choice("Never", !repeat.ends, { repeat: rule({}, ["ends"]) })}
+                  {choice(
+                    "After a number of times",
+                    repeat.ends?.kind === "after",
+                    {
+                      repeat: rule({
+                        ends: {
+                          kind: "after",
+                          count:
+                            repeat.ends?.kind === "after" ? repeat.ends.count : 10,
+                        },
+                      }),
+                    },
+                  )}
+                  <DateField
+                    label={
+                      repeat.ends?.kind === "on"
+                        ? `Until ${dayValue(repeat.ends.date, today)}`
+                        : "On a date"
+                    }
+                    value={repeat.ends?.kind === "on" ? repeat.ends.date : null}
+                    change={(date) =>
+                      void commit({ repeat: rule({ ends: { kind: "on", date } }) })
+                    }
+                  />
+                </View>
+                {repeat.ends?.kind === "after" && (
+                  <Field
+                    label="Times in all"
+                    value={times}
+                    onChangeText={setTimes}
+                    keyboardType="number-pad"
+                    onBlur={() => {
+                      const count = Number(times);
+                      if (!Number.isInteger(count) || count < 1 || count > 1000) {
+                        setError(
+                          "Number of times is invalid. Enter a whole number from 1 to 1000.",
+                        );
+                        return;
+                      }
+                      void commit({
+                        repeat: rule({ ends: { kind: "after", count } }),
+                      });
+                    }}
+                  />
+                )}
+                {skip && draft.status === "active" && (
+                  <TextButton
+                    label="Skip this time"
+                    disabled={busy}
+                    onPress={() =>
+                      void run(async () => {
+                        const next = await skip();
+                        setDraft((previous) => ({
+                          ...previous,
+                          date: next.date,
+                          repeatIndex: next.repeatIndex,
+                        }));
+                      })
+                    }
+                  />
+                )}
+              </>
             )}
           </>,
         )}
@@ -491,6 +602,7 @@ export function TaskSheet({
                   },
                   { label: "Morning of", reminder: { type: "morning_of" } },
                   { label: "Day before", reminder: { type: "day_before" } },
+                  ...deadlineReminderPresets,
                 ] satisfies { label: string; reminder: Reminder }[]
               ).map((item) => (
                 <Chip
@@ -498,8 +610,10 @@ export function TaskSheet({
                   label={item.label}
                   disabled={
                     busy ||
-                    !draft.date ||
                     draft.reminders.length >= 8 ||
+                    (item.reminder.type === "deadline"
+                      ? !draft.deadline
+                      : !draft.date) ||
                     (!draft.time &&
                       (item.reminder.type === "at_start" ||
                         item.reminder.type === "before"))
@@ -516,10 +630,34 @@ export function TaskSheet({
                 />
               )}
             </View>
+            {draft.time && (
+              <>
+                <Field
+                  label="Minutes before start"
+                  value={before}
+                  onChangeText={setBefore}
+                  keyboardType="number-pad"
+                />
+                <TextButton
+                  label="Add reminder before start"
+                  disabled={
+                    busy ||
+                    !Number.isInteger(Number(before)) ||
+                    Number(before) < 1 ||
+                    Number(before) > 10080
+                  }
+                  onPress={() =>
+                    addReminder({ type: "before", minutes: Number(before) })
+                  }
+                />
+              </>
+            )}
             {!draft.time && (
               <T quiet>Set a time to use At start and before reminders.</T>
             )}
-            {!draft.date && <T quiet>Set a day to use reminders.</T>}
+            {!draft.date && !draft.deadline && (
+              <T quiet>Set a day or a deadline to use reminders.</T>
+            )}
           </>,
         )}
       </PropertyList>

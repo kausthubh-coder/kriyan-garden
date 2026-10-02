@@ -2,7 +2,7 @@ import { quickAddGrammar } from "../src/quickAddGrammar";
 import { quickAddCases } from "../src/quickAddCases";
 const document = `# Quick add
 
-Type a title, followed by any combination of a day, time, #tag and length. Every part except the title is optional. Length is never inferred. The Day view defaults to its selected day and area; the API can supply different defaults. Dates use your local day, not the server's UTC date.
+Type a title, followed by any combination of a day, time, #tag, length, deadline, repeat and reminders. Every part except the title is optional. Length is never inferred. The Day view defaults to its selected day and area; the API can supply different defaults. Dates use your local day, not the server's UTC date.
 
 Area names belong to you. Music is a custom area in these tested examples; use your own area names.
 
@@ -16,7 +16,7 @@ ${quickAddGrammar.map((row) => `| ${row.tokens.map((token) => `\`${token}\``).jo
 
 ## How the parser decides
 
-The first day and first time win. A weekday means its next occurrence, including a week from today when it is the same weekday. An unknown #tag stays in the title. Area tags are checked before project tags. The parser capitalizes the first letter of the remaining title and collapses spaces. Numbers and words that do not match a token stay in the title. In particular, "20 minutes" is ordinary title text; use "20m" to set a length. ISO dates, deadlines, repeat rules and reminders are edited in task details, not parsed from this input.
+The first day and first time win. A weekday means its next occurrence, including a week from today when it is the same weekday. An unknown #tag stays in the title. Area tags are checked before project tags. The parser capitalizes the first letter of the remaining title and collapses spaces. Numbers and words that do not match a token stay in the title. In particular, "20 minutes" is ordinary title text; use "20m" to set a length. A repeat without a typed day starts on the first day it lands on. ISO dates are not parsed; use "2 oct" or "oct 2". Phrases the parser does not recognise stay in the title, so check the preview chips before adding.
 
 ## Tested examples
 

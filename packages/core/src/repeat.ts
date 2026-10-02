@@ -13,7 +13,7 @@ export type RepeatEnd = { kind: "on"; date: string } | { kind: "after"; count: n
 export type RepeatRule = {
   every: number;
   unit: RepeatUnit;
-  weekdays?: readonly number[];
+  weekdays?: number[];
   /** Which day of the month a monthly or yearly rule lands on. */
   monthDay?: MonthDay;
   /** "completion" counts the next date from the day the task was done. */

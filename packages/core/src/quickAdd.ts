@@ -1,4 +1,7 @@
 import { addDays, getWeekday, weekdayIndex } from "./dates";
+import type { Reminder } from "./reminders";
+import { firstOccurrence, type RepeatRule } from "./repeat";
+import { extractSchedule } from "./quickAddSchedule";
 
 export interface QuickAddContext {
   today: string;
@@ -15,6 +18,9 @@ export interface QuickAddResult {
   date: string | null;
   time: string | null;
   durationMinutes: number | null;
+  deadline: string | null;
+  repeat: RepeatRule | null;
+  reminders: Reminder[];
 }
 
 function formatTime(minutes: number): string {
@@ -30,9 +36,16 @@ export function parse(text: string, context: QuickAddContext): QuickAddResult {
     date: context.defaultDate,
     time: null,
     durationMinutes: null,
+    deadline: null,
+    repeat: null,
+    reminders: [],
   };
   let dateSpecified = false;
-  let remaining = ` ${text} `;
+  const schedule = extractSchedule(text, context.today);
+  result.deadline = schedule.deadline;
+  result.repeat = schedule.repeat;
+  result.reminders = schedule.reminders;
+  let remaining = schedule.rest;
 
   remaining = remaining.replace(/\s(\d+(?:\.\d+)?)\s?h(?:(?:ou)?rs?)?(?:\s?(\d+)\s?m(?:ins?)?)?(?=\s)/i, (_match: string, hours: string, minutes: string | undefined) => {
     result.durationMinutes = Math.round(parseFloat(hours) * 60) + (parseInt(minutes ?? "", 10) || 0);
@@ -90,6 +103,8 @@ export function parse(text: string, context: QuickAddContext): QuickAddResult {
     }
     return match;
   });
+  // "every friday" starts on the next Friday unless a day was typed.
+  if (result.repeat && !dateSpecified) result.date = firstOccurrence(result.repeat, result.date ?? context.today);
   result.title = remaining.replace(/\s+/g, " ").trim();
   if (result.title) result.title = result.title.charAt(0).toUpperCase() + result.title.slice(1);
   return result;

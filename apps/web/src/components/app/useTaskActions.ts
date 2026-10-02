@@ -6,9 +6,10 @@ import type { TaskPatch, TaskCreate } from "@kriyan/backend/convex/validators";
 import type { Task } from "./types";
 import type { ToastMessage } from "./Toast";
 import { taskValues } from "./optimistic";
+import { shortDate } from "@kriyan/core";
 
 export function useTaskActions(close: () => void) {
-  const { update, create, complete, reopen, remove, listActive } = useTaskTransport();
+  const { update, create, complete, reopen, remove, skip: skipTask, listActive } = useTaskTransport();
   const [toast, setToast] = useState<ToastMessage | null>(null),
     [error, setError] = useState("");
   const [failedAction, setFailedAction] = useState<
@@ -157,6 +158,17 @@ export function useTaskActions(close: () => void) {
     },
     [update, show],
   );
+  const skip = useCallback(
+    async (task: Task) => {
+      try {
+        const next = await skipTask({ id: task._id });
+        show(next.date ? `Skipped to ${shortDate(next.date)}` : "Skipped");
+      } catch (error) {
+        failure(error, () => skipTask({ id: task._id }));
+      }
+    },
+    [skipTask, show, failure],
+  );
   const retry = useCallback(() => {
     if (!failedAction) {
       window.location.reload();
@@ -174,6 +186,7 @@ export function useTaskActions(close: () => void) {
     deleteTask,
     addTask,
     edit,
+    skip,
     toast,
     dismiss,
     undo,

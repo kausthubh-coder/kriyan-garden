@@ -81,8 +81,8 @@ export function reminderProblem(task: ReminderTask): string | null {
 
 /** Deadline reminder choices: on the day in the morning, or evenings before. */
 export const deadlineReminderPresets: { label: string; reminder: Reminder }[] = [
-  { label: "On the deadline", reminder: { type: "deadline", daysBefore: 0, time: "09:00" } },
-  { label: "1 day before", reminder: { type: "deadline", daysBefore: 1, time: "18:00" } },
-  { label: "2 days before", reminder: { type: "deadline", daysBefore: 2, time: "18:00" } },
-  { label: "1 week before", reminder: { type: "deadline", daysBefore: 7, time: "18:00" } },
+  { label: "Deadline day", reminder: { type: "deadline", daysBefore: 0, time: "09:00" } },
+  { label: "1 day before deadline", reminder: { type: "deadline", daysBefore: 1, time: "18:00" } },
+  { label: "2 days before deadline", reminder: { type: "deadline", daysBefore: 2, time: "18:00" } },
+  { label: "1 week before deadline", reminder: { type: "deadline", daysBefore: 7, time: "18:00" } },
 ];

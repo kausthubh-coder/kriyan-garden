@@ -24,6 +24,9 @@ const defaults: QuickAddResult = {
   date: context.defaultDate,
   time: null,
   durationMinutes: null,
+  deadline: null,
+  repeat: null,
+  reminders: [],
 };
 
 describe("prototype quick add grammar", () => {

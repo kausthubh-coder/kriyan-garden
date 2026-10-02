@@ -54,6 +54,14 @@ export function createDemoStore(today: string) {
       state.tasks = state.tasks.map((task) => task._id === id ? row : task); notify(); return row;
     },
     remove: async ({ id }) => { find(id); state.tasks = state.tasks.filter((task) => task._id !== id); notify(); return null; },
+    skip: async ({ id }) => {
+      const current = find(id);
+      const index = current.repeatIndex ?? 1;
+      const next = current.repeat && current.date ? nextOccurrence(current.repeat, { date: current.date, completedOn: localClock(new Date()).today, index }) : null;
+      if (!next) throw new Error("This is the last time this task repeats. Complete or delete it instead.");
+      const row: Task = { ...current, date: next, repeatIndex: index + 1, updatedAt: stamp() };
+      state.tasks = state.tasks.map((task) => task._id === id ? row : task); notify(); return row;
+    },
     listActive: async () => state.tasks.filter((task) => task.status === "active"),
   };
   const findGoal = (key: string) => {

@@ -10,14 +10,15 @@ import { optimisticCreate, optimisticPatch, optimisticStatus, cacheTask } from "
 function useConvexTasks() {
   const client = useConvex();
   const update = useMutation(api.tasks.update), create = useMutation(api.tasks.create),
-    complete = useMutation(api.tasks.complete), reopen = useMutation(api.tasks.reopen), remove = useMutation(api.tasks.remove);
+    complete = useMutation(api.tasks.complete), reopen = useMutation(api.tasks.reopen), remove = useMutation(api.tasks.remove), skip = useMutation(api.tasks.skip);
   return useMemo(() => ({
     update: update.withOptimisticUpdate(optimisticPatch), create: create.withOptimisticUpdate(optimisticCreate),
     complete: complete.withOptimisticUpdate((store, args) => optimisticStatus(store, args.id, "completed")),
     reopen: reopen.withOptimisticUpdate((store, args) => optimisticStatus(store, args.id, "active")),
     remove: remove.withOptimisticUpdate((store, args) => cacheTask(store, args.id, null)),
+    skip,
     listActive: () => client.query(api.tasks.list, { status: "active" }),
-  }), [client, update, create, complete, reopen, remove]);
+  }), [client, update, create, complete, reopen, remove, skip]);
 }
 function useConvexGoals() {
   return {

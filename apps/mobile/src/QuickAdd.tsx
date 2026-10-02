@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@kriyan/backend/convex/_generated/api";
-import { parse, lengthValue, relativeDay } from "@kriyan/core";
+import { parse, lengthValue, relativeDay, remindersValue, repeatText } from "@kriyan/core";
 import { PrimaryButton, Tag, Sheet, T, s, ui } from "./ui";
 import { TextInput, View } from "react-native";
 import { areaColor, type Area, type Project } from "./types";
@@ -79,6 +79,15 @@ export function QuickAdd({
               }
               outline={result.durationMinutes === null}
             />
+            {result.deadline && (
+              <Tag label={`Due ${relativeDay(result.deadline, today)}`} />
+            )}
+            {result.repeat && (
+              <Tag label={repeatText(result.repeat, result.date)} />
+            )}
+            {result.reminders.length > 0 && (
+              <Tag label={remindersValue(result.reminders)} />
+            )}
           </>
         ) : (
           <T quiet>Try: gym tomorrow 7am</T>
