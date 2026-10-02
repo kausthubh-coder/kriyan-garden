@@ -52,15 +52,31 @@
 .loadVisual [class*="rowOpen"] [class*="meta"] span[class*="due"], .loadVisual [class*="rowOpen"] [class*="meta"] span[class*="tm"] { display: inline; }
 .capacity { font-size: var(--text-13); color: var(--ink-3); margin-bottom: var(--space-18) !important; }
 .capacity b { color: var(--hot); font-weight: 600; }
-.ai { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: var(--space-72); align-items: start; }
+.ai { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); grid-template-rows: auto 1fr; column-gap: var(--space-72); align-items: start; }
+.aiIntro { grid-column: 1; }
+.aiConnect { grid-column: 2; grid-row: 1 / span 2; }
+.aiCli { grid-column: 1; }
 .tabs { display: flex; flex-wrap: wrap; gap: var(--space-4); margin-bottom: var(--space-12); }
 .tabs button[aria-selected="true"] { background: var(--ink); color: var(--on); border-color: var(--ink); }
 .code { border-radius: var(--radius-14); background: var(--s1); box-shadow: inset 0 0 0 1px var(--line); padding: var(--space-18) var(--space-20); font-family: ui-monospace, "Cascadia Code", Menlo, monospace; font-size: var(--text-13-5); line-height: 1.7; color: var(--ink-2); margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .codePanel { position: relative; }
 .codePanel .code { padding-top: var(--space-48); }
 .copy { position: absolute; top: var(--space-10); right: var(--space-10); }
+.connect { display: grid; gap: var(--space-20); justify-items: start; padding: var(--space-24); border-radius: var(--radius-16); background: var(--s1); box-shadow: inset 0 0 0 1px var(--line); }
+.connect > * { max-width: 100%; }
+.steps { margin: 0; padding: 0; list-style: none; counter-reset: step; display: grid; gap: var(--space-8); font-size: var(--text-15); line-height: 1.5; color: var(--ink-2); }
+.steps li { display: flex; gap: var(--space-10); counter-increment: step; }
+.steps li::before { content: counter(step) "."; flex: none; min-width: 1.1em; color: var(--ink-3); font-weight: 500; }
+.field { display: grid; gap: 6px; width: 100%; }
+.fieldLabel { font-size: var(--text-13); color: var(--ink-3); }
+.fieldRow { display: flex; align-items: center; gap: var(--space-8); min-height: var(--ctl-lg); padding: var(--space-4) var(--space-4) var(--space-4) var(--space-12); border-radius: var(--radius-10); background: var(--s2); }
+.fieldRow code { flex: 1; min-width: 0; font-family: ui-monospace, "Cascadia Code", Menlo, monospace; font-size: var(--text-13-5); color: var(--ink); overflow-wrap: anywhere; }
+.copyInline { flex: none; display: inline-flex; align-items: center; justify-content: center; min-height: var(--ctl); padding: 0 var(--space-10); border-radius: var(--radius-9); background: var(--s1); color: var(--ink-2); border: 1px solid var(--line); font-size: var(--text-13-5); font-weight: 500; }
+@media (hover: hover) { .copyInline:hover { background: var(--s3); color: var(--ink); } }
+.copyInline:active { opacity: .8; }
+.connectNote { font-size: var(--text-13-5); color: var(--ink-3); line-height: 1.5; }
 .section p.label { font-size: var(--text-13-5); color: var(--ink-3); margin: var(--space-22) 0 var(--space-10); line-height: 1.55; }
-.ai > div:first-child .label { margin-top: var(--space-28); }
+.aiCli .label { margin-top: var(--space-28); }
 .cliLink { display: inline-flex; align-items: center; min-height: var(--ctl); font-size: var(--text-13-5); margin-top: var(--space-8); }
 .androidActions { display: flex; gap: var(--space-10); margin-top: var(--space-26); align-items: center; }
 .androidActions > a:last-child { font-size: var(--text-14-5); min-height: var(--ctl); display: flex; align-items: center; text-underline-offset: 3px; }
@@ -103,6 +119,10 @@
   .section { padding-top: var(--space-72); }
   .section h2 { font-size: var(--text-30); }
   .feature, .feature.flip, .ai { grid-template-columns: minmax(0, 1fr); gap: var(--space-28); }
+  .aiIntro, .aiConnect, .aiCli { grid-column: auto; grid-row: auto; }
+  .aiCli .label { margin-top: 0; }
+  .fieldRow { flex-wrap: wrap; padding: var(--space-10) var(--space-12); }
+  .fieldRow code { flex-basis: 100%; }
   .flip .featureCopy { order: 0; }
   .visual.visual, .visual.timelineVisual { padding: var(--space-20); }
   .quick input { font-size: var(--text-17); height: 56px; }

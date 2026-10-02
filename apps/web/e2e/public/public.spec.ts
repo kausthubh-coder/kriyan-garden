@@ -310,12 +310,21 @@ test("landing parser, iframe, keyboard tabs and copy are usable", async ({ page,
   await expect(page.getByRole("status").first()).toContainText("SchoolEcon 101");
   await expect(page.getByRole("status").first()).toContainText("2h");
   const first = page.getByRole("tab", { name: "Claude", exact: true });
+  await expect(page.getByRole("link", { name: /Open Claude connectors/ })).toHaveAttribute("href", "https://claude.ai/customize/connectors");
   await first.focus(); await page.keyboard.press("ArrowRight");
-  await expect(page.getByRole("tab", { name: "Claude Code", exact: true })).toBeFocused();
-  await expect(page.getByRole("tabpanel")).toContainText("claude mcp add");
-  await page.getByRole("button", { name: "Copy setup", exact: true }).click();
-  await expect(page.getByRole("button", {name:"Copied setup",exact:true})).toBeVisible();
-  await expect(page.getByRole("button", {name:"Copy setup",exact:true})).toBeVisible({timeout:3000});
+  await expect(page.getByRole("tab", { name: "ChatGPT", exact: true })).toBeFocused();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.getByRole("tabpanel")).toContainText("claude mcp add --transport http kriyan https://app.kriyan.app/mcp");
+  await page.getByRole("button", { name: "Copy command", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Copied", exact: true })).toBeVisible();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("claude mcp add --transport http kriyan https://app.kriyan.app/mcp");
+  await expect(page.getByRole("button", { name: "Copy command", exact: true })).toBeVisible({ timeout: 3000 });
+  await page.getByRole("tab", { name: "Cursor", exact: true }).click();
+  const cursor = new URL(await page.getByRole("link", { name: /Add to Cursor/ }).getAttribute("href") ?? "");
+  expect(JSON.parse(atob(cursor.searchParams.get("config") ?? ""))).toEqual({ url: "https://app.kriyan.app/mcp" });
+  await page.getByRole("tab", { name: "VS Code", exact: true }).click();
+  const vscode = new URL(await page.getByRole("link", { name: /Add to VS Code/ }).getAttribute("href") ?? "");
+  expect(JSON.parse(vscode.searchParams.get("config") ?? "")).toEqual({ type: "http", url: "https://app.kriyan.app/mcp" });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 test("docs, legal, metadata and Android download page respond", async ({ page, request }, info) => {

@@ -4,10 +4,12 @@ Kriyan's remote MCP endpoint is `https://app.kriyan.app/mcp`. Plan with the AI y
 
 Clerk development is the hosted identity provider. Dynamic registration, client metadata documents and resource audience claims are configured through the Clerk CLI. Sign-in uses S256 PKCE, consent and the standard scopes `openid profile email`. A token for the exact `/mcp` resource grants access only to your own planner. No Clerk dashboard steps are needed.
 
+The [Kriyan home page](https://kriyan.app/#connect) has one-click install buttons for Cursor and VS Code and copyable setup for the other clients.
+
 ## Claude
 
 ```text
-Open Settings > Connectors > Add custom connector.
+Open https://claude.ai/customize/connectors, select + and choose Add custom connector.
 Name: Kriyan
 Remote MCP server URL: https://app.kriyan.app/mcp
 Connect and approve access through Clerk.
