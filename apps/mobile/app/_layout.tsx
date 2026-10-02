@@ -53,6 +53,30 @@ export default function Layout() {
   const [attempt, setAttempt] = useState(0);
   const [ready, setReady] = useState(false);
   const [expired, setExpired] = useState(false);
+  const [accountLoaded, setAccountLoaded] = useState(false);
+  // The React provider only attaches its ready listeners after load succeeds.
+  // Keep failed offline initialization outside that provider so retry can
+  // load the native singleton before any auth consumers are mounted.
+  useEffect(() => {
+    if (!publishableKey || !url) return;
+    let current = true;
+    const clerk = getClerkInstance({ publishableKey, tokenCache });
+    void clerk.load({
+      standardBrowser: false,
+      experimental: { runtimeEnvironment: "headless", rethrowOfflineNetworkErrors: true },
+    }).then(() => {
+      if (current && clerk.loaded) {
+        console.info("Kriyan startup: native account loaded");
+        setAccountLoaded(true);
+      }
+    }).catch(() => {
+      if (current) {
+        console.info("Kriyan startup: native account load failed");
+        setExpired(true);
+      }
+    });
+    return () => { current = false; };
+  }, [attempt]);
   const onReady = useCallback(() => {
     console.info("Kriyan startup: account and fonts ready");
     setReady(true);
@@ -69,12 +93,6 @@ export default function Layout() {
   function retry() {
     setExpired(false);
     setAttempt(value => value + 1);
-    // load() otherwise restores Clerk's browser defaults instead of Expo's
-    // native, headless options after an offline initialization failed.
-    void getClerkInstance().load({
-      standardBrowser: false,
-      experimental: { runtimeEnvironment: "headless" },
-    }).catch(() => setExpired(true));
   }
   const [fonts, error] = useFonts({
     Schibsted400: require("@expo-google-fonts/schibsted-grotesk/400Regular/SchibstedGrotesk_400Regular.ttf"),
@@ -92,6 +110,7 @@ export default function Layout() {
           <StatusBar barStyle="light-content" />
           {error ? <StartupStatus message="The app font could not load. Restart the app to try again." />
             : !url || !publishableKey ? <StartupStatus message="App configuration is missing. Add the public Clerk and Convex configuration and rebuild the app." />
+            : !accountLoaded ? <StartupStatus loading message="Loading your account." />
             : <Boundary key={attempt}>
             <ShareIntentProvider>
               <ClerkProvider

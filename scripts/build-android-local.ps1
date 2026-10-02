@@ -1,4 +1,4 @@
-param([ValidatePattern('^[D-Z]$')][string]$Drive = 'K')
+param([ValidatePattern('^[D-Z]$')][string]$Drive = 'K', [switch]$SkipPrebuild)
 $ErrorActionPreference = 'Stop'
 $taskRoot = Split-Path $PSScriptRoot -Parent
 $previousLocation = Get-Location
@@ -6,6 +6,7 @@ $mappedHere = $false
 $savedEnvironment = @{}
 $environmentNames = @('ANDROID_HOME', 'ANDROID_SDK_ROOT', 'GRADLE_USER_HOME', 'TEMP', 'TMP', 'CI', 'NODE_ENV')
 $watchdog = $null
+. (Join-Path $PSScriptRoot 'android-native-inputs.ps1')
 foreach ($name in $environmentNames) { $savedEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
 try {
   if (-not (Get-Command java -ErrorAction SilentlyContinue)) { throw 'An existing Java installation is required. Install a supported JDK before building.' }
@@ -31,8 +32,18 @@ try {
   New-Item -ItemType Directory -Force -Path (Split-Path $memoryLog -Parent) | Out-Null
   $watchdog = Start-Process powershell.exe -WindowStyle Hidden -PassThru -ArgumentList @('-NoProfile', '-File', ('"' + $watchdogPath + '"'), '-OwnedPid', $PID, '-Receipt', ('"' + $memoryLog + '"'), '-Build')
   Set-Location (Join-Path $taskRoot 'apps/mobile')
-  & bunx expo prebuild --platform android --no-install
-  if ($LASTEXITCODE -ne 0) { throw 'Android prebuild failed.' }
+  $nativeInputs = Get-KriyanNativeFingerprint $taskRoot
+  $nativeReceipt = Join-Path $taskRoot '.agents/logs/22/native-inputs.json'
+  if ($SkipPrebuild) {
+    if (-not (Test-Path -LiteralPath $nativeReceipt)) { throw 'No verified native input fingerprint exists. Run a full prebuild first.' }
+    $previousInputs = Get-Content -LiteralPath $nativeReceipt -Raw | ConvertFrom-Json
+    if ($previousInputs.fingerprint -ne $nativeInputs -or -not (Test-Path -LiteralPath (Join-Path $taskRoot 'apps/mobile/android/gradlew.bat'))) { throw 'Native inputs changed. Run the full local build without -SkipPrebuild.' }
+    Write-Output 'Reusing generated native sources: app config, dependencies, theme and assets match their recorded fingerprint.'
+  } else {
+    & bunx expo prebuild --platform android --no-install
+    if ($LASTEXITCODE -ne 0) { throw 'Android prebuild failed.' }
+    @{ fingerprint = $nativeInputs; generatedAt = (Get-Date).ToString('o') } | ConvertTo-Json | Set-Content -LiteralPath $nativeReceipt
+  }
   $nativeDirectory = Join-Path $taskRoot 'apps/mobile/android'
   $prefix = $taskRoot.Replace('\', '/')
   # Only generated, ignored native files are adjusted. Source and host settings are untouched.
@@ -86,9 +97,11 @@ allprojects {
   $env:NODE_ENV = 'production'
   Set-Location "$Drive`:/apps/mobile/android"
   $freeCommitKB = (Get-CimInstance Win32_OperatingSystem).FreeVirtualMemory
+  $memoryWaitStarted = Get-Date
   while ($freeCommitKB -lt 3MB) {
+    if ((Get-Date) - $memoryWaitStarted -ge [TimeSpan]::FromMinutes(45)) { throw 'Free commit did not reach 3 GB within 45 minutes before Gradle.' }
     Write-Output "Waiting before Gradle: $([math]::Round($freeCommitKB / 1MB, 2)) GB free commit; 3 GB required."
-    Start-Sleep -Seconds 10
+    Start-Sleep -Seconds 60
     $freeCommitKB = (Get-CimInstance Win32_OperatingSystem).FreeVirtualMemory
   }
   Write-Output "Gradle memory gate passed: $([math]::Round($freeCommitKB / 1MB, 2)) GB free commit."

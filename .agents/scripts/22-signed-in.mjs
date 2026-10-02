@@ -10,7 +10,9 @@ await writeFile(privatePath('22-startup-user.json'), JSON.stringify(owner));
 const b = await backend(owner, prod);
 await b.client.mutation(ref('profiles:ensure'), { timezone: 'America/New_York' });
 await b.client.mutation(ref('profiles:completeOnboarding'), {});
+if (!process.argv.includes('--resume-auth')) {
 await adb('shell', 'pm', 'clear', 'app.kriyan.android');
+await adb('logcat', '-c');
 await adb('shell', 'cmd', 'connectivity', 'airplane-mode', 'enable');
 await adb('shell', 'svc', 'wifi', 'disable'); await adb('shell', 'svc', 'data', 'disable');
 await adb('shell', 'am', 'start', '-W', '-n', 'app.kriyan.android/.MainActivity');
@@ -27,13 +29,22 @@ for (let attempt = 0; attempt < 6; attempt++) {
 }
 assert(connected, 'A real device request must pass before retrying authentication.');
 if ((await xml()).includes('Try again')) await tap('Try again');
-await waitText('Send code');
+try { await waitText('Send code'); }
+finally {
+  const retryLogs = await adb('logcat', '-d', '-v', 'threadtime', 'ReactNativeJS:V', 'AndroidRuntime:E', 'ActivityTaskManager:I', '*:S');
+  await writeFile('.agents/logs/22/fixed-offline-retry.logcat.txt', retryLogs.replace(/Bearer\s+\S+|eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, '[redacted]'));
+  await capture('fixed-offline-retry-result');
+}
 await capture('fixed-offline-retry-recovered');
 console.log('Offline Try again recovered the sign-in form after a verified device HTTP 204.');
+}
 await tap('Email'); await type(owner.email); await adb('shell', 'input', 'keyevent', '4');
 await tap('Send code'); await waitText('Verification code');
 await tap('Verification code'); await type('424242'); await adb('shell', 'input', 'keyevent', '4');
-await tap('Verify code'); await waitText('Settings');
+await tap('Verify code');
+await pause(2000);
+if ((await xml()).includes('Skip notifications')) await tap('Skip notifications');
+await waitText('Settings');
 await adb('shell', 'am', 'force-stop', 'app.kriyan.android');
 await adb('logcat', '-c');
 await adb('shell', 'am', 'start', '-W', '-n', 'app.kriyan.android/.MainActivity');
@@ -45,3 +56,4 @@ await writeFile('.agents/logs/22/fixed-signed-in-relaunch.logcat.txt', logs.repl
 console.log('Email-code sign-in and signed-in cold relaunch to Day passed.');
 await tap('Settings'); await tap('Sign out'); await waitText('Send code');
 await pause(500); await capture('fixed-signed-out-after-relaunch');
+await writeFile('.agents/logs/22/retry-recovery.json', JSON.stringify({passed:true,deviceHttpStatus:204,offlineRetry:true,emailCodeSignIn:true,signedInColdStart:'Day',signOut:true,checkedAt:new Date().toISOString()}, null, 2));

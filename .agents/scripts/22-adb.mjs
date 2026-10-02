@@ -31,7 +31,19 @@ export async function tap(label) {
   }
   throw new Error(`Android control not found: ${label}`);
 }
-export async function type(value) { await adb('shell', 'input', 'text', value.replaceAll(' ', '%s')); }
+export async function type(value) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const field = (await nodes()).find(n => attr(n, 'class').includes('EditText') && attr(n, 'focused') === 'true');
+    if (!field) throw new Error('Focus an Android input before typing.');
+    await adb('shell', 'input', 'keyevent', '123');
+    await adb('shell', 'input', 'keyevent', ...Array.from({length: attr(field, 'text').length + 2}, () => '67'));
+    await adb('shell', 'input', 'text', value.replaceAll(' ', '%s'));
+    if (attr(field, 'password') === 'true') return;
+    const entered = (await nodes()).find(n => attr(n, 'class').includes('EditText') && attr(n, 'focused') === 'true');
+    if (entered && attr(entered, 'text') === value) return;
+  }
+  throw new Error('Android input did not match the requested value after three attempts.');
+}
 export async function waitText(value) {
   for (let attempt = 0; attempt < 20; attempt++) {
     if ((await xml()).includes(value)) return;

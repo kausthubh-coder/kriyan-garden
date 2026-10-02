@@ -10,7 +10,10 @@ while ($true) {
   # Keep descendants after an emulator launcher exits. Creation times prevent
   # PID reuse from turning a former child into an unrelated process target.
   $live = @($processes | Where-Object { $tracked.ContainsKey([int]$_.ProcessId) -and $tracked[[int]$_.ProcessId] -eq $_.CreationDate })
-  $ids = @($live.ProcessId) + @($OwnedPid)
+  $ids = @($live.ProcessId)
+  # A former root PID may be reused by an owner application. Only follow
+  # its orphaned children while that PID is absent, never after PID reuse.
+  if (-not $root -and $tracked.ContainsKey($OwnedPid)) { $ids += @($OwnedPid) }
   do {
     $children = @($processes | Where-Object { $ids -contains $_.ParentProcessId -and $ids -notcontains $_.ProcessId -and $_.CreationDate -ge $started.AddSeconds(-15) })
     foreach ($child in $children) { $tracked[[int]$child.ProcessId] = $child.CreationDate }
